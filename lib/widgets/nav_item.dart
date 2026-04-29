@@ -16,7 +16,7 @@ class NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),

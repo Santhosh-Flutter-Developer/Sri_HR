@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/presentation/dashboard/controller/dashboard_controller.dart';
+import 'package:sri_hr/presentation/dashboard/widgets/attendance_fab.dart';
 import 'package:sri_hr/presentation/dashboard/widgets/chart_row.dart';
 import 'package:sri_hr/presentation/dashboard/widgets/greeting_bar.dart';
 import 'package:sri_hr/presentation/dashboard/widgets/quick_actions.dart';
@@ -22,7 +23,7 @@ class Dashboard extends StatelessWidget {
     return AppShell(
       currentModule: 'dashboard',
       title: 'Dashboard',
-      // floatingActionButton: _AttendanceFAB(),
+      floatingActionButton: AttendanceFAB(),
       child: Obx(
         () => controller.isLoading.value
             ? const LoadingOverlay()
@@ -30,7 +31,12 @@ class Dashboard extends StatelessWidget {
                 onRefresh: controller.loadStats,
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(24.0),
+                  padding: const EdgeInsets.only(
+                    top: 24.0,
+                    left: 24.0,
+                    right: 24.0,
+                    bottom: 100.0,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [

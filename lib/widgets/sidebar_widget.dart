@@ -176,8 +176,8 @@ class SidebarWidget extends StatelessWidget {
                       ],
                     ),
                   ),
-                  GestureDetector(
-                    onTap: () => auth.logout(),
+                  InkWell(
+                    onTap: () => showLogoutDialog(context, auth),
                     child: const Icon(
                       Icons.logout,
                       color: AppColors.sidebarIcon,
@@ -187,6 +187,28 @@ class SidebarWidget extends StatelessWidget {
                 ],
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void showLogoutDialog(BuildContext context, AuthController auth) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              Get.back();
+              auth.logout();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('Logout'),
           ),
         ],
       ),
