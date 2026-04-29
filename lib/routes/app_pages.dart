@@ -5,13 +5,7 @@ import 'package:sri_hr/routes/app_routes.dart';
 
 class AppPages {
   static final pages = [
-    GetPage(
-      name: AppRoutes.routeLogin,
-      page: () => Login(),
-    ),
-    GetPage(
-      name: AppRoutes.routeSignup,
-      page: () => const Signup(),
-    ),
+    GetPage(name: AppRoutes.routeLogin, page: () => Login()),
+    GetPage(name: AppRoutes.routeSignup, page: () => Signup()),
   ];
 }

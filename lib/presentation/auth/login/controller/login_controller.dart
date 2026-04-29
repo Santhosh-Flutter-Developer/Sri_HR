@@ -78,8 +78,10 @@ class LoginController extends GetxController {
   ];
 
   @override
-  void onInit() {
-    super.onInit();
+  void dispose() {
+    emailCtrl.dispose();
+    passCtrl.dispose();
+    super.dispose();
   }
 
   @override
