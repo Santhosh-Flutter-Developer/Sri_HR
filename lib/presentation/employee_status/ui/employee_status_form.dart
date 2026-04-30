@@ -125,7 +125,7 @@ class _EmployeeStatusFormState extends State<EmployeeStatusForm> {
                       Expanded(
                         child: SriButton(
                           label: "Cancel",
-                          onPressed: () => Get.back,
+                          onPressed: () => Get.back(),
                           isOutlined: true,
                         ),
                       ),
