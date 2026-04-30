@@ -183,10 +183,15 @@ class FormFields extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              subtitle: Text(
-                hint ?? "",
-                style: TextStyle(color: AppColors.textPrimary, fontSize: 12.0),
-              ),
+              subtitle: hint != null
+                  ? Text(
+                      hint,
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 12.0,
+                      ),
+                    )
+                  : null,
               value: switchValue ?? false,
               onChanged: onSwitchChanged,
               inactiveThumbColor: AppColors.textMuted.withOpacity(0.8),
