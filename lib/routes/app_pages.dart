@@ -10,6 +10,8 @@ import 'package:sri_hr/presentation/designation/binding/designation_binding.dart
 import 'package:sri_hr/presentation/designation/ui/designation.dart';
 import 'package:sri_hr/presentation/employee_status/binding/employee_status_binding.dart';
 import 'package:sri_hr/presentation/employee_status/ui/employee_status.dart';
+import 'package:sri_hr/presentation/salary_type/binding/salary_type_binding.dart';
+import 'package:sri_hr/presentation/salary_type/ui/salary_type.dart';
 import 'package:sri_hr/presentation/subscription/middleware/subscription_middleware.dart';
 import 'package:sri_hr/routes/app_routes.dart';
 
@@ -39,6 +41,12 @@ class AppPages {
       name: AppRoutes.routeEmployeeStatus,
       page: () => EmployeeStatus(),
       binding: EmployeeStatusBinding(),
+      middlewares: [AuthMiddleware(), SubscriptionMiddleware()],
+    ),
+    GetPage(
+      name: AppRoutes.routeSalaryType,
+      page: () => SalaryType(),
+      binding: SalaryTypeBinding(),
       middlewares: [AuthMiddleware(), SubscriptionMiddleware()],
     ),
   ];
