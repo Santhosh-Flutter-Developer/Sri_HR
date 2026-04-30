@@ -6,7 +6,7 @@ import 'package:sri_hr/data/models/role_model.dart';
 import 'package:sri_hr/data/models/role_permission_model.dart';
 import 'package:sri_hr/data/models/subscription_model.dart';
 import 'package:sri_hr/data/models/user_model.dart';
-import 'package:sri_hr/data/services/subscription_repository.dart';
+import 'package:sri_hr/presentation/subscription/repository/subscription_repository.dart';
 import 'package:sri_hr/presentation/auth/repository/auth_repository.dart';
 import 'package:sri_hr/routes/app_routes.dart';
 

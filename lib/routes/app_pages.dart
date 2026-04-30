@@ -14,7 +14,9 @@ import 'package:sri_hr/presentation/holiday/binding/holiday_binding.dart';
 import 'package:sri_hr/presentation/holiday/ui/holiday.dart';
 import 'package:sri_hr/presentation/salary_type/binding/salary_type_binding.dart';
 import 'package:sri_hr/presentation/salary_type/ui/salary_type.dart';
+import 'package:sri_hr/presentation/subscription/binding/subscription_binding.dart';
 import 'package:sri_hr/presentation/subscription/middleware/subscription_middleware.dart';
+import 'package:sri_hr/presentation/subscription/ui/subscription.dart';
 import 'package:sri_hr/routes/app_routes.dart';
 
 class AppPages {
@@ -56,6 +58,12 @@ class AppPages {
       page: () => Holiday(),
       binding: HolidayBinding(),
       middlewares: [AuthMiddleware(), SubscriptionMiddleware()],
+    ),
+    GetPage(
+      name: AppRoutes.routeSubscription,
+      page: () => Subscription(),
+      binding: SubscriptionBinding(),
+      middlewares: [AuthMiddleware()],
     ),
   ];
 }
