@@ -11,12 +11,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 const supabaseUrl = String.fromEnvironment(
   'SUPABASE_URL',
-  defaultValue: 'https://manbcadjcyaevfcrzayq.supabase.co',
+  defaultValue: 'https://whitusrdpprsxgtntvrw.supabase.co',
 );
 const supabaseAnonKey = String.fromEnvironment(
   'SUPABASE_ANON_KEY',
   defaultValue:
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1hbmJjYWRqY3lhZXZmY3J6YXlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0MjAzMTAsImV4cCI6MjA5Mjk5NjMxMH0.pf14mT3Njy6P1rAScHpTdg4kEAV3PeIqdxE3lswqQHU',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndoaXR1c3JkcHByc3hndG50dnJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1NjU1MTQsImV4cCI6MjA5MzE0MTUxNH0.RTAuE8ZhH5Uh6RRKA17znXRiCzllTuKDx89KDx0OxkQ',
 );
 
 void main() async {
