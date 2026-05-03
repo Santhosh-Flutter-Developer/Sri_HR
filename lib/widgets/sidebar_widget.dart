@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:sri_hr/core/constants/app_constants.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
+import 'package:sri_hr/presentation/company/controller/company_controller.dart';
 import 'package:sri_hr/routes/app_routes.dart';
 import 'package:sri_hr/widgets/nav_item.dart';
 
@@ -13,6 +14,7 @@ class SidebarWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = Get.find<AuthController>();
+    Get.lazyPut(() => CompanyController());
     return Container(
       width: 260,
       color: AppColors.sidebarBg,
@@ -105,6 +107,7 @@ class SidebarWidget extends StatelessWidget {
             );
           }),
           const SizedBox(height: 12),
+          _buildCompanySwitcher(context),
           // Menu items
           Expanded(
             child: Obx(
@@ -176,8 +179,8 @@ class SidebarWidget extends StatelessWidget {
                       ],
                     ),
                   ),
-                  InkWell(
-                    onTap: () => showLogoutDialog(context, auth),
+                  GestureDetector(
+                    onTap: () => auth.logout(),
                     child: const Icon(
                       Icons.logout,
                       color: AppColors.sidebarIcon,
@@ -193,26 +196,249 @@ class SidebarWidget extends StatelessWidget {
     );
   }
 
-  void showLogoutDialog(BuildContext context, AuthController auth) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () {
-              Get.back();
-              auth.logout();
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
-    );
+  // ─────────────────────────────────────────────
+  // SIDEBAR COMPANY SWITCHER WIDGET
+  // Add this inside _SidebarWidget's build(),
+  // just BELOW the subscription badge and ABOVE the menu items.
+  // ─────────────────────────────────────────────
+
+  // Replace the existing sidebar subscription badge section with this:
+
+  Widget _buildCompanySwitcher(BuildContext context) {
+    final companyCtrl = Get.find<CompanyController>();
+    return Obx(() {
+      final companies = companyCtrl.companies;
+      final active = companyCtrl.activeCompany.value;
+      if (companies.isEmpty || active == null) return const SizedBox.shrink();
+
+      return Container(
+        margin: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E293B),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFF334155)),
+        ),
+        child: companies.length == 1
+            // ── Single company: just show name ──────────
+            ? Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 30,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(
+                        child: Text(
+                          active.name.substring(0, 1).toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        active.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            // ── Multi company: show dropdown switcher ───
+            : PopupMenuButton<String>(
+                offset: const Offset(260, 0),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                color: const Color(0xFF1E293B),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.25),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Center(
+                          child: Text(
+                            active.name.substring(0, 1).toUpperCase(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              active.name,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              '${companies.length} branches',
+                              style: const TextStyle(
+                                color: AppColors.sidebarIcon,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.unfold_more_rounded,
+                        color: AppColors.sidebarIcon,
+                        size: 16,
+                      ),
+                    ],
+                  ),
+                ),
+                itemBuilder: (_) => [
+                  // Header
+                  PopupMenuItem(
+                    enabled: false,
+                    height: 36,
+                    child: Text(
+                      'Switch Branch',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade500,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ),
+                  // Branch items
+                  ...companies.map(
+                    (c) => PopupMenuItem<String>(
+                      value: c.id,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: c.id == active.id
+                                    ? AppColors.primary.withOpacity(0.25)
+                                    : AppColors.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  c.name.substring(0, 1).toUpperCase(),
+                                  style: const TextStyle(
+                                    color: AppColors.primaryLight,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    c.name,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: c.id == active.id
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  if (c.city?.isNotEmpty == true)
+                                    Text(
+                                      c.city!,
+                                      style: const TextStyle(
+                                        color: AppColors.sidebarIcon,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            if (c.id == active.id)
+                              const Icon(
+                                Icons.check_circle_rounded,
+                                color: AppColors.primary,
+                                size: 16,
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Manage link
+                  const PopupMenuDivider(),
+                  PopupMenuItem(
+                    value: '__manage__',
+                    child: Row(
+                      children: const [
+                        Icon(
+                          Icons.settings_rounded,
+                          color: AppColors.sidebarIcon,
+                          size: 15,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Manage Branches',
+                          style: TextStyle(
+                            color: AppColors.sidebarText,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                onSelected: (value) {
+                  if (value == '__manage__') {
+                    Get.toNamed(AppRoutes.routeCompany);
+                  } else {
+                    final selected = companies.firstWhere((c) => c.id == value);
+                    companyCtrl.switchCompany(selected);
+                  }
+                },
+              ),
+      );
+    });
   }
 
   IconData iconFor(String module) {

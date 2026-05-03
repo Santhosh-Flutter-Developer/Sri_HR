@@ -17,13 +17,15 @@ class LeaveRepository {
         .eq('company_id', companyId);
     if (employeeId != null) query = query.eq('employee_id', employeeId);
     if (status != null) query = query.eq('status', status);
-    if (fromDate != null)
+    if (fromDate != null) {
       query = query.gte(
         'from_date',
         fromDate.toIso8601String().substring(0, 10),
       );
-    if (toDate != null)
+    }
+    if (toDate != null) {
       query = query.lte('to_date', toDate.toIso8601String().substring(0, 10));
+    }
     final rows = await query.order('created_at', ascending: false);
     return rows
         .map<LeaveRequestModel>((r) => LeaveRequestModel.fromJson(r))

@@ -1,3 +1,4 @@
+// lib/presentation/controllers/auth_controller.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -6,16 +7,16 @@ import 'package:sri_hr/data/models/role_model.dart';
 import 'package:sri_hr/data/models/role_permission_model.dart';
 import 'package:sri_hr/data/models/subscription_model.dart';
 import 'package:sri_hr/data/models/user_model.dart';
-import 'package:sri_hr/presentation/subscription/repository/subscription_repository.dart';
 import 'package:sri_hr/presentation/auth/repository/auth_repository.dart';
+import 'package:sri_hr/presentation/subscription/repository/subscription_repository.dart';
 import 'package:sri_hr/routes/app_routes.dart';
 
 class AuthController extends GetxController {
   final authRepo = AuthRepository();
   final subRepo = SubscriptionRepository();
-
   final box = GetStorage();
 
+  // Observable state
   final isLoading = false.obs;
   final currentUser = Rxn<UserModel>();
   final currentRole = Rxn<RoleModel>();
@@ -23,7 +24,16 @@ class AuthController extends GetxController {
   final subscription = Rxn<SubscriptionModel>();
   final isSubscriptionActive = false.obs;
 
-  String get companyId => currentUser.value?.companyId ?? '';
+  // Reactive company ID — updates when branch is switched
+  // All controllers must use this instead of currentUser.value?.companyId
+  final activeCompanyId = ''.obs;
+
+  // Computed
+  String get companyId => activeCompanyId.value.isNotEmpty
+      ? activeCompanyId.value
+      : currentUser.value?.companyId ?? '';
+
+  void setActiveCompanyId(String id) => activeCompanyId.value = id;
   String get userId => currentUser.value?.id ?? '';
   bool get isAdmin => currentUser.value?.isAdmin ?? false;
   bool get isLoggedIn => currentUser.value != null;
@@ -31,15 +41,15 @@ class AuthController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    restoreSession();
+    _restoreSession();
   }
 
   // ── Restore session from storage ────────────
-  Future<void> restoreSession() async {
+  Future<void> _restoreSession() async {
     final savedUser = box.read('current_user');
     if (savedUser != null) {
       currentUser.value = UserModel.fromJson(savedUser);
-      await loadPermissionsAndSubscription();
+      await _loadPermissionsAndSubscription();
     }
   }
 
@@ -51,11 +61,14 @@ class AuthController extends GetxController {
       final user = UserModel.fromJson(userRow);
       currentUser.value = user;
 
+      // Set reactive company ID
+      activeCompanyId.value = user.companyId;
+
       // Persist
       box.write('current_user', userRow);
 
       // Load permissions + subscription
-      await loadPermissionsAndSubscription();
+      await _loadPermissionsAndSubscription();
 
       // Navigate
       Get.offAllNamed(AppRoutes.routeDashboard);
@@ -139,7 +152,7 @@ class AuthController extends GetxController {
   }
 
   // ── Load permissions + subscription ──────────
-  Future<void> loadPermissionsAndSubscription() async {
+  Future<void> _loadPermissionsAndSubscription() async {
     final user = currentUser.value;
     if (user == null) return;
 

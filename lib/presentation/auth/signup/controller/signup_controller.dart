@@ -33,9 +33,9 @@ class SignupController extends GetxController {
   RxBool otpSent = false.obs;
   RxBool otpVerified = false.obs;
   RxBool sendingOtp = false.obs;
-  RxInt step = 0.obs; // 0=company, 1=personal, 2=address, 3=account
+  RxInt step = 0.obs; // 0=company, 1=personal, 2=account
 
-  final steps = ["Company", "Personal", "Address", "Account"];
+  final steps = ["Company", "Personal", "Account"];
 
   @override
   void dispose() {
@@ -251,8 +251,7 @@ class SignupController extends GetxController {
     return switch (step) {
       0 => stepCompany(),
       1 => stepPersonal(),
-      2 => stepAddress(),
-      3 => stepAccount(),
+      2 => stepAccount(),
       _ => const SizedBox(),
     };
   }
@@ -410,6 +409,57 @@ class SignupController extends GetxController {
           if (!GetUtils.isEmail(v!)) return 'Invalid email';
           return null;
         },
+      ),
+      const SizedBox(height: 20),
+      StepTitle(title: 'Address Details', icon: Icons.location_on_rounded),
+      const SizedBox(height: 20),
+      SriTextField(
+        controller: address,
+        label: 'Full Address *',
+        maxLines: 3,
+        prefixIcon: Icons.home_rounded,
+        validator: (v) => v?.isEmpty == true ? 'Required' : null,
+      ),
+      const SizedBox(height: 16),
+      Row(
+        children: [
+          Expanded(
+            child: SriTextField(
+              controller: country,
+              label: 'Country',
+              prefixIcon: Icons.flag_rounded,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: SriTextField(
+              controller: state,
+              label: 'State',
+              prefixIcon: Icons.map_rounded,
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 16),
+      Row(
+        children: [
+          Expanded(
+            child: SriTextField(
+              controller: city,
+              label: 'City',
+              prefixIcon: Icons.location_city_rounded,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: SriTextField(
+              controller: pincode,
+              label: 'Pincode',
+              keyboardType: TextInputType.number,
+              prefixIcon: Icons.pin_drop_rounded,
+            ),
+          ),
+        ],
       ),
     ],
   );

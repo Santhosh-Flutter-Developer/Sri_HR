@@ -32,20 +32,28 @@ class RolePermissionModel {
       );
 
   Map<String, dynamic> toJson() => {
-        'company_id': companyId,
-        'role_id': roleId,
-        'module': module,
-        'can_view': canView,
-        'can_add': canAdd,
-        'can_edit': canEdit,
-        'can_delete': canDelete,
-      };
+    'company_id': companyId,
+    'role_id': roleId,
+    'module': module,
+    'can_view': canView,
+    'can_add': canAdd,
+    'can_edit': canEdit,
+    'can_delete': canDelete,
+  };
 
   RolePermissionModel copyWith({
-    bool? canView, bool? canAdd, bool? canEdit, bool? canDelete,
+    bool? canView,
+    bool? canAdd,
+    bool? canEdit,
+    bool? canDelete,
   }) => RolePermissionModel(
-    id: id, companyId: companyId, roleId: roleId, module: module,
-    canView: canView ?? this.canView, canAdd: canAdd ?? this.canAdd,
-    canEdit: canEdit ?? this.canEdit, canDelete: canDelete ?? this.canDelete,
+    id: id,
+    companyId: companyId,
+    roleId: roleId,
+    module: module,
+    canView: canView ?? this.canView,
+    canAdd: canAdd ?? this.canAdd,
+    canEdit: canEdit ?? this.canEdit,
+    canDelete: canDelete ?? this.canDelete,
   );
 }

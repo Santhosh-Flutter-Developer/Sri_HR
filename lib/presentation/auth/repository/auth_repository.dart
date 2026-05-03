@@ -1,3 +1,5 @@
+// lib/data/repositories/auth_repository.dart
+import 'package:flutter/foundation.dart';
 import 'package:sri_hr/data/services/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -7,25 +9,60 @@ class AuthRepository {
     String emailOrUsername,
     String password,
   ) async {
-    String emailToUse = emailOrUsername;
+    String emailToUse = emailOrUsername.trim();
 
-    // If not an email → look up username in users table
-    if (!emailOrUsername.contains('@')) {
-      final row = await SupabaseService.client
-          .from('users')
-          .select('email')
-          .eq('username', emailOrUsername)
-          .maybeSingle();
-      if (row == null) throw Exception('User not registered');
-      emailToUse = row['email'] as String;
+    // ── Username / employee-code login ───────────────────
+    if (!emailToUse.contains('@')) {
+      // Use SECURITY DEFINER RPC — works even before auth.uid() exists.
+      // Direct table query would fail here because RLS blocks
+      // unauthenticated selects on the users table.
+      String? found;
+
+      // 1. Try username column first
+      try {
+        final result = await SupabaseService.client.rpc(
+          'get_email_by_username',
+          params: {'p_username': emailToUse},
+        );
+        if (result != null && result.toString().isNotEmpty) {
+          found = result.toString();
+        }
+      } catch (e) {
+        debugPrint('[AuthRepo] get_email_by_username error: $e');
+      }
+
+      // 2. Fallback: try employee_code lookup
+      if (found == null || found.isEmpty) {
+        try {
+          final result = await SupabaseService.client.rpc(
+            'get_email_by_employee_code',
+            params: {'p_code': emailToUse},
+          );
+          if (result != null && result.toString().isNotEmpty) {
+            found = result.toString();
+          }
+        } catch (e) {
+          debugPrint('[AuthRepo] get_email_by_employee_code error: $e');
+        }
+      }
+
+      if (found == null || found.isEmpty) {
+        throw Exception(
+          'User not registered. '
+          'Check your username / employee code, or login with email.',
+        );
+      }
+      emailToUse = found;
     }
 
+    // ── Supabase Auth sign-in ────────────────────────────
     final AuthResponse res = await SupabaseService.auth.signInWithPassword(
       email: emailToUse,
       password: password,
     );
     if (res.user == null) throw Exception('Invalid credentials');
 
+    // ── Fetch full user profile with role ────────────────
     final userRow = await SupabaseService.client
         .from('users')
         .select('*, roles(*)')
@@ -33,7 +70,9 @@ class AuthRepository {
         .maybeSingle();
 
     if (userRow == null) {
-      throw Exception('User profile not found. Contact your administrator.');
+      throw Exception(
+        'User profile not found. Please contact your administrator.',
+      );
     }
     return userRow;
   }
@@ -41,7 +80,7 @@ class AuthRepository {
   // ── LOGOUT ────────────────────────────────────────────────
   Future<void> logout() => SupabaseService.signOut();
 
-  // ── REGISTER COMPANY via SECURITY DEFINER RPC ────────────
+  // ── REGISTER COMPANY ─────────────────────────────────────
   Future<Map<String, dynamic>> registerCompany({
     required String companyName,
     required String personName,
@@ -55,20 +94,22 @@ class AuthRepository {
     required String pincode,
     required String password,
   }) async {
-    // 1. Create Supabase Auth user first
+    // 1. Create Supabase Auth user
     final AuthResponse authRes = await SupabaseService.auth.signUp(
       email: email,
       password: password,
     );
     if (authRes.user == null) {
       throw Exception(
-        'Could not create account. Email may already be registered.',
+        'Could not create account. '
+        'This email may already be registered.',
       );
     }
     final authUserId = authRes.user!.id;
 
     try {
-      // 2. Call SECURITY DEFINER RPC — bypasses ALL RLS
+      // 2. SECURITY DEFINER RPC creates:
+      //    org → company → role → permissions → user → employee → subscription
       final result = await SupabaseService.client.rpc(
         'register_company',
         params: {
@@ -86,17 +127,16 @@ class AuthRepository {
         },
       );
 
-      if (result is Map) {
-        return Map<String, dynamic>.from(result);
-      }
+      if (result is Map) return Map<String, dynamic>.from(result);
       return {'user_id': authUserId};
     } catch (e) {
-      await SupabaseService.auth.signOut(); // clean up orphaned auth user
+      // Clean up orphaned auth user so they can retry
+      await SupabaseService.auth.signOut();
       rethrow;
     }
   }
 
-  // ── HELPERS ───────────────────────────────────────────────
+  // ── PERMISSIONS ───────────────────────────────────────────
   Future<List<Map<String, dynamic>>> getRolePermissions(String roleId) async {
     final rows = await SupabaseService.client
         .from('role_permissions')
@@ -105,6 +145,7 @@ class AuthRepository {
     return rows.cast<Map<String, dynamic>>();
   }
 
+  // ── SUBSCRIPTION ──────────────────────────────────────────
   Future<Map<String, dynamic>?> getSubscription(String companyId) async {
     return await SupabaseService.client
         .from('subscriptions')
