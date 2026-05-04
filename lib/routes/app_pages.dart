@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import 'package:sri_hr/presentation/auth/login/ui/login.dart';
 import 'package:sri_hr/presentation/auth/middleware/auth_middleware.dart';
 import 'package:sri_hr/presentation/auth/signup/ui/signup.dart';
+import 'package:sri_hr/presentation/auth/splash/ui/splash.dart';
 import 'package:sri_hr/presentation/company/binding/company_binding.dart';
 import 'package:sri_hr/presentation/company/ui/company.dart';
 import 'package:sri_hr/presentation/dashboard/binding/dashboard_binding.dart';
@@ -25,6 +26,7 @@ import 'package:sri_hr/routes/app_routes.dart';
 
 class AppPages {
   static final pages = [
+    GetPage(name: AppRoutes.routeSplash, page: () => Splash()),
     GetPage(name: AppRoutes.routeLogin, page: () => Login()),
     GetPage(name: AppRoutes.routeSignup, page: () => Signup()),
     GetPage(

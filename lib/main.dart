@@ -43,12 +43,13 @@ class SriHRApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width >= 800;
     return GetMaterialApp(
       title: AppConstants.appName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       initialBinding: InitialBinding(),
-      initialRoute: AppRoutes.routeLogin,
+      initialRoute: isWide ? AppRoutes.routeLogin : AppRoutes.routeSplash,
       defaultTransition: Transition.fadeIn,
       transitionDuration: const Duration(milliseconds: 250),
       getPages: AppPages.pages,
