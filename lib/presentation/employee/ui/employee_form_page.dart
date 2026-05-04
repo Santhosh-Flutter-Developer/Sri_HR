@@ -28,14 +28,14 @@ class EmployeeFormPage extends StatefulWidget {
   State<EmployeeFormPage> createState() => _EmployeeFormPageState();
 }
 
-class _EmployeeFormPageState extends State<EmployeeFormPage>
-    with SingleTickerProviderStateMixin {
-  final formKey = GlobalKey<FormState>();
-  late TabController tabCtrl;
+class _EmployeeFormPageState extends State<EmployeeFormPage> {
+  // Stepper
+  int currentStep = 0;
+  final stepKeys = List.generate(4, (_) => GlobalKey<FormState>());
   bool isLoading = false;
   bool get isEdit => widget.employee != null;
 
-  // ── Controllers ──────────────────────────────
+  // ── Text Controllers ─────────────────────────
   late TextEditingController code,
       name,
       mobile,
@@ -64,20 +64,31 @@ class _EmployeeFormPageState extends State<EmployeeFormPage>
   // ── Files ─────────────────────────────────────
   Uint8List? profileBytes;
   String? profilePath;
-  // Documents list: each item = {name, bytes, path}
   final List<Map<String, dynamic>> documents = [];
 
-  // ── Controllers refs ──────────────────────────
+  // ── Controller refs ───────────────────────────
   late final DepartmentController deptCtrl;
   late final RoleController roleCtrl;
   late final EmployeeStatusController statusCtrl;
   late final SalaryTypeController salaryCtrl;
   late final CompanyController companyCtrl;
 
+  static const stepTitles = [
+    'Basic Info',
+    'Address',
+    'Work & Role',
+    'Login & Docs',
+  ];
+  static const stepIcons = [
+    Icons.person_rounded,
+    Icons.location_on_rounded,
+    Icons.work_rounded,
+    Icons.lock_rounded,
+  ];
+
   @override
   void initState() {
     super.initState();
-    tabCtrl = TabController(length: 4, vsync: this);
     deptCtrl = Get.find<DepartmentController>();
     roleCtrl = Get.find<RoleController>();
     statusCtrl = Get.find<EmployeeStatusController>();
@@ -121,7 +132,6 @@ class _EmployeeFormPageState extends State<EmployeeFormPage>
 
   @override
   void dispose() {
-    tabCtrl.dispose();
     for (final c in [
       code,
       name,
@@ -146,7 +156,6 @@ class _EmployeeFormPageState extends State<EmployeeFormPage>
   }
 
   Future<void> _generateCode([String? forCompanyId]) async {
-    // Generate code for the SELECTED branch, not always the active one
     final cid =
         forCompanyId ?? companyId ?? Get.find<AuthController>().companyId;
     final codee = await widget.controller.generateCode(cid);
@@ -156,17 +165,13 @@ class _EmployeeFormPageState extends State<EmployeeFormPage>
     });
   }
 
-  // ── Auto-fill from designation ────────────────
   void _onDesignationChanged(String? roleId) {
     setState(() => roleId = roleId);
     if (roleId == null) return;
     final role = roleCtrl.roles.firstWhereOrNull((r) => r.id == roleId);
-    if (role != null) {
-      casualLeave.text = '${role.casualLeave}';
-    }
+    if (role != null) casualLeave.text = '${role.casualLeave}';
   }
 
-  // ── Auto-fill from department ─────────────────
   void _onDepartmentChanged(String? deptId) {
     setState(() => departmentId = deptId);
     if (deptId == null) return;
@@ -179,6 +184,85 @@ class _EmployeeFormPageState extends State<EmployeeFormPage>
     }
   }
 
+  String? _safeVal(String? value, List<String> ids) {
+    if (value == null || ids.isEmpty) return null;
+    return ids.contains(value) ? value : null;
+  }
+
+  // ── Next / Back / Submit ─────────────────────
+  void _next() {
+    final valid = stepKeys[currentStep].currentState?.validate() ?? true;
+    if (!valid) return;
+    if (currentStep < stepTitles.length - 1) {
+      setState(() => currentStep++);
+    } else {
+      _submit();
+    }
+  }
+
+  void _back() {
+    if (currentStep > 0) {
+      setState(() => currentStep--);
+    } else {
+      Navigator.of(context).pop();
+    }
+  }
+
+  Future<void> _submit() async {
+    setState(() => isLoading = true);
+    Uint8List? aadharBytes;
+    String? aadharPath;
+    if (documents.isNotEmpty) {
+      aadharBytes = documents.first['bytes'] as Uint8List;
+      aadharPath = documents.first['path'] as String;
+    }
+    final data = {
+      'company_id': companyId,
+      'employee_code': code.text.trim(),
+      'full_name': name.text.trim(),
+      'department_id': departmentId,
+      'role_id': roleId,
+      'status_id': statusId,
+      'salary_type_id': salaryTypeId,
+      'mobile': mobile.text.trim(),
+      'email': email.text.trim(),
+      'gender': gender,
+      'doj': doj.text.isNotEmpty ? doj.text : null,
+      'dob': dob.text.isNotEmpty ? dob.text : null,
+      'father_husband_name': fatherName.text.trim(),
+      'address': address.text.trim(),
+      'aadhar_address': aadharAddress.text.trim(),
+      'country': country.text.trim(),
+      'state': state.text.trim(),
+      'city': city.text.trim(),
+      'pincode': pincode.text.trim(),
+      'casual_leave': int.tryParse(casualLeave.text) ?? 12,
+      'mobile_login': mobileLogin,
+      'outside_office': outsideOffice,
+      'is_active': isActive,
+      'username': username.text.trim(),
+      if (!isEdit && password.text.isNotEmpty) 'password': password.text,
+    };
+    if (isEdit) {
+      await widget.controller.updateEmployee(
+        widget.employee!.id,
+        data,
+        profileBytes: profileBytes,
+        profilePath: profilePath,
+      );
+    } else {
+      await widget.controller.createEmployee(
+        data,
+        profileBytes: profileBytes,
+        profilePath: profilePath,
+        aadharBytes: aadharBytes,
+        aadharPath: aadharPath,
+      );
+    }
+    setState(() => isLoading = false);
+    if (mounted) Navigator.of(context).pop();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -187,115 +271,389 @@ class _EmployeeFormPageState extends State<EmployeeFormPage>
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.close, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: Text(
           isEdit ? 'Edit Employee' : 'Add Employee',
           style: const TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.w700,
+            fontSize: 18,
           ),
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: isLoading
+      ),
+      body: Column(
+        children: [
+          // ── Step indicator header ────────────────
+          _StepHeader(
+            currentStep: currentStep,
+            titles: stepTitles,
+            icons: stepIcons,
+            onStepTapped: (i) {
+              // Only allow going back to completed steps
+              if (i < currentStep) setState(() => currentStep = i);
+            },
+          ),
+          // ── Step content ─────────────────────────
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              transitionBuilder: (child, anim) => FadeTransition(
+                opacity: anim,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0.05, 0),
+                    end: Offset.zero,
+                  ).animate(anim),
+                  child: child,
+                ),
+              ),
+              child: KeyedSubtree(
+                key: ValueKey(currentStep),
+                child: Form(
+                  key: stepKeys[currentStep],
+                  child: _buildStep(currentStep),
+                ),
+              ),
+            ),
+          ),
+          // ── Bottom navigation ─────────────────────
+          _StepFooter(
+            currentStep: currentStep,
+            totalSteps: stepTitles.length,
+            isLoading: isLoading,
+            isEdit: isEdit,
+            onBack: _back,
+            onNext: _next,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStep(int step) {
+    return switch (step) {
+      0 => _StepBasic(state: this),
+      1 => _StepAddress(state: this),
+      2 => _StepWork(state: this),
+      3 => _StepLoginDocs(state: this),
+      _ => const SizedBox(),
+    };
+  }
+
+  Future<void> _pickDocument() async {
+    final result = await FilePicker.pickFiles(
+      allowMultiple: true,
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'],
+      withData: true,
+    );
+    if (result == null) return;
+    setState(() {
+      for (final f in result.files) {
+        if (f.bytes != null) {
+          documents.add({
+            'name': f.name,
+            'bytes': f.bytes!,
+            'path': f.path ?? f.name,
+          });
+        }
+      }
+    });
+  }
+
+  Future<void> _loadBranchData(String companyId) async {
+    try {
+      final deptRows = await SupabaseService.client
+          .from('departments')
+          .select()
+          .eq('company_id', companyId)
+          .order('name');
+      deptCtrl.departments.value = deptRows
+          .map<DepartmentModel>((r) => DepartmentModel.fromJson(r))
+          .toList();
+      final roleRows = await SupabaseService.client
+          .from('roles')
+          .select()
+          .eq('company_id', companyId)
+          .order('name');
+      roleCtrl.roles.value = roleRows
+          .map<RoleModel>((r) => RoleModel.fromJson(r))
+          .toList();
+    } catch (e) {
+      debugPrint('[EmpForm] loadBranchData: $e');
+    }
+  }
+
+  String _formatBytes(int b) {
+    if (b < 1024) return '$b B';
+    if (b < 1024 * 1024) return '${(b / 1024).toStringAsFixed(1)} KB';
+    return '${(b / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+}
+
+// ─────────────────────────────────────────────
+// STEP HEADER INDICATOR
+// ─────────────────────────────────────────────
+class _StepHeader extends StatelessWidget {
+  final int currentStep;
+  final List<String> titles;
+  final List<IconData> icons;
+  final void Function(int) onStepTapped;
+  const _StepHeader({
+    required this.currentStep,
+    required this.titles,
+    required this.icons,
+    required this.onStepTapped,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.primary,
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+      child: Row(
+        children: List.generate(titles.length, (i) {
+          final isDone = i < currentStep;
+          final isCurrent = i == currentStep;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => onStepTapped(i),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      children: [
+                        // Circle
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 250),
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isDone
+                                ? AppColors.accentGreen
+                                : isCurrent
+                                ? Colors.white
+                                : Colors.white.withOpacity(0.2),
+                            border: Border.all(
+                              color: isCurrent
+                                  ? Colors.white
+                                  : Colors.transparent,
+                              width: 2,
+                            ),
+                            boxShadow: isCurrent
+                                ? [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.15),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ]
+                                : [],
+                          ),
+                          child: Center(
+                            child: isDone
+                                ? const Icon(
+                                    Icons.check_rounded,
+                                    color: Colors.white,
+                                    size: 20,
+                                  )
+                                : Icon(
+                                    icons[i],
+                                    color: isCurrent
+                                        ? AppColors.primary
+                                        : Colors.white,
+                                    size: 18,
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        // Label
+                        Text(
+                          titles[i],
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: isCurrent || isDone
+                                ? Colors.white
+                                : Colors.white.withOpacity(0.55),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Connector line
+                  if (i < titles.length - 1)
+                    Expanded(
+                      child: Container(
+                        height: 2,
+                        margin: const EdgeInsets.only(bottom: 22),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(1),
+                          gradient: LinearGradient(
+                            colors: [
+                              isDone
+                                  ? AppColors.accentGreen
+                                  : Colors.white.withOpacity(0.3),
+                              i + 1 <= currentStep
+                                  ? AppColors.accentGreen
+                                  : Colors.white.withOpacity(0.3),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+// STEP FOOTER BUTTONS
+// ─────────────────────────────────────────────
+class _StepFooter extends StatelessWidget {
+  final int currentStep, totalSteps;
+  final bool isLoading, isEdit;
+  final VoidCallback onBack, onNext;
+  const _StepFooter({
+    required this.currentStep,
+    required this.totalSteps,
+    required this.isLoading,
+    required this.isEdit,
+    required this.onBack,
+    required this.onNext,
+  });
+
+  bool get isLast => currentStep == totalSteps - 1;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      child: Row(
+        children: [
+          // Back
+          OutlinedButton.icon(
+            onPressed: onBack,
+            icon: const Icon(Icons.arrow_back_rounded, size: 16),
+            label: Text(currentStep == 0 ? 'Cancel' : 'Back'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Step dots
+          Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                totalSteps,
+                (i) => AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: i == currentStep ? 20 : 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(4),
+                    color: i <= currentStep
+                        ? AppColors.primary
+                        : AppColors.border,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Next / Save
+          ElevatedButton.icon(
+            onPressed: isLoading ? null : onNext,
+            icon: isLoading
                 ? const SizedBox(
-                    width: 20,
-                    height: 20,
+                    width: 16,
+                    height: 16,
                     child: CircularProgressIndicator(
                       color: Colors.white,
                       strokeWidth: 2,
                     ),
                   )
-                : ElevatedButton(
-                    onPressed: _submit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 8,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: Text(
-                      isEdit ? 'Update' : 'Save Employee',
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
+                : Icon(
+                    isLast ? Icons.check_rounded : Icons.arrow_forward_rounded,
+                    size: 16,
                   ),
+            label: Text(
+              isLoading
+                  ? 'Saving...'
+                  : isLast
+                  ? (isEdit ? 'Update Employee' : 'Save Employee')
+                  : 'Next',
+            ),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              backgroundColor: isLast
+                  ? AppColors.accentGreen
+                  : AppColors.primary,
+            ),
           ),
         ],
-        bottom: TabBar(
-          controller: tabCtrl,
-          indicatorColor: Colors.white,
-          indicatorWeight: 3,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white60,
-          labelStyle: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-          ),
-          tabs: const [
-            Tab(icon: Icon(Icons.person_rounded, size: 18), text: 'Basic'),
-            Tab(
-              icon: Icon(Icons.location_on_rounded, size: 18),
-              text: 'Address',
-            ),
-            Tab(icon: Icon(Icons.work_rounded, size: 18), text: 'Work'),
-            Tab(
-              icon: Icon(Icons.lock_rounded, size: 18),
-              text: 'Login & Docs',
-            ),
-          ],
-        ),
-      ),
-      body: Form(
-        key: formKey,
-        child: TabBarView(
-          controller: tabCtrl,
-          children: [_TabBasic(), _TabAddress(), _TabWork(), _TabLoginDocs()],
-        ),
       ),
     );
   }
+}
 
-  // ══════════════════════════════════════════════
-  // TAB 1 – BASIC INFO
-  // ══════════════════════════════════════════════
-  Widget _TabBasic() {
+// ─────────────────────────────────────────────
+// STEP 1 — BASIC INFO
+// ─────────────────────────────────────────────
+class _StepBasic extends StatelessWidget {
+  final _EmployeeFormPageState state;
+  const _StepBasic({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
       child: Column(
         children: [
-          // Profile picture
+          // Profile pic
           _ProfilePicPicker(
-            bytes: profileBytes,
-            onPick: (b, p) => setState(() {
-              profileBytes = b;
-              profilePath = p;
+            bytes: state.profileBytes,
+            onPick: (b, p) => state.setState(() {
+              state.profileBytes = b;
+              state.profilePath = p;
             }),
           ),
-          const SizedBox(height: 24),
-
-          // Code + Name
-          _Card(
+          const SizedBox(height: 28),
+          _SectionCard(
+            title: 'Employee Information',
+            icon: Icons.badge_rounded,
             children: [
-              _Label('Employee Information'),
               _Row2(
-                _Field(
-                  code,
+                _SriField(
+                  state.code,
                   'Employee Code *',
-                  Icons.badge_rounded,
+                  Icons.tag_rounded,
                   validator: _req,
-                  onChanged: (v) => username.text = v,
+                  onChanged: (v) => state.username.text = v,
                 ),
-                _Field(
-                  name,
+                _SriField(
+                  state.name,
                   'Full Name *',
                   Icons.person_rounded,
                   validator: _req,
@@ -304,79 +662,137 @@ class _EmployeeFormPageState extends State<EmployeeFormPage>
               _Gap(),
               _Row2(
                 _DateField(
-                  doj,
+                  context,
+                  state.doj,
                   'Date of Joining',
                   Icons.calendar_today_rounded,
+                  lastDate: DateTime.now().add(const Duration(days: 365)),
                 ),
                 _DateField(
-                  dob,
+                  context,
+                  state.dob,
                   'Date of Birth *',
                   Icons.cake_rounded,
                   validator: _req,
+                  lastDate: DateTime.now(),
                 ),
               ),
               _Gap(),
               _Row2(
-                _GenderDrop(),
-                _Field(
-                  fatherName,
+                _GenderDropdown(
+                  value: state.gender,
+                  onChanged: (v) => state.setState(() => state.gender = v),
+                ),
+                _SriField(
+                  state.fatherName,
                   'Father / Husband Name',
                   Icons.people_rounded,
                 ),
               ),
               _Gap(),
-              _Field(
-                mobile,
+              _SriField(
+                state.mobile,
                 'Mobile Number',
                 Icons.phone_rounded,
                 keyboard: TextInputType.phone,
               ),
               _Gap(),
-              _Field(
-                email,
+              _SriField(
+                state.email,
                 'Email Address',
                 Icons.email_outlined,
                 keyboard: TextInputType.emailAddress,
               ),
             ],
           ),
-
           const SizedBox(height: 16),
-
-          // Status + Salary
-          _Card(
+          _SectionCard(
+            title: 'Status & Salary',
+            icon: Icons.payments_rounded,
             children: [
-              _Label('Status & Salary'),
-              _Row2(_StatusDrop(), _SalaryDrop()),
+              _Row2(
+                Obx(() {
+                  final ids = state.statusCtrl.statuses
+                      .map((s) => s.id)
+                      .toList();
+                  return SriDropdown<String>(
+                    value: state._safeVal(state.statusId, ids),
+                    label: 'Employee Status',
+                    prefixIcon: Icons.toggle_on_rounded,
+                    items: state.statusCtrl.statuses
+                        .map(
+                          (s) => DropdownMenuItem(
+                            value: s.id,
+                            child: Text(s.name),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) => state.setState(() => state.statusId = v),
+                  );
+                }),
+                Obx(() {
+                  final ids = state.salaryCtrl.salaryTypes
+                      .map((s) => s.id)
+                      .toList();
+                  return SriDropdown<String>(
+                    value: state._safeVal(state.salaryTypeId, ids),
+                    label: 'Salary Type',
+                    prefixIcon: Icons.payments_rounded,
+                    items: state.salaryCtrl.salaryTypes
+                        .map(
+                          (s) => DropdownMenuItem(
+                            value: s.id,
+                            child: Text(s.name),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) =>
+                        state.setState(() => state.salaryTypeId = v),
+                  );
+                }),
+              ),
             ],
           ),
+          const SizedBox(height: 24),
         ],
       ),
     );
   }
+}
 
-  // ══════════════════════════════════════════════
-  // TAB 2 – ADDRESS
-  // ══════════════════════════════════════════════
-  Widget _TabAddress() {
+// ─────────────────────────────────────────────
+// STEP 2 — ADDRESS
+// ─────────────────────────────────────────────
+class _StepAddress extends StatelessWidget {
+  final _EmployeeFormPageState state;
+  const _StepAddress({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
       child: Column(
         children: [
-          _Card(
+          _SectionCard(
+            title: 'Residential Address',
+            icon: Icons.home_rounded,
             children: [
-              _Label('Residential Address'),
-              _Field(address, 'Full Address', Icons.home_rounded, maxLines: 3),
-              _Gap(),
-              _Row2(
-                _Field(country, 'Country', Icons.flag_rounded),
-                _Field(state, 'State', Icons.map_rounded),
+              _SriField(
+                state.address,
+                'Full Address',
+                Icons.home_outlined,
+                maxLines: 3,
               ),
               _Gap(),
               _Row2(
-                _Field(city, 'City', Icons.location_city_rounded),
-                _Field(
-                  pincode,
+                _SriField(state.country, 'Country', Icons.flag_rounded),
+                _SriField(state.state, 'State', Icons.map_rounded),
+              ),
+              _Gap(),
+              _Row2(
+                _SriField(state.city, 'City', Icons.location_city_rounded),
+                _SriField(
+                  state.pincode,
                   'Pincode',
                   Icons.pin_drop_rounded,
                   keyboard: TextInputType.number,
@@ -385,44 +801,110 @@ class _EmployeeFormPageState extends State<EmployeeFormPage>
             ],
           ),
           const SizedBox(height: 16),
-          _Card(
+          _SectionCard(
+            title: 'Aadhar Address',
+            icon: Icons.credit_card_rounded,
             children: [
-              _Label('Aadhar Address'),
-              _Field(
-                aadharAddress,
+              _SriField(
+                state.aadharAddress,
                 'Aadhar Registered Address',
-                Icons.credit_card_rounded,
+                Icons.credit_card_outlined,
                 maxLines: 3,
               ),
             ],
           ),
+          const SizedBox(height: 24),
         ],
       ),
     );
   }
+}
 
-  // ══════════════════════════════════════════════
-  // TAB 3 – WORK
-  // ══════════════════════════════════════════════
-  Widget _TabWork() {
+// ─────────────────────────────────────────────
+// STEP 3 — WORK & ROLE
+// ─────────────────────────────────────────────
+class _StepWork extends StatelessWidget {
+  final _EmployeeFormPageState state;
+  const _StepWork({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
       child: Column(
         children: [
-          _Card(
+          _SectionCard(
+            title: 'Company & Department',
+            icon: Icons.business_rounded,
             children: [
-              _Label('Department & Role'),
-              // Company dropdown (from org's branches)
-              Obx(() => _CompanyDrop()),
+              // Company dropdown
+              Obx(() {
+                final companies = state.companyCtrl.companies;
+                final ids = companies.map((c) => c.id).toList();
+                return SriDropdown<String>(
+                  value: state._safeVal(state.companyId, ids),
+                  label: 'Company / Branch *',
+                  prefixIcon: Icons.business_rounded,
+                  items: companies
+                      .map(
+                        (c) => DropdownMenuItem(
+                          value: c.id,
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 22,
+                                height: 22,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(5),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    c.name.substring(0, 1).toUpperCase(),
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  c.name,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (v) async {
+                    state.setState(() {
+                      state.companyId = v;
+                      state.departmentId = null;
+                      state.roleId = null;
+                    });
+                    if (v == null) return;
+                    if (!state.isEdit) state._generateCode(v);
+                    await state._loadBranchData(v);
+                  },
+                  validator: (v) => v == null ? 'Required' : null,
+                );
+              }),
               _Gap(),
               _Row2(
                 Obx(() {
-                  final ids = deptCtrl.departments.map((d) => d.id).toList();
+                  final ids = state.deptCtrl.departments
+                      .map((d) => d.id)
+                      .toList();
                   return SriDropdown<String>(
-                    value: _safeVal(departmentId, ids),
+                    value: state._safeVal(state.departmentId, ids),
                     label: 'Department *',
                     prefixIcon: Icons.account_tree_rounded,
-                    items: deptCtrl.departments
+                    items: state.deptCtrl.departments
                         .map(
                           (d) => DropdownMenuItem(
                             value: d.id,
@@ -430,17 +912,17 @@ class _EmployeeFormPageState extends State<EmployeeFormPage>
                           ),
                         )
                         .toList(),
-                    onChanged: _onDepartmentChanged,
+                    onChanged: state._onDepartmentChanged,
                     validator: (v) => v == null ? 'Required' : null,
                   );
                 }),
                 Obx(() {
-                  final ids = roleCtrl.roles.map((r) => r.id).toList();
+                  final ids = state.roleCtrl.roles.map((r) => r.id).toList();
                   return SriDropdown<String>(
-                    value: _safeVal(roleId, ids),
+                    value: state._safeVal(state.roleId, ids),
                     label: 'Designation *',
                     prefixIcon: Icons.badge_rounded,
-                    items: roleCtrl.roles
+                    items: state.roleCtrl.roles
                         .map(
                           (r) => DropdownMenuItem(
                             value: r.id,
@@ -448,7 +930,7 @@ class _EmployeeFormPageState extends State<EmployeeFormPage>
                           ),
                         )
                         .toList(),
-                    onChanged: _onDesignationChanged,
+                    onChanged: state._onDesignationChanged,
                     validator: (v) => v == null ? 'Required' : null,
                   );
                 }),
@@ -456,80 +938,86 @@ class _EmployeeFormPageState extends State<EmployeeFormPage>
             ],
           ),
           const SizedBox(height: 16),
-          _Card(
+          _SectionCard(
+            title: 'Work Settings',
+            icon: Icons.tune_rounded,
             children: [
-              _Label('Work Settings'),
-              _Row2(
-                _Field(
-                  casualLeave,
-                  'Casual Leave (days/yr)',
-                  Icons.event_busy_rounded,
-                  keyboard: TextInputType.number,
-                ),
-                const SizedBox.shrink(),
+              _SriField(
+                state.casualLeave,
+                'Casual Leave (days/year)',
+                Icons.event_busy_rounded,
+                keyboard: TextInputType.number,
               ),
               _Gap(),
-              _SwitchTile(
-                label: 'Mobile Login Allowed',
-                subtitle: 'Employee can login via mobile app',
+              _ToggleCard(
                 icon: Icons.phone_android_rounded,
-                value: mobileLogin,
-                onChanged: (v) => setState(() => mobileLogin = v),
+                label: 'Mobile Login Allowed',
+                subtitle: 'Can login via mobile app',
+                value: state.mobileLogin,
+                onChanged: (v) => state.setState(() => state.mobileLogin = v),
               ),
-              const SizedBox(height: 8),
-              _SwitchTile(
-                label: 'Outside Office Allowed',
-                subtitle: 'Employee can mark attendance outside office',
+              const SizedBox(height: 10),
+              _ToggleCard(
                 icon: Icons.location_off_rounded,
-                value: outsideOffice,
-                onChanged: (v) => setState(() => outsideOffice = v),
+                label: 'Outside Office Allowed',
+                subtitle: 'Can mark attendance outside office',
+                value: state.outsideOffice,
+                onChanged: (v) => state.setState(() => state.outsideOffice = v),
               ),
-              const SizedBox(height: 8),
-              _SwitchTile(
+              const SizedBox(height: 10),
+              _ToggleCard(
+                icon: Icons.check_circle_rounded,
                 label: 'Active Employee',
                 subtitle: 'Inactive employees cannot login',
-                icon: Icons.toggle_on_rounded,
-                value: isActive,
-                onChanged: (v) => setState(() => isActive = v),
+                value: state.isActive,
+                color: AppColors.accentGreen,
+                onChanged: (v) => state.setState(() => state.isActive = v),
               ),
             ],
           ),
+          const SizedBox(height: 24),
         ],
       ),
     );
   }
+}
 
-  // ══════════════════════════════════════════════
-  // TAB 4 – LOGIN & DOCUMENTS
-  // ══════════════════════════════════════════════
-  Widget _TabLoginDocs() {
+// ─────────────────────────────────────────────
+// STEP 4 — LOGIN & DOCUMENTS
+// ─────────────────────────────────────────────
+class _StepLoginDocs extends StatelessWidget {
+  final _EmployeeFormPageState state;
+  const _StepLoginDocs({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
       child: Column(
         children: [
-          // Login credentials
-          _Card(
+          _SectionCard(
+            title: 'Login Credentials',
+            icon: Icons.lock_rounded,
             children: [
-              _Label('Login Credentials'),
-              _Field(
-                username,
+              _SriField(
+                state.username,
                 'Username',
                 Icons.person_outline_rounded,
                 hint: 'Default: Employee Code',
               ),
-              if (!isEdit) ...[
+              if (!state.isEdit) ...[
                 _Gap(),
                 SriTextField(
-                  controller: password,
+                  controller: state.password,
                   label: 'Password',
                   prefixIcon: Icons.lock_outline_rounded,
                   obscureText: true,
                   hint: 'Leave blank for no login access',
                 ),
               ],
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: AppColors.info.withOpacity(0.07),
                   borderRadius: BorderRadius.circular(10),
@@ -546,7 +1034,7 @@ class _EmployeeFormPageState extends State<EmployeeFormPage>
                     Expanded(
                       child: Text(
                         'Username defaults to Employee Code. '
-                        'Employee can login using username or email.',
+                        'Employee can login with username or email.',
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
@@ -559,37 +1047,47 @@ class _EmployeeFormPageState extends State<EmployeeFormPage>
             ],
           ),
           const SizedBox(height: 16),
-          // Documents
-          _Card(
+          _SectionCard(
+            title: 'Documents',
+            icon: Icons.attach_file_rounded,
+            trailing: TextButton.icon(
+              onPressed: state._pickDocument,
+              icon: const Icon(Icons.upload_file_rounded, size: 16),
+              label: const Text('Attach File'),
+            ),
             children: [
-              Row(
-                children: [
-                  _LabelWidget('Documents'),
-                  const Spacer(),
-                  TextButton.icon(
-                    onPressed: _pickDocument,
-                    icon: const Icon(Icons.attach_file_rounded, size: 16),
-                    label: const Text('Attach File'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              if (documents.isEmpty)
+              if (state.documents.isEmpty)
                 Container(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  child: const Column(
+                  padding: const EdgeInsets.symmetric(vertical: 28),
+                  child: Column(
                     children: [
-                      Icon(
-                        Icons.folder_open_rounded,
-                        size: 40,
-                        color: AppColors.textMuted,
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.folder_open_rounded,
+                          size: 28,
+                          color: AppColors.textMuted,
+                        ),
                       ),
-                      SizedBox(height: 8),
-                      Text(
+                      const SizedBox(height: 10),
+                      const Text(
                         'No documents attached',
                         style: TextStyle(
                           color: AppColors.textMuted,
                           fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'PDF, JPG, PNG, DOC supported',
+                        style: TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 11,
                         ),
                       ),
                     ],
@@ -597,15 +1095,12 @@ class _EmployeeFormPageState extends State<EmployeeFormPage>
                 )
               else
                 Column(
-                  children: documents.asMap().entries.map((entry) {
+                  children: state.documents.asMap().entries.map((entry) {
                     final i = entry.key;
                     final doc = entry.value;
                     return Container(
                       margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: AppColors.surfaceVariant,
                         borderRadius: BorderRadius.circular(10),
@@ -641,7 +1136,7 @@ class _EmployeeFormPageState extends State<EmployeeFormPage>
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 Text(
-                                  _formatBytes(
+                                  state._formatBytes(
                                     (doc['bytes'] as Uint8List).length,
                                   ),
                                   style: const TextStyle(
@@ -653,11 +1148,20 @@ class _EmployeeFormPageState extends State<EmployeeFormPage>
                             ),
                           ),
                           GestureDetector(
-                            onTap: () => setState(() => documents.removeAt(i)),
-                            child: const Icon(
-                              Icons.close_rounded,
-                              size: 18,
-                              color: AppColors.error,
+                            onTap: () => state.setState(
+                              () => state.documents.removeAt(i),
+                            ),
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: AppColors.error.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Icon(
+                                Icons.close_rounded,
+                                size: 16,
+                                color: AppColors.error,
+                              ),
                             ),
                           ),
                         ],
@@ -667,409 +1171,254 @@ class _EmployeeFormPageState extends State<EmployeeFormPage>
                 ),
             ],
           ),
+          const SizedBox(height: 24),
         ],
       ),
     );
   }
-
-  // ─────────────────────────────────────────────
-  // INLINE WIDGET HELPERS
-  // ─────────────────────────────────────────────
-  Widget _Card({required List<Widget> children}) => Container(
-    margin: const EdgeInsets.only(bottom: 4),
-    padding: const EdgeInsets.all(18),
-    decoration: BoxDecoration(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: AppColors.border),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.03),
-          blurRadius: 8,
-          offset: const Offset(0, 2),
-        ),
-      ],
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: children,
-    ),
-  );
-
-  Widget _Label(String t) => Padding(
-    padding: const EdgeInsets.only(bottom: 14),
-    child: Text(
-      t,
-      style: const TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.w700,
-        color: AppColors.textPrimary,
-      ),
-    ),
-  );
-
-  Widget _LabelWidget(String t) => Text(
-    t,
-    style: const TextStyle(
-      fontSize: 14,
-      fontWeight: FontWeight.w700,
-      color: AppColors.textPrimary,
-    ),
-  );
-
-  Widget _Gap() => const SizedBox(height: 14);
-
-  Widget _Row2(Widget a, Widget b) => Row(
-    children: [
-      Expanded(child: a),
-      const SizedBox(width: 14),
-      Expanded(child: b),
-    ],
-  );
-
-  Widget _Field(
-    TextEditingController ctrl,
-    String label,
-    IconData icon, {
-    String? hint,
-    TextInputType? keyboard,
-    int maxLines = 1,
-    String? Function(String?)? validator,
-    void Function(String)? onChanged,
-  }) => SriTextField(
-    controller: ctrl,
-    label: label,
-    hint: hint,
-    prefixIcon: icon,
-    keyboardType: keyboard,
-    maxLines: maxLines,
-    validator: validator,
-    onChanged: onChanged,
-  );
-
-  Widget _DateField(
-    TextEditingController ctrl,
-    String label,
-    IconData icon, {
-    String? Function(String?)? validator,
-    DateTime? firstDate,
-    DateTime? lastDate,
-  }) => SriTextField(
-    controller: ctrl,
-    label: label,
-    prefixIcon: icon,
-    readOnly: true,
-    validator: validator,
-    onTap: () async {
-      final d = await showDatePicker(
-        context: context,
-        initialDate: DateTime.now(),
-        firstDate: firstDate ?? DateTime(1950),
-        lastDate: lastDate ?? DateTime.now(),
-      );
-      if (d != null) ctrl.text = d.toIso8601String().substring(0, 10);
-    },
-  );
-
-  // ── Safe value helper ───────────────────────────────────
-  // Returns null if value not found in items list.
-  // Prevents Flutter's DropdownButton assertion crash.
-  String? _safeVal(String? value, List<String> ids) {
-    if (value == null || ids.isEmpty) return null;
-    return ids.contains(value) ? value : null;
-  }
-
-  Widget _GenderDrop() {
-    const genders = ['male', 'female', 'other'];
-    return SriDropdown<String>(
-      value: _safeVal(gender, genders),
-      label: 'Gender',
-      prefixIcon: Icons.wc_rounded,
-      items: genders
-          .map(
-            (g) => DropdownMenuItem(value: g, child: Text(g.capitalizeFirst!)),
-          )
-          .toList(),
-      onChanged: (v) => setState(() => gender = v),
-    );
-  }
-
-  Widget _StatusDrop() => Obx(() {
-    final ids = statusCtrl.statuses.map((s) => s.id).toList();
-    return SriDropdown<String>(
-      value: _safeVal(statusId, ids),
-      label: 'Employee Status',
-      prefixIcon: Icons.toggle_on_rounded,
-      items: statusCtrl.statuses
-          .map((s) => DropdownMenuItem(value: s.id, child: Text(s.name)))
-          .toList(),
-      onChanged: (v) => setState(() => statusId = v),
-    );
-  });
-
-  Widget _SalaryDrop() => Obx(() {
-    final ids = salaryCtrl.salaryTypes.map((s) => s.id).toList();
-    return SriDropdown<String>(
-      value: _safeVal(salaryTypeId, ids),
-      label: 'Salary Type',
-      prefixIcon: Icons.payments_rounded,
-      items: salaryCtrl.salaryTypes
-          .map((s) => DropdownMenuItem(value: s.id, child: Text(s.name)))
-          .toList(),
-      onChanged: (v) => setState(() => salaryTypeId = v),
-    );
-  });
-
-  Widget _CompanyDrop() {
-    final companies = companyCtrl.companies;
-    final ids = companies.map((c) => c.id).toList();
-    return SriDropdown<String>(
-      value: _safeVal(companyId, ids),
-      label: 'Company / Branch *',
-      prefixIcon: Icons.business_rounded,
-      items: companies
-          .map(
-            (c) => DropdownMenuItem(
-              value: c.id,
-              child: Row(
-                children: [
-                  Container(
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Center(
-                      child: Text(
-                        c.name.substring(0, 1).toUpperCase(),
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(c.name, overflow: TextOverflow.ellipsis),
-                  ),
-                ],
-              ),
-            ),
-          )
-          .toList(),
-      onChanged: (v) async {
-        setState(() {
-          companyId = v;
-          // Reset dept/role since they belong to a different branch
-          departmentId = null;
-          roleId = null;
-        });
-        if (v == null) return;
-        // ✅ Regenerate employee code for the newly selected branch
-        if (!isEdit) _generateCode(v);
-        // ✅ Load departments & designations for the selected branch
-        await _loadBranchData(v);
-      },
-      validator: (v) => v == null ? 'Required' : null,
-    );
-  }
-
-  Future<void> _loadBranchData(String companyId) async {
-    try {
-      // Load departments for selected branch
-      final deptRows = await SupabaseService.client
-          .from('departments')
-          .select()
-          .eq('company_id', companyId)
-          .order('name');
-      deptCtrl.departments.value = deptRows
-          .map<DepartmentModel>((r) => DepartmentModel.fromJson(r))
-          .toList();
-
-      // Load roles/designations for selected branch
-      final roleRows = await SupabaseService.client
-          .from('roles')
-          .select()
-          .eq('company_id', companyId)
-          .order('name');
-      roleCtrl.roles.value = roleRows
-          .map<RoleModel>((r) => RoleModel.fromJson(r))
-          .toList();
-    } catch (e) {
-      debugPrint('[EmpForm] loadBranchData error: $e');
-    }
-  }
-
-  Widget _SwitchTile({
-    required String label,
-    required String subtitle,
-    required IconData icon,
-    required bool value,
-    required void Function(bool) onChanged,
-  }) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-    decoration: BoxDecoration(
-      color: value
-          ? AppColors.primary.withOpacity(0.04)
-          : AppColors.surfaceVariant,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(
-        color: value ? AppColors.primary.withOpacity(0.2) : AppColors.border,
-      ),
-    ),
-    child: Row(
-      children: [
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: value
-                ? AppColors.primary.withOpacity(0.12)
-                : AppColors.border.withOpacity(0.5),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(
-            icon,
-            size: 18,
-            color: value ? AppColors.primary : AppColors.textMuted,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              Text(
-                subtitle,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textMuted,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Switch(
-          value: value,
-          onChanged: onChanged,
-          activeColor: AppColors.primary,
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
-      ],
-    ),
-  );
-
-  // ─────────────────────────────────────────────
-  // ACTIONS
-  // ─────────────────────────────────────────────
-  Future<void> _pickDocument() async {
-    final result = await FilePicker.pickFiles(
-      allowMultiple: true,
-      type: FileType.custom,
-      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'],
-      withData: true,
-    );
-    if (result == null) return;
-    setState(() {
-      for (final f in result.files) {
-        if (f.bytes != null) {
-          documents.add({
-            'name': f.name,
-            'bytes': f.bytes!,
-            'path': f.path ?? f.name,
-          });
-        }
-      }
-    });
-  }
-
-  String _formatBytes(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-  }
-
-  String? _req(String? v) => v == null || v.trim().isEmpty ? 'Required' : null;
-
-  Future<void> _submit() async {
-    if (!formKey.currentState!.validate()) {
-      // Jump to first tab with error
-      tabCtrl.animateTo(0);
-      return;
-    }
-    setState(() => isLoading = true);
-
-    // Primary doc bytes (first document or null)
-    Uint8List? aadharBytes;
-    String? aadharPath;
-    if (documents.isNotEmpty) {
-      aadharBytes = documents.first['bytes'] as Uint8List;
-      aadharPath = documents.first['path'] as String;
-    }
-
-    final data = {
-      'company_id': companyId,
-      'employee_code': code.text.trim(),
-      'full_name': name.text.trim(),
-      'department_id': departmentId,
-      'role_id': roleId,
-      'status_id': statusId,
-      'salary_type_id': salaryTypeId,
-      'mobile': mobile.text.trim(),
-      'email': email.text.trim(),
-      'gender': gender,
-      'doj': doj.text.isNotEmpty ? doj.text : null,
-      'dob': dob.text.isNotEmpty ? dob.text : null,
-      'father_husband_name': fatherName.text.trim(),
-      'address': address.text.trim(),
-      'aadhar_address': aadharAddress.text.trim(),
-      'country': country.text.trim(),
-      'state': state.text.trim(),
-      'city': city.text.trim(),
-      'pincode': pincode.text.trim(),
-      'casual_leave': int.tryParse(casualLeave.text) ?? 12,
-      'mobile_login': mobileLogin,
-      'outside_office': outsideOffice,
-      'is_active': isActive,
-      'username': username.text.trim(),
-      if (!isEdit && password.text.isNotEmpty) 'password': password.text,
-    };
-
-    if (isEdit) {
-      await widget.controller.updateEmployee(
-        widget.employee!.id,
-        data,
-        profileBytes: profileBytes,
-        profilePath: profilePath,
-      );
-    } else {
-      await widget.controller.createEmployee(
-        data,
-        profileBytes: profileBytes,
-        profilePath: profilePath,
-        aadharBytes: aadharBytes,
-        aadharPath: aadharPath,
-      );
-    }
-
-    setState(() => isLoading = false);
-    if (mounted) Navigator.of(context).pop();
-  }
 }
 
 // ─────────────────────────────────────────────
-// PROFILE PICTURE PICKER
+// SHARED STEP WIDGETS
+// ─────────────────────────────────────────────
+class _SectionCard extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final List<Widget> children;
+  final Widget? trailing;
+  const _SectionCard({
+    required this.title,
+    required this.icon,
+    required this.children,
+    this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Card header
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.04),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
+              ),
+              border: const Border(bottom: BorderSide(color: AppColors.border)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: AppColors.primary, size: 16),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                if (trailing != null) ...[const Spacer(), trailing!],
+              ],
+            ),
+          ),
+          // Card body
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: children,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ToggleCard extends StatelessWidget {
+  final IconData icon;
+  final String label, subtitle;
+  final bool value;
+  final void Function(bool) onChanged;
+  final Color color;
+  const _ToggleCard({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+    this.color = AppColors.primary,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: value ? color.withOpacity(0.05) : AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: value ? color.withOpacity(0.25) : AppColors.border,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: value
+                  ? color.withOpacity(0.12)
+                  : AppColors.border.withOpacity(0.4),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              icon,
+              size: 18,
+              color: value ? color : AppColors.textMuted,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeColor: color,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+Widget _SriField(
+  TextEditingController ctrl,
+  String label,
+  IconData icon, {
+  String? hint,
+  TextInputType? keyboard,
+  int maxLines = 1,
+  String? Function(String?)? validator,
+  void Function(String)? onChanged,
+}) => SriTextField(
+  controller: ctrl,
+  label: label,
+  hint: hint,
+  prefixIcon: icon,
+  keyboardType: keyboard,
+  maxLines: maxLines,
+  validator: validator,
+  onChanged: onChanged,
+);
+
+Widget _DateField(
+  BuildContext ctx,
+  TextEditingController ctrl,
+  String label,
+  IconData icon, {
+  String? Function(String?)? validator,
+  DateTime? firstDate,
+  DateTime? lastDate,
+}) => SriTextField(
+  controller: ctrl,
+  label: label,
+  prefixIcon: icon,
+  readOnly: true,
+  validator: validator,
+  onTap: () async {
+    final d = await showDatePicker(
+      context: ctx,
+      initialDate: DateTime.tryParse(ctrl.text) ?? DateTime.now(),
+      firstDate: firstDate ?? DateTime(1950),
+      lastDate: lastDate ?? DateTime(2100),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.light(primary: AppColors.primary),
+        ),
+        child: child!,
+      ),
+    );
+    if (d != null) ctrl.text = d.toIso8601String().substring(0, 10);
+  },
+);
+
+Widget _GenderDropdown({
+  String? value,
+  required void Function(String?) onChanged,
+}) {
+  const genders = ['male', 'female', 'other'];
+  return SriDropdown<String>(
+    value: genders.contains(value) ? value : null,
+    label: 'Gender',
+    prefixIcon: Icons.wc_rounded,
+    items: genders
+        .map((g) => DropdownMenuItem(value: g, child: Text(g.capitalizeFirst!)))
+        .toList(),
+    onChanged: onChanged,
+  );
+}
+
+Widget _Row2(Widget a, Widget b) => Row(
+  children: [
+    Expanded(child: a),
+    const SizedBox(width: 14),
+    Expanded(child: b),
+  ],
+);
+
+Widget _Gap() => const SizedBox(height: 14);
+
+String? _req(String? v) => v == null || v.trim().isEmpty ? 'Required' : null;
+
+// ─────────────────────────────────────────────
+// PROFILE PIC PICKER
 // ─────────────────────────────────────────────
 class _ProfilePicPicker extends StatelessWidget {
   final Uint8List? bytes;
@@ -1078,43 +1427,54 @@ class _ProfilePicPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () async {
-        final img = await ImagePicker().pickImage(
-          source: ImageSource.gallery,
-          maxWidth: 400,
-        );
-        if (img != null) {
-          final b = await img.readAsBytes();
-          onPick(b, img.path);
-        }
-      },
-      child: Center(
+    return Center(
+      child: GestureDetector(
+        onTap: () async {
+          final img = await ImagePicker().pickImage(
+            source: ImageSource.gallery,
+            maxWidth: 400,
+          );
+          if (img != null) {
+            final b = await img.readAsBytes();
+            onPick(b, img.path);
+          }
+        },
         child: Stack(
+          alignment: Alignment.center,
           children: [
             CircleAvatar(
               radius: 52,
-              backgroundColor: AppColors.primary.withOpacity(0.1),
+              backgroundColor: Colors.white.withOpacity(0.15),
               backgroundImage: bytes != null ? MemoryImage(bytes!) : null,
               child: bytes == null
-                  ? const Icon(Icons.person, size: 48, color: AppColors.primary)
+                  ? const Icon(Icons.person, size: 52, color: Colors.white70)
                   : null,
             ),
             Positioned(
               right: 0,
               bottom: 0,
               child: Container(
-                width: 32,
-                height: 32,
+                width: 34,
+                height: 34,
                 decoration: BoxDecoration(
-                  color: AppColors.primary,
+                  color: Colors.white,
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
+                  border: Border.all(
+                    color: AppColors.primary.withOpacity(0.3),
+                    width: 2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: const Icon(
-                  Icons.camera_alt,
-                  size: 16,
-                  color: Colors.white,
+                  Icons.camera_alt_rounded,
+                  size: 17,
+                  color: AppColors.primary,
                 ),
               ),
             ),

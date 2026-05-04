@@ -573,9 +573,12 @@ class _CompanyDetailState extends State<CompanyDetail> {
       source: ImageSource.gallery,
       maxWidth: 400,
     );
+
     if (img != null) {
-      setState(() async {
-        logoBytes = await img.readAsBytes();
+      final bytes = await img.readAsBytes(); 
+
+      setState(() {
+        logoBytes = bytes; 
         logoPath = img.path;
       });
     }
