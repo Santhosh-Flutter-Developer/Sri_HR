@@ -8,9 +8,7 @@ class HolidayRepository {
         .select()
         .eq('company_id', companyId);
     if (year != null) {
-      query = query
-          .gte('date', '$year-01-01')
-          .lte('date', '$year-12-31');
+      query = query.gte('date', '$year-01-01').lte('date', '$year-12-31');
     }
     final rows = await query.order('date');
     return rows.map<HolidayModel>((r) => HolidayModel.fromJson(r)).toList();
@@ -32,10 +30,14 @@ class HolidayRepository {
     return HolidayModel.fromJson(row);
   }
 
-  Future<HolidayModel> updateHoliday(String id, Map<String, dynamic> data) async {
+  Future<HolidayModel> updateHoliday(
+    String id,
+    Map<String, dynamic> data,
+  ) async {
     final row = await SupabaseService.update('holidays', id, data);
     return HolidayModel.fromJson(row);
   }
 
-  Future<void> deleteHoliday(String id) => SupabaseService.delete('holidays', id);
+  Future<void> deleteHoliday(String id) =>
+      SupabaseService.delete('holidays', id);
 }

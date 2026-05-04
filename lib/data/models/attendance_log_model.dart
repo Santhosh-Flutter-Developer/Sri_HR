@@ -31,18 +31,24 @@ class AttendanceLogModel {
 
   factory AttendanceLogModel.fromJson(Map<String, dynamic> j) =>
       AttendanceLogModel(
-        id: j['id'],
-        companyId: j['company_id'],
-        employeeId: j['employee_id'],
-        date: DateTime.parse(j['date']),
-        punchTime: DateTime.parse(j['punch_time']),
-        punchType: j['punch_type'] == 'in' ? PunchType.in_ : PunchType.out,
-        isManual: j['is_manual'] ?? false,
-        adjustedBy: j['adjusted_by'],
-        latitude: j['latitude']?.toDouble(),
-        longitude: j['longitude']?.toDouble(),
+        id: (j['id'] as String?) ?? '',
+        companyId: (j['company_id'] as String?) ?? '',
+        employeeId: (j['employee_id'] as String?) ?? '',
+        date: j['date'] != null
+            ? (DateTime.tryParse(j['date'] as String) ?? DateTime.now())
+            : DateTime.now(),
+        punchTime: j['punch_time'] != null
+            ? (DateTime.tryParse(j['punch_time'] as String) ?? DateTime.now())
+            : DateTime.now(),
+        punchType: (j['punch_type'] as String?) == 'in'
+            ? PunchType.in_
+            : PunchType.out,
+        isManual: (j['is_manual'] as bool?) ?? false,
+        adjustedBy: j['adjusted_by'] as String?,
+        latitude: (j['latitude'] as num?)?.toDouble(),
+        longitude: (j['longitude'] as num?)?.toDouble(),
         employee: j['employees'] != null
-            ? EmployeeModel.fromJson(j['employees'])
+            ? EmployeeModel.fromJson(j['employees'] as Map<String, dynamic>)
             : null,
       );
 

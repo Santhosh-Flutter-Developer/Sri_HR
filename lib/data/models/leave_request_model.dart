@@ -31,23 +31,27 @@ class LeaveRequestModel {
 
   factory LeaveRequestModel.fromJson(Map<String, dynamic> j) =>
       LeaveRequestModel(
-        id: j['id'],
-        companyId: j['company_id'],
-        employeeId: j['employee_id'],
-        fromDate: DateTime.parse(j['from_date']),
-        toDate: DateTime.parse(j['to_date']),
-        days: j['days'] ?? 1,
-        reason: j['reason'],
+        id: (j['id'] as String?) ?? '',
+        companyId: (j['company_id'] as String?) ?? '',
+        employeeId: (j['employee_id'] as String?) ?? '',
+        fromDate: j['from_date'] != null
+            ? (DateTime.tryParse(j['from_date'] as String) ?? DateTime.now())
+            : DateTime.now(),
+        toDate: j['to_date'] != null
+            ? (DateTime.tryParse(j['to_date'] as String) ?? DateTime.now())
+            : DateTime.now(),
+        days: (j['days'] as int?) ?? 1,
+        reason: j['reason'] as String?,
         status: LeaveStatus.values.firstWhere(
-          (e) => e.name == j['status'],
+          (e) => e.name == (j['status'] as String? ?? ''),
           orElse: () => LeaveStatus.pending,
         ),
-        approvedBy: j['approved_by'],
+        approvedBy: j['approved_by'] as String?,
         approvedAt: j['approved_at'] != null
-            ? DateTime.parse(j['approved_at'])
+            ? DateTime.tryParse(j['approved_at'] as String)
             : null,
         employee: j['employees'] != null
-            ? EmployeeModel.fromJson(j['employees'])
+            ? EmployeeModel.fromJson(j['employees'] as Map<String, dynamic>)
             : null,
       );
 

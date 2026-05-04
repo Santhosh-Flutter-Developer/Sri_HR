@@ -7,12 +7,12 @@ class EmployeeModel {
   final String id;
   final String companyId;
   final String? userId;
-  final String departmentId;
-  final String roleId;
+  final String? departmentId;
+  final String? roleId;
   final String? statusId;
   final String? salaryTypeId;
-  final String employeeCode;
-  final String fullName;
+  final String employeeCode; // non-nullable but fromJson uses ?? ''
+  final String fullName; // non-nullable but fromJson uses ?? ''
   final DateTime? doj;
   final DateTime? dob;
   final Gender? gender;
@@ -41,8 +41,8 @@ class EmployeeModel {
     required this.id,
     required this.companyId,
     this.userId,
-    required this.departmentId,
-    required this.roleId,
+    this.departmentId,
+    this.roleId,
     this.statusId,
     this.salaryTypeId,
     required this.employeeCode,
@@ -74,8 +74,8 @@ class EmployeeModel {
     id: (j['id'] as String?) ?? '',
     companyId: (j['company_id'] as String?) ?? '',
     userId: j['user_id'] as String?,
-    departmentId: (j['department_id'] as String?) ?? '',
-    roleId: (j['role_id'] as String?) ?? '',
+    departmentId: j['department_id'] as String?,
+    roleId: j['role_id'] as String?,
     statusId: j['status_id'] as String?,
     salaryTypeId: j['salary_type_id'] as String?,
     employeeCode: (j['employee_code'] as String?) ?? '',

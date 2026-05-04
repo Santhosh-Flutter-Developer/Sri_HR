@@ -26,15 +26,15 @@ class RoleModel {
   });
 
   factory RoleModel.fromJson(Map<String, dynamic> j) => RoleModel(
-    id: j['id'],
-    companyId: j['company_id'],
-    name: j['name'],
-    workingFrom: j['working_from'] ?? '09:00',
-    workingTo: j['working_to'] ?? '18:00',
-    breakMinutes: j['break_minutes'] ?? 30,
-    permissionMinutes: j['permission_minutes'] ?? 60,
-    casualLeave: j['casual_leave'] ?? 12,
-    isAdmin: j['is_admin'] ?? false,
+    id: (j['id'] as String?) ?? '',
+    companyId: (j['company_id'] as String?) ?? '',
+    name: (j['name'] as String?) ?? '',
+    workingFrom: (j['working_from'] as String?) ?? '09:00',
+    workingTo: (j['working_to'] as String?) ?? '18:00',
+    breakMinutes: (j['break_minutes'] as int?) ?? 30,
+    permissionMinutes: (j['permission_minutes'] as int?) ?? 60,
+    casualLeave: (j['casual_leave'] as int?) ?? 12,
+    isAdmin: (j['is_admin'] as bool?) ?? false,
   );
 
   Map<String, dynamic> toJson() => {

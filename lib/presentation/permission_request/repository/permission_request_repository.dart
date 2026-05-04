@@ -11,7 +11,7 @@ class PermissionRepository {
     var query = SupabaseService.client
         .from('permission_requests')
         .select(
-          '*, employees(full_name, employee_code, departments(name), roles(name))',
+          '*, employees(id, company_id, user_id, department_id, role_id, employee_code, full_name, mobile, email, profile_picture, is_active, casual_leave, mobile_login, outside_office, departments(id, company_id, code, name, mobile_login, outside_attendance), roles(id, company_id, name, is_admin, casual_leave))',
         )
         .eq('company_id', companyId);
     if (employeeId != null) query = query.eq('employee_id', employeeId);

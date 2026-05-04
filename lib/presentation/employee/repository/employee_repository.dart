@@ -73,13 +73,10 @@ class EmployeeRepository {
         if (empRows.isNotEmpty) {
           // Extract max numeric part from all codes
           int maxNum = 0;
-
           for (final row in empRows) {
             final codeStr = row['employee_code'] as String? ?? '';
-
-            final match = RegExp(r'^.*-EMP(\d{3})$').firstMatch(codeStr);
-            final num = match != null ? int.parse(match.group(1)!) : 0;
-
+            final num =
+                int.tryParse(codeStr.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
             if (num > maxNum) maxNum = num;
           }
           return '$branchPrefix'
@@ -98,8 +95,7 @@ class EmployeeRepository {
 
     if (rows.isEmpty) return '${branchPrefix}EMP001';
     final last = rows.first['employee_code'] as String? ?? '';
-    final match = RegExp(r'^.*-EMP(\d{3})$').firstMatch(last);
-    final num = match != null ? int.parse(match.group(1)!) : 0;
+    final num = int.tryParse(last.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
     return '$branchPrefix'
         'EMP${(num + 1).toString().padLeft(3, '0')}';
   }

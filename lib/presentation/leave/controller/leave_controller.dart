@@ -120,11 +120,11 @@ class LeaveController extends GetxController {
     if (idx != -1) leaves[idx] = updated;
   }
 
-  void openLeaveForm(BuildContext context, LeaveController controller) {
+  void openLeaveForm(BuildContext context, LeaveController ctrl) {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => LeaveFormDialog(controller: controller),
+      builder: (_) => LeaveFormDialog(controller: ctrl),
     );
   }
 
@@ -134,12 +134,14 @@ class LeaveController extends GetxController {
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Delete Leave Request'),
-        content:
-            const Text('Are you sure you want to delete this leave request?'),
+        content: const Text(
+          'Are you sure you want to delete this leave request?',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);

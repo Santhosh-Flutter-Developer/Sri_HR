@@ -13,15 +13,9 @@ class LeaveRepository {
     if (companyId.isEmpty) return [];
     var query = SupabaseService.client
         .from('leave_requests')
-        .select('''
-          id, company_id, employee_id, from_date, to_date, days,
-          reason, status, approved_by, approved_at, created_at,
-          employees(
-            id, full_name, employee_code, profile_picture,
-            departments(name),
-            roles(name)
-          )
-        ''')
+        .select(
+          '*, employees(id, company_id, user_id, department_id, role_id, employee_code, full_name, mobile, email, profile_picture, is_active, casual_leave, mobile_login, outside_office, departments(id, company_id, code, name, mobile_login, outside_attendance), roles(id, company_id, name, is_admin, casual_leave))',
+        )
         .eq('company_id', companyId);
     if (employeeId != null) query = query.eq('employee_id', employeeId);
     if (status != null) query = query.eq('status', status);
@@ -63,7 +57,7 @@ class LeaveRepository {
     final row = await SupabaseService.client
         .from('leave_requests')
         .select(
-          '*, employees(full_name, employee_code, departments(name), roles(name))',
+          '*, employees(id, company_id, user_id, department_id, role_id, employee_code, full_name, mobile, email, profile_picture, is_active, casual_leave, mobile_login, outside_office, departments(id, company_id, code, name, mobile_login, outside_attendance), roles(id, company_id, name, is_admin, casual_leave))',
         )
         .eq('id', id)
         .single();

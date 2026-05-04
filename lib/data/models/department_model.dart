@@ -16,12 +16,12 @@ class DepartmentModel {
   });
 
   factory DepartmentModel.fromJson(Map<String, dynamic> j) => DepartmentModel(
-    id: j['id'],
-    companyId: j['company_id'],
-    code: j['code'],
-    name: j['name'],
-    mobileLogin: j['mobile_login'] ?? true,
-    outsideAttendance: j['outside_attendance'] ?? false,
+    id: (j['id'] as String?) ?? '',
+    companyId: (j['company_id'] as String?) ?? '',
+    code: (j['code'] as String?) ?? '',
+    name: (j['name'] as String?) ?? '',
+    mobileLogin: (j['mobile_login'] as bool?) ?? true,
+    outsideAttendance: (j['outside_attendance'] as bool?) ?? false,
   );
 
   Map<String, dynamic> toJson() => {

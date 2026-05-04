@@ -32,24 +32,26 @@ class PermissionRequestModel {
 
   factory PermissionRequestModel.fromJson(Map<String, dynamic> j) =>
       PermissionRequestModel(
-        id: j['id'],
-        companyId: j['company_id'],
-        employeeId: j['employee_id'],
-        requestDate: DateTime.parse(j['request_date']),
-        fromTime: j['from_time'],
-        toTime: j['to_time'],
-        minutes: j['minutes'],
-        reason: j['reason'],
+        id: (j['id'] as String?) ?? '',
+        companyId: (j['company_id'] as String?) ?? '',
+        employeeId: (j['employee_id'] as String?) ?? '',
+        requestDate: j['request_date'] != null
+            ? (DateTime.tryParse(j['request_date'] as String) ?? DateTime.now())
+            : DateTime.now(),
+        fromTime: (j['from_time'] as String?) ?? '',
+        toTime: (j['to_time'] as String?) ?? '',
+        minutes: j['minutes'] as int?,
+        reason: j['reason'] as String?,
         status: LeaveStatus.values.firstWhere(
-          (e) => e.name == j['status'],
+          (e) => e.name == (j['status'] as String? ?? ''),
           orElse: () => LeaveStatus.pending,
         ),
-        approvedBy: j['approved_by'],
+        approvedBy: j['approved_by'] as String?,
         approvedAt: j['approved_at'] != null
-            ? DateTime.parse(j['approved_at'])
+            ? DateTime.tryParse(j['approved_at'] as String)
             : null,
         employee: j['employees'] != null
-            ? EmployeeModel.fromJson(j['employees'])
+            ? EmployeeModel.fromJson(j['employees'] as Map<String, dynamic>)
             : null,
       );
 

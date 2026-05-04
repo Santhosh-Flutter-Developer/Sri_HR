@@ -14,17 +14,19 @@ class HolidayModel {
   });
 
   factory HolidayModel.fromJson(Map<String, dynamic> j) => HolidayModel(
-        id: j['id'],
-        companyId: j['company_id'],
-        date: DateTime.parse(j['date']),
-        reason: j['reason'],
-        days: j['days'] ?? 1,
-      );
+    id: (j['id'] as String?) ?? '',
+    companyId: (j['company_id'] as String?) ?? '',
+    date: j['date'] != null
+        ? (DateTime.tryParse(j['date'] as String) ?? DateTime.now())
+        : DateTime.now(),
+    reason: (j['reason'] as String?) ?? '',
+    days: (j['days'] as int?) ?? 1,
+  );
 
   Map<String, dynamic> toJson() => {
-        'company_id': companyId,
-        'date': date.toIso8601String().substring(0, 10),
-        'reason': reason,
-        'days': days,
-      };
+    'company_id': companyId,
+    'date': date.toIso8601String().substring(0, 10),
+    'reason': reason,
+    'days': days,
+  };
 }

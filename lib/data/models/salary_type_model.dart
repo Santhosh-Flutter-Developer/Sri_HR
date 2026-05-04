@@ -9,8 +9,11 @@ class SalaryTypeModel {
     required this.name,
   });
 
-  factory SalaryTypeModel.fromJson(Map<String, dynamic> j) =>
-      SalaryTypeModel(id: j['id'], companyId: j['company_id'], name: j['name']);
+  factory SalaryTypeModel.fromJson(Map<String, dynamic> j) => SalaryTypeModel(
+    id: (j['id'] as String?) ?? '',
+    companyId: (j['company_id'] as String?) ?? '',
+    name: (j['name'] as String?) ?? '',
+  );
 
   Map<String, dynamic> toJson() => {'company_id': companyId, 'name': name};
 }
