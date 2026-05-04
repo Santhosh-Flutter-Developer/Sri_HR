@@ -30,6 +30,7 @@ class SignupController extends GetxController {
   final otp = TextEditingController();
 
   RxBool showPass = false.obs;
+  RxBool showConfirmPass = false.obs;
   RxBool otpSent = false.obs;
   RxBool otpVerified = false.obs;
   RxBool sendingOtp = false.obs;
@@ -576,7 +577,11 @@ class SignupController extends GetxController {
         controller: confirmPassword,
         label: 'Confirm Password *',
         prefixIcon: Icons.lock_outline_rounded,
-        obscureText: true,
+        obscureText: !showConfirmPass.value,
+        onSuffixTap: () => showConfirmPass.value = !showConfirmPass.value,
+        suffixIcon: showConfirmPass.value
+            ? Icons.visibility_off
+            : Icons.visibility,
         validator: (v) {
           if (v?.isEmpty == true) return 'Required';
           if (v != password.text) return 'Passwords do not match';

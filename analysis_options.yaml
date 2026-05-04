@@ -10,6 +10,7 @@
 analyzer:
   errors:
     deprecated_member_use: ignore
+    invalid_use_of_protected_member: ignore
     must_be_immutable: ignore
     non_constant_identifier_names: ignore
     unnecessary_cast: ignore

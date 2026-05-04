@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/presentation/auth/login/controller/login_controller.dart';
 
 class Login extends StatelessWidget {
-   Login({super.key});
+  Login({super.key});
 
   final controller = Get.isRegistered<LoginController>()
       ? Get.find<LoginController>()
@@ -13,9 +14,15 @@ class Login extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width >= 800;
-    return Scaffold(
-      backgroundColor: AppColors.bg,
-      body: isWide ? controller.wideLayout() : controller.narrowLayout(),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: AppColors.sidebarBg,
+        statusBarIconBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: AppColors.bg,
+        body: isWide ? controller.wideLayout() : controller.narrowLayout(),
+      ),
     );
   }
 }
