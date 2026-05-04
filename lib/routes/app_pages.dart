@@ -17,6 +17,8 @@ import 'package:sri_hr/presentation/employee_status/binding/employee_status_bind
 import 'package:sri_hr/presentation/employee_status/ui/employee_status.dart';
 import 'package:sri_hr/presentation/holiday/binding/holiday_binding.dart';
 import 'package:sri_hr/presentation/holiday/ui/holiday.dart';
+import 'package:sri_hr/presentation/leave/binding/leave_binding.dart';
+import 'package:sri_hr/presentation/leave/ui/leave.dart';
 import 'package:sri_hr/presentation/salary_type/binding/salary_type_binding.dart';
 import 'package:sri_hr/presentation/salary_type/ui/salary_type.dart';
 import 'package:sri_hr/presentation/subscription/binding/subscription_binding.dart';
@@ -75,6 +77,12 @@ class AppPages {
       name: AppRoutes.routeHoliday,
       page: () => Holiday(),
       binding: HolidayBinding(),
+      middlewares: [AuthMiddleware(), SubscriptionMiddleware()],
+    ),
+    GetPage(
+      name: AppRoutes.routeLeave,
+      page: () => Leave(),
+      binding: LeaveBinding(),
       middlewares: [AuthMiddleware(), SubscriptionMiddleware()],
     ),
     GetPage(

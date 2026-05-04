@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:sri_hr/data/models/leave_request_model.dart';
 import 'package:sri_hr/data/services/supabase_service.dart';
 
@@ -9,11 +10,18 @@ class LeaveRepository {
     DateTime? fromDate,
     DateTime? toDate,
   }) async {
+    if (companyId.isEmpty) return [];
     var query = SupabaseService.client
         .from('leave_requests')
-        .select(
-          '*, employees(full_name, employee_code, departments(name), roles(name))',
-        )
+        .select('''
+          id, company_id, employee_id, from_date, to_date, days,
+          reason, status, approved_by, approved_at, created_at,
+          employees(
+            id, full_name, employee_code, profile_picture,
+            departments(name),
+            roles(name)
+          )
+        ''')
         .eq('company_id', companyId);
     if (employeeId != null) query = query.eq('employee_id', employeeId);
     if (status != null) query = query.eq('status', status);
@@ -27,13 +35,38 @@ class LeaveRepository {
       query = query.lte('to_date', toDate.toIso8601String().substring(0, 10));
     }
     final rows = await query.order('created_at', ascending: false);
-    return rows
-        .map<LeaveRequestModel>((r) => LeaveRequestModel.fromJson(r))
-        .toList();
+    // Parse safely, skip any rows that fail
+    final result = <LeaveRequestModel>[];
+    for (final r in rows) {
+      try {
+        result.add(LeaveRequestModel.fromJson(r));
+      } catch (e) {
+        debugPrint('[LeaveRepo] parse error for row $r: $e');
+      }
+    }
+    return result;
   }
 
   Future<LeaveRequestModel> createLeave(Map<String, dynamic> data) async {
-    final row = await SupabaseService.insert('leave_requests', data);
+    // Insert and get the id only
+    final row = await SupabaseService.client
+        .from('leave_requests')
+        .insert(data)
+        .select('id')
+        .single();
+    final id = row['id'] as String;
+    // Re-fetch with full employee joins so name/dept/role are populated
+    return _fetchOne(id);
+  }
+
+  Future<LeaveRequestModel> _fetchOne(String id) async {
+    final row = await SupabaseService.client
+        .from('leave_requests')
+        .select(
+          '*, employees(full_name, employee_code, departments(name), roles(name))',
+        )
+        .eq('id', id)
+        .single();
     return LeaveRequestModel.fromJson(row);
   }
 
@@ -42,12 +75,15 @@ class LeaveRepository {
     String status,
     String approvedBy,
   ) async {
-    final row = await SupabaseService.update('leave_requests', id, {
-      'status': status,
-      'approved_by': approvedBy,
-      'approved_at': DateTime.now().toIso8601String(),
-    });
-    return LeaveRequestModel.fromJson(row);
+    await SupabaseService.client
+        .from('leave_requests')
+        .update({
+          'status': status,
+          'approved_by': approvedBy,
+          'approved_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', id);
+    return _fetchOne(id);
   }
 
   Future<void> deleteLeave(String id) =>
