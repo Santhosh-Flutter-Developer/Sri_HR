@@ -25,39 +25,39 @@ class Leave extends StatelessWidget {
       title: 'Leave Requests',
       actions: [
         // Filter chips
-        Obx(
-          () => Row(
-            children: [
-              FilterChips(
-                label: 'All',
-                selected: controller.filterStatus.value == null,
-                onTap: () => controller.filterStatus.value = null,
-              ),
-              const SizedBox(width: 6),
-              FilterChips(
-                label: 'Pending',
-                color: AppColors.warning,
-                selected: controller.filterStatus.value == 'pending',
-                onTap: () => controller.filterStatus.value = 'pending',
-              ),
-              const SizedBox(width: 6),
-              FilterChips(
-                label: 'Approved',
-                color: AppColors.success,
-                selected: controller.filterStatus.value == 'approved',
-                onTap: () => controller.filterStatus.value = 'approved',
-              ),
-              const SizedBox(width: 6),
-              FilterChips(
-                label: 'Rejected',
-                color: AppColors.error,
-                selected: controller.filterStatus.value == 'rejected',
-                onTap: () => controller.filterStatus.value = 'rejected',
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 12),
+        // Obx(
+        //   () => Row(
+        //     children: [
+        //       FilterChips(
+        //         label: 'All',
+        //         selected: controller.filterStatus.value == null,
+        //         onTap: () => controller.filterStatus.value = null,
+        //       ),
+        //       const SizedBox(width: 6),
+        //       FilterChips(
+        //         label: 'Pending',
+        //         color: AppColors.warning,
+        //         selected: controller.filterStatus.value == 'pending',
+        //         onTap: () => controller.filterStatus.value = 'pending',
+        //       ),
+        //       const SizedBox(width: 6),
+        //       FilterChips(
+        //         label: 'Approved',
+        //         color: AppColors.success,
+        //         selected: controller.filterStatus.value == 'approved',
+        //         onTap: () => controller.filterStatus.value = 'approved',
+        //       ),
+        //       const SizedBox(width: 6),
+        //       FilterChips(
+        //         label: 'Rejected',
+        //         color: AppColors.error,
+        //         selected: controller.filterStatus.value == 'rejected',
+        //         onTap: () => controller.filterStatus.value = 'rejected',
+        //       ),
+        //     ],
+        //   ),
+        // ),
+        // const SizedBox(width: 12),
         if (auth.canAdd('leave_request'))
           isWide
               ? SriButton(
@@ -73,36 +73,86 @@ class Leave extends StatelessWidget {
                 ),
         const SizedBox(width: 16),
       ],
-      child: Obx(() {
-        if (controller.isLoading.value) {
-          return const LoadingOverlay();
-        }
-        final leaves = controller.filteredLeaves;
-        if (leaves.isEmpty) {
-          return EmptyState(
-            message: 'No Leave requests found',
-            icon: Icons.event_busy_outlined,
-            actionLabel: auth.canAdd('leave_request') ? "Add Leave" : null,
-            onAction: () => controller.openLeaveForm(context, controller),
-          );
-        }
-        return RefreshIndicator(
-          onRefresh: controller.loadLeaves,
-          child: ListView.builder(
-            padding: const EdgeInsets.all(20.0),
-            itemCount: leaves.length,
-            itemBuilder: (_, i) => LeaveCard(
-              leave: leaves[i],
-              canApprove: auth.canEdit('leave_request'),
-              canDelete: auth.canDelete('leave_request'),
-              onApprove: () => controller.approve(leaves[i].id),
-              onReject: () => controller.reject(leaves[i].id),
-              onDelete: () =>
-                  controller.confirmDelete(context, controller, leaves[i].id),
+      child: Column(
+        children: [
+          Obx(
+            () => Padding(
+              padding: const EdgeInsets.only(
+                left: 20.0,
+                right: 20.0,
+                top: 20.0,
+              ),
+              child: Row(
+                children: [
+                  FilterChips(
+                    label: 'All',
+                    selected: controller.filterStatus.value == null,
+                    onTap: () => controller.filterStatus.value = null,
+                  ),
+                  const SizedBox(width: 6),
+                  FilterChips(
+                    label: 'Pending',
+                    color: AppColors.warning,
+                    selected: controller.filterStatus.value == 'pending',
+                    onTap: () => controller.filterStatus.value = 'pending',
+                  ),
+                  const SizedBox(width: 6),
+                  FilterChips(
+                    label: 'Approved',
+                    color: AppColors.success,
+                    selected: controller.filterStatus.value == 'approved',
+                    onTap: () => controller.filterStatus.value = 'approved',
+                  ),
+                  const SizedBox(width: 6),
+                  FilterChips(
+                    label: 'Rejected',
+                    color: AppColors.error,
+                    selected: controller.filterStatus.value == 'rejected',
+                    onTap: () => controller.filterStatus.value = 'rejected',
+                  ),
+                ],
+              ),
             ),
           ),
-        );
-      }),
+          Expanded(
+            child: Obx(() {
+              if (controller.isLoading.value) {
+                return const LoadingOverlay();
+              }
+              final leaves = controller.filteredLeaves;
+              if (leaves.isEmpty) {
+                return EmptyState(
+                  message: 'No Leave requests found',
+                  icon: Icons.event_busy_outlined,
+                  actionLabel: auth.canAdd('leave_request')
+                      ? "Add Leave"
+                      : null,
+                  onAction: () => controller.openLeaveForm(context, controller),
+                );
+              }
+              return RefreshIndicator(
+                onRefresh: controller.loadLeaves,
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(20.0),
+                  itemCount: leaves.length,
+                  itemBuilder: (_, i) => LeaveCard(
+                    leave: leaves[i],
+                    canApprove: auth.canEdit('leave_request'),
+                    canDelete: auth.canDelete('leave_request'),
+                    onApprove: () => controller.approve(leaves[i].id),
+                    onReject: () => controller.reject(leaves[i].id),
+                    onDelete: () => controller.confirmDelete(
+                      context,
+                      controller,
+                      leaves[i].id,
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ],
+      ),
     );
   }
 }
