@@ -20,6 +20,7 @@ class Dashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width >= 800;
     return AppShell(
       currentModule: 'dashboard',
       title: 'Dashboard',
@@ -31,10 +32,10 @@ class Dashboard extends StatelessWidget {
                 onRefresh: controller.loadStats,
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.only(
-                    top: 24.0,
-                    left: 24.0,
-                    right: 24.0,
+                  padding: EdgeInsets.only(
+                    top: isWide ? 24.0 : 12.0,
+                    left: isWide ? 24.0 : 12.0,
+                    right: isWide ? 24.0 : 12.0,
                     bottom: 100.0,
                   ),
                   child: Column(

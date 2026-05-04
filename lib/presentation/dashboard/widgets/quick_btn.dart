@@ -21,7 +21,7 @@ class QuickBtn extends StatelessWidget {
         padding: const EdgeInsets.all(8.0),
         child: Container(
           width: 130,
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 16),
           decoration: BoxDecoration(
             color: color.withOpacity(0.08),
             borderRadius: BorderRadius.circular(14),
