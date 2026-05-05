@@ -101,11 +101,12 @@ class _SubscriptionState extends State<Subscription> {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width >= 800;
     return AppShell(
       currentModule: 'subscription',
       title: 'Subscription',
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(isWide ? 24.0 : 10.0),
         child: Column(
           children: [
             CurrentPlanCard(),

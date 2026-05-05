@@ -21,8 +21,6 @@ class SubscriptionController extends GetxController {
     load();
   }
 
-  
-
   Future<void> load() async {
     isLoading.value = true;
     try {
