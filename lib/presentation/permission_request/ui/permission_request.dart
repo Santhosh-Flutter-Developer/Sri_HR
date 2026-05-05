@@ -14,7 +14,9 @@ class PermissionRequest extends StatelessWidget {
   final controller = Get.isRegistered<PermissionRequestController>()
       ? Get.find<PermissionRequestController>()
       : Get.put(PermissionRequestController());
+
   final auth = Get.find<AuthController>();
+
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width >= 800;
@@ -25,36 +27,44 @@ class PermissionRequest extends StatelessWidget {
         if (auth.canAdd('permission_request'))
           isWide
               ? SriButton(
-                  label: 'Add Request',
-                  icon: Icons.add,
+                  label: "Add Request",
                   onPressed: () => controller.showForm(context, controller),
+                  icon: Icons.add,
                 )
               : IconButton(
                   onPressed: () => controller.showForm(context, controller),
                   icon: Icon(Icons.add),
                 ),
-        const SizedBox(width: 16.0),
+        const SizedBox(width: 16),
       ],
-      child: Obx(
-        () => controller.isLoading.value
-            ? const LoadingOverlay()
-            : controller.permission.isEmpty
-            ? const EmptyState(
-                message: 'No permission requests',
-                icon: Icons.timer_outlined,
-              )
-            : ListView.builder(
-                padding: const EdgeInsets.all(24.0),
-                itemCount: controller.permission.length,
-                itemBuilder: (_, i) {
-                  final req = controller.permission[i];
-                  return PermissionRequestCard(
-                    req: req,
-                    controller: controller,
-                  );
-                },
-              ),
-      ),
+      child: Obx(() {
+        if (controller.isLoading.value) return const LoadingOverlay();
+        if (controller.permission.isEmpty) {
+          return EmptyState(
+            message: 'No permission requests yet',
+            icon: Icons.timer_outlined,
+            actionLabel: auth.canAdd('permission_request')
+                ? 'Add Request'
+                : null,
+            onAction: () => controller.showForm(context, controller),
+          );
+        }
+        return RefreshIndicator(
+          onRefresh: controller.load,
+          child: ListView.builder(
+            padding: const EdgeInsets.all(20),
+            itemCount: controller.permission.length,
+            itemBuilder: (_, i) => PermissionCard(
+              req: controller.permission[i],
+              canApprove: auth.canEdit('permission_request'),
+              canDelete: auth.canDelete('permission_request'),
+              onApprove: () => controller.approve(controller.permission[i].id),
+              onReject: () => controller.reject(controller.permission[i].id),
+              onDelete: () => controller.delete(controller.permission[i].id),
+            ),
+          ),
+        );
+      }),
     );
   }
 }
