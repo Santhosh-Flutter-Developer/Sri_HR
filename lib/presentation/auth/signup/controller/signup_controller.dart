@@ -8,6 +8,7 @@ import 'package:sri_hr/presentation/auth/signup/widgets/step_indicator.dart';
 import 'package:sri_hr/presentation/auth/signup/widgets/step_title.dart';
 import 'package:sri_hr/widgets/sri_card.dart';
 import 'package:sri_hr/widgets/sri_textfield.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SignupController extends GetxController {
   final formKey = GlobalKey<FormState>();
@@ -61,6 +62,50 @@ class SignupController extends GetxController {
   }
 
   Future<void> sendOtp() async {
+    final phone = mobile.text.trim();
+
+    if (phone.length != 10) {
+      Get.snackbar(
+        'Error',
+        'Enter valid 10-digit mobile number',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: AppColors.error,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    try {
+      sendingOtp.value = true;
+
+      await Supabase.instance.client.auth.signInWithOtp(
+        phone: '+91$phone', // India country code
+      );
+
+      sendingOtp.value = false;
+      otpSent.value = true;
+
+      Get.snackbar(
+        'OTP Sent',
+        'OTP sent to +91$phone',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: AppColors.success,
+        colorText: Colors.white,
+      );
+    } catch (e) {
+      sendingOtp.value = false;
+
+      Get.snackbar(
+        'Error',
+        e.toString(),
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: AppColors.error,
+        colorText: Colors.white,
+      );
+    }
+  }
+
+  /*Future<void> sendOtp() async {
     if (mobile.text.length != 10) {
       Get.snackbar(
         'Error',
@@ -83,9 +128,53 @@ class SignupController extends GetxController {
       backgroundColor: AppColors.success,
       colorText: Colors.white,
     );
+  }*/
+
+  Future<void> verifyOtp() async {
+    final phone = mobile.text.trim();
+    final otpcode = otp.text.trim();
+
+    if (otpcode.length != 6) {
+      Get.snackbar(
+        'Error',
+        'Enter valid 6-digit OTP',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: AppColors.error,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    try {
+      final response = await Supabase.instance.client.auth.verifyOTP(
+        phone: '+91$phone',
+        token: otpcode,
+        type: OtpType.sms,
+      );
+
+      if (response.session != null) {
+        otpVerified.value = true;
+
+        Get.snackbar(
+          'Success',
+          'Mobile number verified!',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.success,
+          colorText: Colors.white,
+        );
+      }
+    } catch (e) {
+      Get.snackbar(
+        'Invalid OTP',
+        'Verification failed',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: AppColors.error,
+        colorText: Colors.white,
+      );
+    }
   }
 
-  void verifyOtp() {
+  /*void verifyOtp() {
     if (otp.text == "123456") {
       otpVerified.value = true;
       Get.snackbar(
@@ -104,7 +193,7 @@ class SignupController extends GetxController {
         colorText: Colors.white,
       );
     }
-  }
+  }*/
 
   void submit() {
     if (!formKey.currentState!.validate()) return;
