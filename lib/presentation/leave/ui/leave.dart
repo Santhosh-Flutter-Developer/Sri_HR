@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/leave/controller/leave_controller.dart';
-import 'package:sri_hr/presentation/leave/widgets/filter_chip.dart';
+import 'package:sri_hr/widgets/filter_chip.dart';
 import 'package:sri_hr/presentation/leave/widgets/leave_card.dart';
 import 'package:sri_hr/widgets/app_shell.dart';
 import 'package:sri_hr/widgets/empty_state.dart';

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/permission_request/controller/permission_request_controller.dart';
 import 'package:sri_hr/presentation/permission_request/widgets/permission_request_card.dart';
 import 'package:sri_hr/widgets/app_shell.dart';
 import 'package:sri_hr/widgets/empty_state.dart';
+import 'package:sri_hr/widgets/filter_chip.dart';
 import 'package:sri_hr/widgets/loading_overlay.dart';
 import 'package:sri_hr/widgets/sri_button.dart';
 
@@ -37,34 +39,82 @@ class PermissionRequest extends StatelessWidget {
                 ),
         const SizedBox(width: 16),
       ],
-      child: Obx(() {
-        if (controller.isLoading.value) return const LoadingOverlay();
-        if (controller.permission.isEmpty) {
-          return EmptyState(
-            message: 'No permission requests yet',
-            icon: Icons.timer_outlined,
-            actionLabel: auth.canAdd('permission_request')
-                ? 'Add Request'
-                : null,
-            onAction: () => controller.showForm(context, controller),
-          );
-        }
-        return RefreshIndicator(
-          onRefresh: controller.load,
-          child: ListView.builder(
-            padding: const EdgeInsets.all(20),
-            itemCount: controller.permission.length,
-            itemBuilder: (_, i) => PermissionCard(
-              req: controller.permission[i],
-              canApprove: auth.canEdit('permission_request'),
-              canDelete: auth.canDelete('permission_request'),
-              onApprove: () => controller.approve(controller.permission[i].id),
-              onReject: () => controller.reject(controller.permission[i].id),
-              onDelete: () => controller.delete(controller.permission[i].id),
+      child: Column(
+        children: [
+          Obx(
+            () => Padding(
+              padding: const EdgeInsets.only(
+                left: 20.0,
+                right: 20.0,
+                top: 20.0,
+              ),
+              child: Row(
+                children: [
+                  FilterChips(
+                    label: 'All',
+                    selected: controller.filterStatus.value == null,
+                    onTap: () => controller.filterStatus.value = null,
+                  ),
+                  const SizedBox(width: 6),
+                  FilterChips(
+                    label: 'Pending',
+                    color: AppColors.warning,
+                    selected: controller.filterStatus.value == 'pending',
+                    onTap: () => controller.filterStatus.value = 'pending',
+                  ),
+                  const SizedBox(width: 6),
+                  FilterChips(
+                    label: 'Approved',
+                    color: AppColors.success,
+                    selected: controller.filterStatus.value == 'approved',
+                    onTap: () => controller.filterStatus.value = 'approved',
+                  ),
+                  const SizedBox(width: 6),
+                  FilterChips(
+                    label: 'Rejected',
+                    color: AppColors.error,
+                    selected: controller.filterStatus.value == 'rejected',
+                    onTap: () => controller.filterStatus.value = 'rejected',
+                  ),
+                ],
+              ),
             ),
           ),
-        );
-      }),
+          Expanded(
+            child: Obx(() {
+              if (controller.isLoading.value) return const LoadingOverlay();
+              if (controller.filteredPermission.isEmpty) {
+                return EmptyState(
+                  message: 'No permission requests yet',
+                  icon: Icons.timer_outlined,
+                  actionLabel: auth.canAdd('permission_request')
+                      ? 'Add Request'
+                      : null,
+                  onAction: () => controller.showForm(context, controller),
+                );
+              }
+              return RefreshIndicator(
+                onRefresh: controller.load,
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(20),
+                  itemCount: controller.filteredPermission.length,
+                  itemBuilder: (_, i) => PermissionCard(
+                    req: controller.filteredPermission[i],
+                    canApprove: auth.canEdit('permission_request'),
+                    canDelete: auth.canDelete('permission_request'),
+                    onApprove: () =>
+                        controller.approve(controller.filteredPermission[i].id),
+                    onReject: () =>
+                        controller.reject(controller.filteredPermission[i].id),
+                    onDelete: () =>
+                        controller.delete(controller.filteredPermission[i].id),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ],
+      ),
     );
   }
 }

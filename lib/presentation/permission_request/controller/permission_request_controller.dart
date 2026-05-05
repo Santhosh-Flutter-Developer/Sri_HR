@@ -12,11 +12,17 @@ class PermissionRequestController extends GetxController {
   final repo = PermissionRepository();
   final permission = <PermissionRequestModel>[].obs;
   final isLoading = false.obs;
+  final filterStatus = RxnString();
 
   @override
   void onInit() {
     super.onInit();
     load();
+  }
+
+  List<PermissionRequestModel> get filteredPermission {
+    if (filterStatus.value == null) return permission;
+    return permission.where((p) => p.status.name == filterStatus.value).toList();
   }
 
   Future<void> load() async {
