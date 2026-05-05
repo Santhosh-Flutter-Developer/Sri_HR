@@ -184,8 +184,8 @@ class SidebarWidget extends StatelessWidget {
                         ],
                       ),
                     ),
-                    GestureDetector(
-                      onTap: () => auth.logout(),
+                    InkWell(
+                      onTap: () => showLogoutDialog(context, auth),
                       child: const Icon(
                         Icons.logout,
                         color: AppColors.sidebarIcon,
@@ -202,13 +202,27 @@ class SidebarWidget extends StatelessWidget {
     );
   }
 
-  // ─────────────────────────────────────────────
-  // SIDEBAR COMPANY SWITCHER WIDGET
-  // Add this inside _SidebarWidget's build(),
-  // just BELOW the subscription badge and ABOVE the menu items.
-  // ─────────────────────────────────────────────
-
-  // Replace the existing sidebar subscription badge section with this:
+  void showLogoutDialog(BuildContext context, AuthController auth) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              Get.back();
+              auth.logout();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildCompanySwitcher(BuildContext context) {
     final companyCtrl = Get.find<CompanyController>();
@@ -268,6 +282,7 @@ class SidebarWidget extends StatelessWidget {
               )
             // ── Multi company: show dropdown switcher ───
             : PopupMenuButton<String>(
+                tooltip: 'Switch Branch',
                 offset: const Offset(260, 0),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
