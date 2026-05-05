@@ -6,6 +6,7 @@ import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/auth/login/widgets/branding_panel.dart';
 import 'package:sri_hr/presentation/auth/signup/widgets/step_indicator.dart';
 import 'package:sri_hr/presentation/auth/signup/widgets/step_title.dart';
+import 'package:sri_hr/widgets/sri_button.dart';
 import 'package:sri_hr/widgets/sri_card.dart';
 import 'package:sri_hr/widgets/sri_textfield.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -262,6 +263,8 @@ class SignupController extends GetxController {
           padding: const EdgeInsets.all(8.0),
           child: Column(
             children: [
+              if (Get.mediaQuery.size.width <= 800)
+                const SizedBox(height: 20.0),
               StepIndicator(currentStep: step.value, steps: steps),
               const SizedBox(height: 32.0),
               SriCard(
@@ -281,9 +284,10 @@ class SignupController extends GetxController {
                         children: [
                           if (step.value > 0)
                             Expanded(
-                              child: OutlinedButton(
+                              child: SriButton(
                                 onPressed: () => step.value--,
-                                child: const Text('Back'),
+                                label: 'Back',
+                                isOutlined: true,
                               ),
                             ),
                           if (step.value > 0) const SizedBox(width: 12),
@@ -294,6 +298,25 @@ class SignupController extends GetxController {
                                     ? null
                                     : () {
                                         if (step.value < steps.length - 1) {
+                                          if (!formKey.currentState!
+                                              .validate()) {
+                                            return;
+                                          }
+                                          // if (step.value == 1 &&
+                                          //     !otpVerified.value) {
+                                          //   Get.snackbar(
+                                          //     'OTP Required',
+                                          //     'Please verify your mobile number',
+                                          //     snackPosition:
+                                          //         SnackPosition.BOTTOM,
+                                          //     margin: EdgeInsets.all(10.0),
+                                          //     backgroundColor:
+                                          //         AppColors.warning,
+                                          //     colorText: Colors.white,
+                                          //   );
+                                          //   return;
+                                          // }
+
                                           step.value++;
                                         } else {
                                           submit();
@@ -313,12 +336,22 @@ class SignupController extends GetxController {
                                           strokeWidth: 2,
                                         ),
                                       )
-                                    : Text(
-                                        step.value < steps.length - 1
-                                            ? 'Next'
-                                            : 'Create Account',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
+                                    : Padding(
+                                        padding:
+                                            Get.mediaQuery.size.width >= 800
+                                            ? EdgeInsets.symmetric(
+                                                vertical: 8.0,
+                                              )
+                                            : EdgeInsets.symmetric(
+                                                vertical: 4.0,
+                                              ),
+                                        child: Text(
+                                          step.value < steps.length - 1
+                                              ? 'Next'
+                                              : 'Create Account',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                          ),
                                         ),
                                       ),
                               ),
@@ -410,7 +443,12 @@ class SignupController extends GetxController {
                       strokeWidth: 2,
                     ),
                   )
-                : Text(otpSent.value ? 'Resend' : 'Send OTP'),
+                : Padding(
+                    padding: Get.mediaQuery.size.width >= 800
+                        ? EdgeInsets.symmetric(vertical: 6.0)
+                        : EdgeInsets.symmetric(vertical: 0.0),
+                    child: Text(otpSent.value ? 'Resend' : 'Send OTP'),
+                  ),
           ),
         ],
       ),
@@ -508,7 +546,8 @@ class SignupController extends GetxController {
         label: 'Full Address *',
         maxLines: 3,
         prefixIcon: Icons.home_rounded,
-        validator: (v) => v?.isEmpty == true ? 'Required' : null,
+        validator: (v) =>
+            v?.isEmpty == true ? 'Full Address is Required' : null,
       ),
       const SizedBox(height: 16),
       Row(
@@ -554,61 +593,61 @@ class SignupController extends GetxController {
     ],
   );
 
-  Widget stepAddress() => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      StepTitle(title: 'Address Details', icon: Icons.location_on_rounded),
-      const SizedBox(height: 20),
-      SriTextField(
-        controller: address,
-        label: 'Full Address *',
-        maxLines: 3,
-        prefixIcon: Icons.home_rounded,
-        validator: (v) => v?.isEmpty == true ? 'Required' : null,
-      ),
-      const SizedBox(height: 16),
-      Row(
-        children: [
-          Expanded(
-            child: SriTextField(
-              controller: country,
-              label: 'Country',
-              prefixIcon: Icons.flag_rounded,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: SriTextField(
-              controller: state,
-              label: 'State',
-              prefixIcon: Icons.map_rounded,
-            ),
-          ),
-        ],
-      ),
-      const SizedBox(height: 16),
-      Row(
-        children: [
-          Expanded(
-            child: SriTextField(
-              controller: city,
-              label: 'City',
-              prefixIcon: Icons.location_city_rounded,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: SriTextField(
-              controller: pincode,
-              label: 'Pincode',
-              keyboardType: TextInputType.number,
-              prefixIcon: Icons.pin_drop_rounded,
-            ),
-          ),
-        ],
-      ),
-    ],
-  );
+  // Widget stepAddress() => Column(
+  //   crossAxisAlignment: CrossAxisAlignment.start,
+  //   children: [
+  //     StepTitle(title: 'Address Details', icon: Icons.location_on_rounded),
+  //     const SizedBox(height: 20),
+  //     SriTextField(
+  //       controller: address,
+  //       label: 'Full Address *',
+  //       maxLines: 3,
+  //       prefixIcon: Icons.home_rounded,
+  //       validator: (v) => v?.isEmpty == true ? 'Required' : null,
+  //     ),
+  //     const SizedBox(height: 16),
+  //     Row(
+  //       children: [
+  //         Expanded(
+  //           child: SriTextField(
+  //             controller: country,
+  //             label: 'Country',
+  //             prefixIcon: Icons.flag_rounded,
+  //           ),
+  //         ),
+  //         const SizedBox(width: 12),
+  //         Expanded(
+  //           child: SriTextField(
+  //             controller: state,
+  //             label: 'State',
+  //             prefixIcon: Icons.map_rounded,
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //     const SizedBox(height: 16),
+  //     Row(
+  //       children: [
+  //         Expanded(
+  //           child: SriTextField(
+  //             controller: city,
+  //             label: 'City',
+  //             prefixIcon: Icons.location_city_rounded,
+  //           ),
+  //         ),
+  //         const SizedBox(width: 12),
+  //         Expanded(
+  //           child: SriTextField(
+  //             controller: pincode,
+  //             label: 'Pincode',
+  //             keyboardType: TextInputType.number,
+  //             prefixIcon: Icons.pin_drop_rounded,
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   ],
+  // );
 
   Widget stepAccount() => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -656,7 +695,7 @@ class SignupController extends GetxController {
         suffixIcon: showPass.value ? Icons.visibility_off : Icons.visibility,
 
         validator: (v) {
-          if (v?.isEmpty == true) return 'Required';
+          if (v?.isEmpty == true) return 'Password is required';
           if (v!.length < 6) return 'Min 6 characters';
           return null;
         },
@@ -672,7 +711,7 @@ class SignupController extends GetxController {
             ? Icons.visibility_off
             : Icons.visibility,
         validator: (v) {
-          if (v?.isEmpty == true) return 'Required';
+          if (v?.isEmpty == true) return 'Confirm password is required';
           if (v != password.text) return 'Passwords do not match';
           return null;
         },
