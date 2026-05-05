@@ -1,12 +1,15 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/models/attendance_log_model.dart';
 import 'package:sri_hr/presentation/attendance/repository/attendance_repository.dart';
+import 'package:sri_hr/presentation/attendance/ui/punch_form_dialog.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/helper/helper.dart';
 import 'package:sri_hr/presentation/leave/repository/leave_repository.dart';
 
-
 AuthController get auth => Get.find<AuthController>();
+
 class AttendanceController extends GetxController {
   final repo = AttendanceRepository();
   final leaveRepo = LeaveRepository();
@@ -22,9 +25,9 @@ class AttendanceController extends GetxController {
   }
 
   Future<void> loadLogs() async {
-    try{
+    try {
       isLoading.value = true;
-     logs.value = await repo.getAttendanceLogs(
+      logs.value = await repo.getAttendanceLogs(
         auth.companyId,
         date: selectedDate.value,
       );
@@ -34,7 +37,6 @@ class AttendanceController extends GetxController {
       isLoading.value = false;
     }
   }
-
 
   Future<void> loadLogsRange(DateTime from, DateTime to) async {
     isLoading.value = true;
@@ -55,11 +57,9 @@ class AttendanceController extends GetxController {
     for (final log in logs) {
       final empId = log.employeeId;
       result.putIfAbsent(
-          empId,
-          () => {
-                'employee': log.employee,
-                'logs': <AttendanceLogModel>[],
-              });
+        empId,
+        () => {'employee': log.employee, 'logs': <AttendanceLogModel>[]},
+      );
       (result[empId]!['logs'] as List).add(log);
     }
     // Calculate working hours per employee per date
@@ -70,8 +70,8 @@ class AttendanceController extends GetxController {
       for (int i = 0; i < empLogs.length - 1; i++) {
         if (empLogs[i].punchType == PunchType.in_ &&
             empLogs[i + 1].punchType == PunchType.out) {
-          totalHours += empLogs[i + 1]
-                  .punchTime
+          totalHours +=
+              empLogs[i + 1].punchTime
                   .difference(empLogs[i].punchTime)
                   .inMinutes /
               60.0;
@@ -81,7 +81,6 @@ class AttendanceController extends GetxController {
     }
     return result;
   }
-
 
   Future<void> adjustPunch(Map<String, dynamic> data) async {
     try {
@@ -96,7 +95,6 @@ class AttendanceController extends GetxController {
     }
   }
 
-
   Future<void> deleteLog(String id) async {
     try {
       await repo.deleteLog(id);
@@ -107,4 +105,43 @@ class AttendanceController extends GetxController {
     }
   }
 
+  Future<void> pickDate(
+    BuildContext context,
+    AttendanceController controller,
+  ) async {
+    final d = await showDatePicker(
+      context: context,
+      initialDate: controller.selectedDate.value,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+    );
+    if (d != null) {
+      controller.selectedDate.value = d;
+      controller.loadLogs();
+    }
+  }
+
+  String formatDate(DateTime d) => '${d.day}/${d.month}/${d.year}';
+
+  void showExportMenu(BuildContext context) {
+    Get.snackbar(
+      'Export',
+      'Export functionality – connect your preferred export library',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: AppColors.info,
+      colorText: Colors.white,
+    );
+  }
+
+  void showForm(
+    BuildContext context,
+    AttendanceController ctrl, {
+    Map<String, dynamic>? prefillRow,
+  }) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => PunchFormDialog(controller: ctrl, prefillRow: prefillRow),
+    );
+  }
 }

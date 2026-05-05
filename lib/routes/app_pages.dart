@@ -1,4 +1,7 @@
 import 'package:get/get.dart';
+import 'package:sri_hr/presentation/attendance/binding/attendance_binding.dart';
+import 'package:sri_hr/presentation/attendance/ui/attendance.dart';
+import 'package:sri_hr/presentation/attendance/ui/punch_time_adjustment.dart';
 import 'package:sri_hr/presentation/auth/login/ui/login.dart';
 import 'package:sri_hr/presentation/auth/middleware/auth_middleware.dart';
 import 'package:sri_hr/presentation/auth/signup/ui/signup.dart';
@@ -91,6 +94,18 @@ class AppPages {
       name: AppRoutes.routePermission,
       page: () => PermissionRequest(),
       binding: PermissionBinding(),
+      middlewares: [AuthMiddleware(), SubscriptionMiddleware()],
+    ),
+    GetPage(
+      name: AppRoutes.routeAttendance,
+      page: () => Attendance(),
+      binding: AttendanceBinding(),
+      middlewares: [AuthMiddleware(), SubscriptionMiddleware()],
+    ),
+    GetPage(
+      name: AppRoutes.routePunchAdjustment,
+      page: () => PunchTimeAdjustment(),
+      binding: AttendanceBinding(),
       middlewares: [AuthMiddleware(), SubscriptionMiddleware()],
     ),
     GetPage(

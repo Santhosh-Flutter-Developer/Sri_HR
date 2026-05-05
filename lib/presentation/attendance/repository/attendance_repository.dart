@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:sri_hr/data/models/attendance_log_model.dart';
 import 'package:sri_hr/data/services/supabase_service.dart';
 
@@ -10,9 +11,17 @@ class AttendanceRepository {
     String? employeeId,
     String? departmentId,
   }) async {
+    if (companyId.isEmpty) return [];
+    const empSelect =
+        '*, employees(id, company_id, department_id, role_id, '
+        'employee_code, full_name, mobile, email, profile_picture, '
+        'is_active, casual_leave, mobile_login, outside_office, '
+        'departments(id, company_id, code, name), '
+        'roles(id, company_id, name, is_admin))';
+
     var query = SupabaseService.client
         .from('attendance_logs')
-        .select('*, employees(*, departments(*))')
+        .select(empSelect)
         .eq('company_id', companyId);
 
     if (date != null) {
@@ -27,9 +36,15 @@ class AttendanceRepository {
     if (employeeId != null) query = query.eq('employee_id', employeeId);
 
     final rows = await query.order('punch_time');
-    return rows
-        .map<AttendanceLogModel>((r) => AttendanceLogModel.fromJson(r))
-        .toList();
+    final result = <AttendanceLogModel>[];
+    for (final r in rows) {
+      try {
+        result.add(AttendanceLogModel.fromJson(r));
+      } catch (e) {
+        debugPrint('[AttendRepo] parse error: $e');
+      }
+    }
+    return result;
   }
 
   Future<AttendanceLogModel> punchIn(Map<String, dynamic> data) async {
@@ -48,11 +63,60 @@ class AttendanceRepository {
     return AttendanceLogModel.fromJson(row);
   }
 
+  /// Upsert logic: if same employee + same date + same punch_type already exists
+  /// as a manual entry, UPDATE it instead of inserting a duplicate.
   Future<AttendanceLogModel> adjustPunch(Map<String, dynamic> data) async {
-    final row = await SupabaseService.insert('attendance_logs', {
-      ...data,
-      'is_manual': true,
-    });
+    final empId = data['employee_id'] as String;
+    final dateStr = data['date'] as String;
+    final punchType = data['punch_type'] as String;
+    final companyId = data['company_id'] as String;
+
+    // Check for existing manual log for same employee+date+punchType
+    final existing = await SupabaseService.client
+        .from('attendance_logs')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('employee_id', empId)
+        .eq('date', dateStr)
+        .eq('punch_type', punchType)
+        .eq('is_manual', true)
+        .maybeSingle();
+
+    String logId;
+    if (existing != null) {
+      // UPDATE existing row
+      logId = existing['id'] as String;
+      await SupabaseService.client
+          .from('attendance_logs')
+          .update({
+            'punch_time': data['punch_time'],
+            'adjusted_by': data['adjusted_by'],
+          })
+          .eq('id', logId);
+    } else {
+      // INSERT new row
+      final row = await SupabaseService.client
+          .from('attendance_logs')
+          .insert({...data, 'is_manual': true})
+          .select('id')
+          .single();
+      logId = row['id'] as String;
+    }
+    return _fetchLog(logId);
+  }
+
+  Future<AttendanceLogModel> _fetchLog(String id) async {
+    const empSelect =
+        '*, employees(id, company_id, department_id, role_id, '
+        'employee_code, full_name, mobile, email, profile_picture, '
+        'is_active, casual_leave, mobile_login, outside_office, '
+        'departments(id, company_id, code, name), '
+        'roles(id, company_id, name, is_admin))';
+    final row = await SupabaseService.client
+        .from('attendance_logs')
+        .select(empSelect)
+        .eq('id', id)
+        .single();
     return AttendanceLogModel.fromJson(row);
   }
 
