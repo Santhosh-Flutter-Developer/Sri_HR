@@ -11,7 +11,7 @@ class LoginController extends GetxController {
   final formKey = GlobalKey<FormState>();
   final emailCtrl = TextEditingController();
   final passCtrl = TextEditingController();
-  RxBool showPass = false.obs;
+  RxBool showPass = true.obs;
   final auth = Get.isRegistered<AuthController>()
       ? Get.find<AuthController>()
       : Get.put(AuthController());
@@ -26,10 +26,9 @@ class LoginController extends GetxController {
       "validator": (v) {
         if (v == null || v.isEmpty) {
           return 'Email is required';
+        } else if (v.toString().contains('@') && !isValidEmail(v)) {
+          return 'Enter Valid Email';
         }
-        // else if (!isValidEmail(v)) {
-        //   return 'Enter Valid Email';
-        // }
         return null;
       },
       "obscureText": false,

@@ -71,7 +71,11 @@ class AuthController extends GetxController {
       await _loadPermissionsAndSubscription();
 
       // Navigate
-      Get.offAllNamed(AppRoutes.routeDashboard);
+      if (isSubscriptionActive.value) {
+        Get.offAllNamed(AppRoutes.routeDashboard);
+      } else {
+        Get.offAllNamed(AppRoutes.routeSubscription);
+      }
     } on Exception catch (e) {
       final msg = e.toString().replaceAll('Exception: ', '');
       Get.snackbar(
