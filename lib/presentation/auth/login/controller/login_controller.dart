@@ -221,7 +221,7 @@ class LoginController extends GetxController {
                       fontSize: 14.0,
                     ),
                   ),
-                  GestureDetector(
+                  InkWell(
                     onTap: () => Get.toNamed(AppRoutes.routeSignup),
                     child: const Text(
                       'Register Company',
