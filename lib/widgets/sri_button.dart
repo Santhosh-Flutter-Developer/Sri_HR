@@ -26,12 +26,17 @@ class SriButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width >= 800;
     Widget child = isLoading
-        ? const SizedBox(
+        ? SizedBox(
             width: 20,
-            height: 20,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: Colors.white,
+            height: isWide ? 38 : 20,
+            child: Padding(
+              padding: isWide
+                  ? EdgeInsets.symmetric(vertical: 8.0)
+                  : EdgeInsets.symmetric(vertical: 0.0),
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
             ),
           )
         : Padding(
