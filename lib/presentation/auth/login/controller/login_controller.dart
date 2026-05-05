@@ -80,6 +80,7 @@ class LoginController extends GetxController {
   void dispose() {
     emailCtrl.dispose();
     passCtrl.dispose();
+    formKey.currentState?.dispose();
     super.dispose();
   }
 
@@ -88,6 +89,7 @@ class LoginController extends GetxController {
     super.onClose();
     emailCtrl.dispose();
     passCtrl.dispose();
+    formKey.currentState?.dispose();
   }
 
   void submit() {

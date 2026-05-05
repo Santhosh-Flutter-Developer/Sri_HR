@@ -41,8 +41,32 @@ class SignupController extends GetxController {
   final steps = ["Company", "Personal", "Account"];
 
   @override
+  void onClose() {
+    super.onClose();
+    formKey.currentState?.dispose();
+    for (final c in [
+      compName,
+      personName,
+      gstIn,
+      mobile,
+      email,
+      address,
+      country,
+      state,
+      city,
+      pincode,
+      password,
+      confirmPassword,
+      otp,
+    ]) {
+      c.dispose();
+    }
+  }
+
+  @override
   void dispose() {
     super.dispose();
+    formKey.currentState?.dispose();
     for (final c in [
       compName,
       personName,
@@ -302,20 +326,20 @@ class SignupController extends GetxController {
                                               .validate()) {
                                             return;
                                           }
-                                          // if (step.value == 1 &&
-                                          //     !otpVerified.value) {
-                                          //   Get.snackbar(
-                                          //     'OTP Required',
-                                          //     'Please verify your mobile number',
-                                          //     snackPosition:
-                                          //         SnackPosition.BOTTOM,
-                                          //     margin: EdgeInsets.all(10.0),
-                                          //     backgroundColor:
-                                          //         AppColors.warning,
-                                          //     colorText: Colors.white,
-                                          //   );
-                                          //   return;
-                                          // }
+                                          if (step.value == 1 &&
+                                              !otpVerified.value) {
+                                            Get.snackbar(
+                                              'OTP Required',
+                                              'Please verify your mobile number',
+                                              snackPosition:
+                                                  SnackPosition.BOTTOM,
+                                              margin: EdgeInsets.all(10.0),
+                                              backgroundColor:
+                                                  AppColors.warning,
+                                              colorText: Colors.white,
+                                            );
+                                            return;
+                                          }
 
                                           step.value++;
                                         } else {
