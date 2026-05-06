@@ -10,6 +10,7 @@ import 'package:sri_hr/widgets/app_shell.dart';
 import 'package:sri_hr/widgets/empty_state.dart';
 import 'package:sri_hr/widgets/loading_overlay.dart';
 import 'package:sri_hr/widgets/sri_button.dart';
+import 'package:sri_hr/widgets/sri_search_bar.dart';
 
 class Designation extends StatelessWidget {
   Designation({super.key});
@@ -52,39 +53,86 @@ class Designation extends StatelessWidget {
                 onAction: () => showRoleForm(context, controller),
               )
             : isWide
-            ? Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            ? Column(
                 children: [
-                  // Left: list
-                  Flexible(flex: 2, child: designationList(context)),
-                  // Right: permissions panel
-                  Flexible(flex: 3, child: designationPermission()),
+                  searchWidget(context),
+                  Expanded(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Left: list
+                        Flexible(flex: 2, child: designationList(context)),
+                        // Right: permissions panel
+                        Flexible(flex: 3, child: designationPermission()),
+                      ],
+                    ),
+                  ),
                 ],
               )
             : controller.enable.value
             ? designationPermission()
-            : designationList(context),
+            : Column(
+                children: [
+                  searchWidget(context),
+                  Expanded(child: designationList(context)),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget searchWidget(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width >= 800;
+    return Padding(
+      padding: EdgeInsets.only(
+        top: isWide ? 24.0 : 10.0,
+        left: isWide ? 24.0 : 10.0,
+        right: isWide ? 24.0 : 10.0,
+        bottom: 10.0,
+      ),
+      child: SriSearchBar(
+        label: "Search Designations",
+        prefixIcon: Icons.search,
+        onChanged: controller.search,
       ),
     );
   }
 
   Widget designationList(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width >= 800;
     return ListView.builder(
-      padding: const EdgeInsets.all(24),
-      itemCount: controller.roles.length,
-      itemBuilder: (_, i) => RoleCard(
-        role: controller.roles[i],
-        isSelected: controller.selectedRole.value?.id == controller.roles[i].id,
-        onTap: () {
-          controller.enable.value = true;
-          controller.selectRole(controller.roles[i]);
-        },
-        onEdit: auth.canEdit('designation')
-            ? () => showRoleForm(context, controller, role: controller.roles[i])
-            : null,
-        onDelete: auth.canDelete('designation')
-            ? () => confirmDelete(context, controller, controller.roles[i].id)
-            : null,
+      padding: EdgeInsets.only(
+        top: 10.0,
+        left: isWide ? 24.0 : 10.0,
+        right: isWide ? 24.0 : 10.0,
+        bottom: 10.0,
+      ),
+      itemCount: controller.filteredroles.length,
+      itemBuilder: (_, i) => Obx(
+        () => RoleCard(
+          role: controller.filteredroles[i],
+          isSelected:
+              controller.selectedRole.value?.id ==
+              controller.filteredroles[i].id,
+          onTap: () {
+            controller.enable.value = true;
+            controller.selectRole(controller.filteredroles[i]);
+          },
+          onEdit: auth.canEdit('designation')
+              ? () => showRoleForm(
+                  context,
+                  controller,
+                  role: controller.filteredroles[i],
+                )
+              : null,
+          onDelete: auth.canDelete('designation')
+              ? () => confirmDelete(
+                  context,
+                  controller,
+                  controller.filteredroles[i].id,
+                )
+              : null,
+        ),
       ),
     );
   }

@@ -12,6 +12,7 @@ AuthController get auth => Get.find<AuthController>();
 class RoleController extends GetxController {
   final repo = RoleRepository();
   final roles = <RoleModel>[].obs;
+  final filteredroles = <RoleModel>[].obs;
   final selectedRole = Rxn<RoleModel>();
   final editingPermissions = <RolePermissionModel>[].obs;
   final isLoading = false.obs;
@@ -27,10 +28,22 @@ class RoleController extends GetxController {
     isLoading.value = true;
     try {
       roles.value = await repo.getRoles(auth.companyId);
+      filteredroles.value = roles.value;
     } catch (e) {
       log("ERROR: $e");
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  void search(String query) {
+    if (query.isEmpty) {
+      filteredroles.value = roles;
+    } else {
+      filteredroles.value = roles.where((item) {
+        final name = item.name.toString().toLowerCase();
+        return name.contains(query.toString().toLowerCase());
+      }).toList();
     }
   }
 
