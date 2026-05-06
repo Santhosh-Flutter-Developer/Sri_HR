@@ -8,6 +8,7 @@ import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/models/company_model.dart';
 import 'package:sri_hr/presentation/company/controller/company_controller.dart';
 import 'package:sri_hr/presentation/company/widgets/sri_detail_card.dart';
+import 'package:sri_hr/widgets/sri_button.dart';
 import 'package:sri_hr/widgets/sri_textfield.dart';
 
 class CompanyDetail extends StatefulWidget {
@@ -70,24 +71,20 @@ class _CompanyDetailState extends State<CompanyDetail> {
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width >= 800;
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(isWide ? 24.0 : 10.0),
       child: Form(
         key: formKey,
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (!isWide)
-              Row(
-                children: [
-                  IconButton(
-                    onPressed: () {
-                      widget.controller.enable.value = false;
-                      widget.controller.enable.refresh();
-                    },
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ],
+              InkWell(
+                onTap: () {
+                  widget.controller.enable.value = false;
+                  widget.controller.enable.refresh();
+                },
+                child: const Icon(Icons.arrow_back_ios_rounded),
+                // padding: EdgeInsets.zero,
               ),
             const SizedBox(height: 20.0),
             headerCard(),
@@ -389,35 +386,24 @@ class _CompanyDetailState extends State<CompanyDetail> {
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
+                    child: SriButton(
                       onPressed: () => setState(() {
                         editing = false;
                         init(widget.company); // reset
                       }),
-                      child: const Text('Cancel'),
+                      isOutlined: true,
+                      label: 'Cancel',
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Obx(
-                      () => ElevatedButton.icon(
+                      () => SriButton(
                         onPressed: widget.controller.isLoading.value
                             ? null
                             : save,
-                        icon: widget.controller.isLoading.value
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.save_rounded, size: 16),
-                        label: const Text('Save Changes'),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
+                        isLoading: widget.controller.isLoading.value,
+                        label: 'Save Changes',
                       ),
                     ),
                   ),
@@ -575,10 +561,10 @@ class _CompanyDetailState extends State<CompanyDetail> {
     );
 
     if (img != null) {
-      final bytes = await img.readAsBytes(); 
+      final bytes = await img.readAsBytes();
 
       setState(() {
-        logoBytes = bytes; 
+        logoBytes = bytes;
         logoPath = img.path;
       });
     }
