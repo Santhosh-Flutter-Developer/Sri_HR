@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:responsive_grid/responsive_grid.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/department/controller/department_controller.dart';
@@ -74,19 +75,52 @@ class Department extends StatelessWidget {
                         onAction: () =>
                             controller.showForm(context, controller),
                       )
-                    : ListView.builder(
-                        padding: EdgeInsets.only(
-                          top: 10.0,
-                          left: isWide ? 24.0 : 10.0,
-                          right: isWide ? 24.0 : 10.0,
-                          bottom: 10.0,
-                        ),
-                        itemCount: controller.filteredDepartments.length,
-                        itemBuilder: (_, i) {
-                          final d = controller.filteredDepartments[i];
-                          return DepartmentCard(item: d);
-                        },
+                    : ListView(
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.only(
+                              top: 10.0,
+                              left: isWide ? 24.0 : 10.0,
+                              right: isWide ? 24.0 : 10.0,
+                              bottom: 10.0,
+                            ),
+                            child: ResponsiveGridRow(
+                              children: List.generate(
+                                controller.filteredDepartments.length,
+                                (i) {
+                                  final d = controller.filteredDepartments[i];
+                                  return ResponsiveGridCol(
+                                    xl: 4,
+                                    lg: 4,
+                                    md: 6,
+                                    sm: 12,
+                                    xs: 12,
+                                    child: Padding(
+                                      padding: EdgeInsets.only(
+                                        right: isWide ? 8.0 : 0.0,
+                                      ),
+                                      child: DepartmentCard(item: d),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
+                // ListView.builder(
+                //     padding: EdgeInsets.only(
+                //       top: 10.0,
+                //       left: isWide ? 24.0 : 10.0,
+                //       right: isWide ? 24.0 : 10.0,
+                //       bottom: 10.0,
+                //     ),
+                //     itemCount: controller.filteredDepartments.length,
+                //     itemBuilder: (_, i) {
+                //       final d = controller.filteredDepartments[i];
+                //       return DepartmentCard(item: d);
+                //     },
+                //   ),
               ),
             ),
           ],
