@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
+import 'package:sri_hr/widgets/sri_button.dart';
 
 class EmptyState extends StatelessWidget {
   final String message;
@@ -57,10 +58,10 @@ class EmptyState extends StatelessWidget {
           ),
           if (actionLabel != null) ...[
             const SizedBox(height: 16),
-            ElevatedButton.icon(
+            SriButton(
               onPressed: onAction,
-              icon: const Icon(Icons.add),
-              label: Text(actionLabel!),
+              icon: Icons.add,
+              label: actionLabel!,
             ),
           ],
         ],
