@@ -47,11 +47,11 @@ class PermissionMatrix extends StatelessWidget {
             child: Row(
               children: [
                 if (!isWide)
-                  IconButton(
-                    onPressed: () {
+                  InkWell(
+                    onTap: () {
                       ctrl.enable.value = false;
                     },
-                    icon: Icon(Icons.keyboard_arrow_left, color: AppColors.bg),
+                    child: Icon(Icons.keyboard_arrow_left, color: AppColors.bg),
                   ),
                 const SizedBox(width: 10),
                 const Icon(

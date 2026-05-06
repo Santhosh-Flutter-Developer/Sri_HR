@@ -164,6 +164,7 @@ class Designation extends StatelessWidget {
   void showRoleForm(BuildContext context, RoleController ctrl, {dynamic role}) {
     Get.dialog(
       Dialog(
+        insetPadding: EdgeInsets.all(4.0),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: RoleForm(role: role, controller: ctrl),
       ),

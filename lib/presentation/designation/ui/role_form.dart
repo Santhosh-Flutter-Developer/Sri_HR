@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:responsive_grid/responsive_grid.dart';
@@ -177,93 +175,99 @@ class _RoleFormState extends State<RoleForm> {
               ],
             ),
           ),
-          SingleChildScrollView(
-            padding: const EdgeInsets.all(20.0),
-            child: Obx(
-              () => Form(
-                key: formKey,
-                child: Column(
-                  children: [
-                    ResponsiveGridRow(
+          Flexible(
+            child: SingleChildScrollView(
+              child: Obx(
+                () => Form(
+                  key: formKey,
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
                       children: [
-                        ...List.generate(fields.length, (ind) {
-                          return ResponsiveGridCol(
-                            xl: fields[ind]["xl"] ?? 12,
-                            lg: fields[ind]["lg"] ?? 12,
-                            md: fields[ind]["md"] ?? 12,
-                            xs: fields[ind]["xs"] ?? 12,
-                            sm: fields[ind]["sm"] ?? 12,
-                            child: FormFields(
-                              label: fields[ind]["label"] ?? "",
-                              type: fields[ind]["type"] ?? "",
-                              textEditingController: fields[ind]["controller"],
-                              obscureText: fields[ind]["obscureText"],
-                              prefixIcon: fields[ind]["prefixIcon"],
-                              suffixIcon: fields[ind]["suffixIcon"],
-                              switchValue: fields[ind]["switchValue"],
-                              onSwitchChanged: fields[ind]["onSwitchChanged"],
-                              onSuffixTap: fields[ind]["onSuffixTap"],
-                              validator: fields[ind]["validator"],
-                              keyboardType: fields[ind]["keyboardType"],
-                              onPressed: fields[ind]["onPressed"],
-                              onTap: fields[ind]["onTap"],
-                              isLoading: fields[ind]["isLoading"],
-                              readOnly: fields[ind]["readOnly"],
-                              isFullWidth: fields[ind]["isFullWidth"],
-                              topPadding: fields[ind]["topPadding"],
-                              bottomPadding: fields[ind]["bottomPadding"],
-                              rightPadding: fields[ind]["rightPadding"],
-                              leftPadding: fields[ind]["leftPadding"],
+                        ResponsiveGridRow(
+                          children: [
+                            ...List.generate(fields.length, (ind) {
+                              return ResponsiveGridCol(
+                                xl: fields[ind]["xl"] ?? 12,
+                                lg: fields[ind]["lg"] ?? 12,
+                                md: fields[ind]["md"] ?? 12,
+                                xs: fields[ind]["xs"] ?? 12,
+                                sm: fields[ind]["sm"] ?? 12,
+                                child: FormFields(
+                                  label: fields[ind]["label"] ?? "",
+                                  type: fields[ind]["type"] ?? "",
+                                  textEditingController:
+                                      fields[ind]["controller"],
+                                  obscureText: fields[ind]["obscureText"],
+                                  prefixIcon: fields[ind]["prefixIcon"],
+                                  suffixIcon: fields[ind]["suffixIcon"],
+                                  switchValue: fields[ind]["switchValue"],
+                                  onSwitchChanged:
+                                      fields[ind]["onSwitchChanged"],
+                                  onSuffixTap: fields[ind]["onSuffixTap"],
+                                  validator: fields[ind]["validator"],
+                                  keyboardType: fields[ind]["keyboardType"],
+                                  onPressed: fields[ind]["onPressed"],
+                                  onTap: fields[ind]["onTap"],
+                                  isLoading: fields[ind]["isLoading"],
+                                  readOnly: fields[ind]["readOnly"],
+                                  isFullWidth: fields[ind]["isFullWidth"],
+                                  topPadding: fields[ind]["topPadding"],
+                                  bottomPadding: fields[ind]["bottomPadding"],
+                                  rightPadding: fields[ind]["rightPadding"],
+                                  leftPadding: fields[ind]["leftPadding"],
+                                ),
+                              );
+                            }),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: SriButton(
+                                label: "Cancel",
+                                isOutlined: true,
+                                onPressed: () => Get.back(),
+                              ),
                             ),
-                          );
-                        }),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: SriButton(
-                            label: "Cancel",
-                            isOutlined: true,
-                            onPressed: () => Get.back(),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: SriButton(
-                            label: isEdit ? "Update" : "Create",
-                            onPressed: () {
-                              if (!formKey.currentState!.validate()) return;
-                              final data = {
-                                'company_id': auth.companyId,
-                                'name': name.text.trim(),
-                                'working_from': from.text,
-                                'working_to': to.text,
-                                'break_minutes':
-                                    int.tryParse(breakTime.text) ?? 30,
-                                'permission_minutes':
-                                    int.tryParse(permMin.text) ?? 60,
-                                'casual_leave': int.tryParse(leave.text) ?? 12,
-                                'is_admin': isAdmin.value,
-                              };
-                              log("data:$data");
-                              if (isEdit) {
-                                widget.controller.updateRole(
-                                  widget.role.id,
-                                  data,
-                                );
-                              } else {
-                                widget.controller.createRole(data);
-                              }
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: SriButton(
+                                label: isEdit ? "Update" : "Create",
+                                onPressed: () {
+                                  if (!formKey.currentState!.validate()) return;
+                                  final data = {
+                                    'company_id': auth.companyId,
+                                    'name': name.text.trim(),
+                                    'working_from': from.text,
+                                    'working_to': to.text,
+                                    'break_minutes':
+                                        int.tryParse(breakTime.text) ?? 30,
+                                    'permission_minutes':
+                                        int.tryParse(permMin.text) ?? 60,
+                                    'casual_leave':
+                                        int.tryParse(leave.text) ?? 12,
+                                    'is_admin': isAdmin.value,
+                                  };
+                                  if (isEdit) {
+                                    widget.controller.updateRole(
+                                      widget.role.id,
+                                      data,
+                                    );
+                                  } else {
+                                    widget.controller.createRole(data);
+                                  }
 
-                              Get.back();
-                            },
-                          ),
+                                  Get.back();
+                                },
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
