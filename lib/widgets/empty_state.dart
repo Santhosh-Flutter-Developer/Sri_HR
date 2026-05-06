@@ -34,10 +34,26 @@ class EmptyState extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          Text(
-            message,
-            style: const TextStyle(fontSize: 15, color: AppColors.textMuted),
-            textAlign: TextAlign.center,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 20.0,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8.0),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: const Text(
+              'You haven’t created any entries. Add a new record to begin managing your data.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
           ),
           if (actionLabel != null) ...[
             const SizedBox(height: 16),
