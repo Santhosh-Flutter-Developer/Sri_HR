@@ -3,27 +3,16 @@ import 'package:get/get.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/models/attendance_log_model.dart';
 import 'package:sri_hr/presentation/attendance/controller/attendance_controller.dart';
-import 'package:sri_hr/presentation/attendance/widgets/summary_chip.dart';
-import 'package:sri_hr/presentation/attendance/widgets/table_header.dart';
-import 'package:sri_hr/presentation/attendance/widgets/table_row.dart';
+import 'package:sri_hr/presentation/attendance/widgets/chips.dart';
+import 'package:sri_hr/presentation/attendance/widgets/punch_grid_view.dart';
+import 'package:sri_hr/presentation/attendance/widgets/punch_table_view.dart';
+import 'package:sri_hr/presentation/attendance/widgets/view_toggle_btn.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/widgets/app_shell.dart';
 import 'package:sri_hr/widgets/empty_state.dart';
-import 'package:sri_hr/widgets/sri_button.dart';
 
-class PunchTimeAdjustment extends StatefulWidget {
-  const PunchTimeAdjustment({super.key});
-
-  @override
-  State<PunchTimeAdjustment> createState() => _PunchTimeAdjustmentState();
-}
-
-class _PunchTimeAdjustmentState extends State<PunchTimeAdjustment> {
-  final controller = Get.isRegistered<AttendanceController>()
-      ? Get.find<AttendanceController>()
-      : Get.put(AttendanceController());
-
-  final auth = Get.find<AuthController>();
+class PunchTimeAdjustment extends StatelessWidget {
+  PunchTimeAdjustment({super.key});
 
   List<Map<String, dynamic>> buildRows(List<AttendanceLogModel> logs) {
     final Map<String, Map<String, dynamic>> grouped = {};
@@ -53,26 +42,59 @@ class _PunchTimeAdjustmentState extends State<PunchTimeAdjustment> {
     return rows;
   }
 
+  final controller = Get.isRegistered<AttendanceController>()
+      ? Get.find<AttendanceController>()
+      : Get.put(AttendanceController());
+
+  final auth = Get.find<AuthController>();
+
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width >= 800;
     return AppShell(
       currentModule: 'punch_adjustment',
       title: 'Punch Adjustment',
       actions: [
-        if (auth.canAdd('punch_adjustment'))
-          isWide
-              ? SriButton(
-                  label: "Add Punch",
-                  icon: Icons.add,
-                  onPressed: () => controller.showForm(context, controller),
-                )
-              : IconButton(
-                  onPressed: () => controller.showForm(context, controller),
-                  icon: Icon(Icons.add),
+        // View toggle
+        Obx(
+          () => Container(
+            decoration: BoxDecoration(
+              color: AppColors.surfaceVariant,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              children: [
+                ViewToggleBtn(
+                  icon: Icons.table_rows_rounded,
+                  tooltip: 'Table',
+                  selected: controller.viewMode.value == 'table',
+                  onTap: () => controller.viewMode.value = 'table',
                 ),
-
-        const SizedBox(width: 16.0),
+                ViewToggleBtn(
+                  icon: Icons.grid_view_rounded,
+                  tooltip: 'Grid',
+                  selected: controller.viewMode.value == 'grid',
+                  onTap: () => controller.viewMode.value = 'grid',
+                ),
+                const SizedBox(width: 10),
+                if (auth.canAdd('punch_adjustment'))
+                  ElevatedButton.icon(
+                    onPressed: () => controller.showForm(context, controller),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Add Punch'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.warning,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                    ),
+                  ),
+                const SizedBox(width: 16),
+              ],
+            ),
+          ),
+        ),
       ],
       child: Obx(() {
         final manualLogs = controller.logs.where((l) => l.isManual).toList();
@@ -89,58 +111,40 @@ class _PunchTimeAdjustmentState extends State<PunchTimeAdjustment> {
         final rows = buildRows(manualLogs);
         return Column(
           children: [
-            // ── Summary strip ──────────────────────
+            // Summary
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               color: AppColors.surface,
               child: Row(
                 children: [
-                  SummaryChip(
+                  Chips(
+                    value: '${rows.length}',
                     label: 'Total Adjustments',
-                    value: rows.length,
                     color: AppColors.warning,
                   ),
                   const SizedBox(width: 10),
-                  SummaryChip(
+                  Chips(
+                    value:
+                        '${manualLogs.map((l) => l.employeeId).toSet().length}',
                     label: 'Employees',
-                    value: manualLogs.map((l) => l.employeeId).toSet().length,
                     color: AppColors.primary,
                   ),
                 ],
               ),
             ),
-            const Divider(height: 1, color: AppColors.border),
-            // ── Table ─────────────────────────────
+            const Divider(height: 1),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  children: [
-                    TableHeader(),
-                    ...rows.map(
-                      (row) => TablesRow(
-                        row: row,
-                        canDelete: auth.canDelete('punch_adjustment'),
-                        onDeleteIn: () {
-                          final log = row['inLog'] as AttendanceLogModel?;
-                          if (log != null) controller.deleteLog(log.id);
-                        },
-                        onDeleteOut: () {
-                          final log = row['outLog'] as AttendanceLogModel?;
-                          if (log != null) controller.deleteLog(log.id);
-                        },
-                        onEdit: auth.canEdit('punch_adjustment')
-                            ? () => controller.showForm(
-                                context,
-                                controller,
-                                prefillRow: row,
-                              )
-                            : null,
-                      ),
+              child: controller.viewMode.value == 'table'
+                  ? PunchTableView(
+                      rows: rows,
+                      controller: controller,
+                      auth: auth,
+                    )
+                  : PunchGridView(
+                      rows: rows,
+                      controller: controller,
+                      auth: auth,
                     ),
-                  ],
-                ),
-              ),
             ),
           ],
         );

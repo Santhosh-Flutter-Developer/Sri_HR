@@ -1,37 +1,37 @@
 import 'package:flutter/material.dart';
 
-class SummaryChip extends StatelessWidget {
-  final String label;
-  final int value;
+class Chips extends StatelessWidget {
+  final String value, label;
   final Color color;
-  const SummaryChip({
+  const Chips({
     super.key,
-    required this.label,
     required this.value,
+    required this.label,
     required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 6.0),
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 5.0),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withOpacity(0.08),
         borderRadius: BorderRadius.circular(20.0),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withOpacity(0.25)),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            '$value',
+            value,
             style: TextStyle(
               color: color,
               fontWeight: FontWeight.w800,
-              fontSize: 15.0,
+              fontSize: 15,
             ),
           ),
-          const SizedBox(width: 6.0),
-          Text(label, style: TextStyle(color: color, fontSize: 12)),
+          const SizedBox(width: 5),
+          Text(label, style: TextStyle(color: color, fontSize: 11)),
         ],
       ),
     );

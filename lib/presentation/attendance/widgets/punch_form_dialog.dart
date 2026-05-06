@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/presentation/attendance/controller/attendance_controller.dart';
+import 'package:sri_hr/presentation/attendance/widgets/picker_box.dart';
 import 'package:sri_hr/presentation/attendance/widgets/punch_type_btn.dart';
 import 'package:sri_hr/presentation/employee/controller/employee_controller.dart';
 
@@ -9,13 +10,14 @@ class PunchFormDialog extends StatefulWidget {
   final AttendanceController controller;
   final Map<String, dynamic>? prefillRow;
   const PunchFormDialog({super.key, required this.controller, this.prefillRow});
+
   @override
-  State<PunchFormDialog> createState() => PunchFormDialogState();
+  State<PunchFormDialog> createState() => _PunchFormDialogState();
 }
 
-class PunchFormDialogState extends State<PunchFormDialog> {
+class _PunchFormDialogState extends State<PunchFormDialog> {
   final formKey = GlobalKey<FormState>();
-  String? employeeId;
+  String? empId;
   DateTime? date;
   TimeOfDay? time;
   String punchType = 'in';
@@ -27,25 +29,17 @@ class PunchFormDialogState extends State<PunchFormDialog> {
   void initState() {
     super.initState();
     empCtrl = Get.find<EmployeeController>();
-    if (empCtrl.employees.isEmpty) empCtrl.loadEmployees();
-    // Pre-fill from existing row
     final row = widget.prefillRow;
     if (row != null) {
-      employeeId = row['employeeId'] as String?;
+      empId = row['employeeId'] as String?;
       date = row['date'] as DateTime?;
     }
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
   }
 
   String displayTime(TimeOfDay? t) {
     if (t == null) return 'Select time';
     final h = t.hourOfPeriod == 0 ? 12 : t.hourOfPeriod;
-    final m = t.minute.toString().padLeft(2, '0');
-    return '$h:$m ${t.period == DayPeriod.am ? 'AM' : 'PM'}';
+    return '$h:${t.minute.toString().padLeft(2, '0')} ${t.period == DayPeriod.am ? 'AM' : 'PM'}';
   }
 
   String fmt24(TimeOfDay t) =>
@@ -53,18 +47,15 @@ class PunchFormDialogState extends State<PunchFormDialog> {
 
   String displayDate(DateTime? d) {
     if (d == null) return 'Select date';
-    return '${d.day.toString().padLeft(2, '0')} '
-        '${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.month - 1]} '
-        '${d.year}';
+    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
   }
 
   Future<void> pickDate() async {
-    final now = DateTime.now();
     final d = await showDatePicker(
       context: context,
-      initialDate: date ?? now,
+      initialDate: date ?? DateTime.now(),
       firstDate: DateTime(2020),
-      lastDate: now,
+      lastDate: DateTime.now(),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
           colorScheme: const ColorScheme.light(primary: AppColors.warning),
@@ -92,11 +83,11 @@ class PunchFormDialogState extends State<PunchFormDialog> {
   Future<void> submit() async {
     if (!formKey.currentState!.validate()) return;
     if (date == null) {
-      snack('Please select a date');
+      snack('Select a date');
       return;
     }
     if (time == null) {
-      snack('Please select a time');
+      snack('Select a time');
       return;
     }
     setState(() => loading = true);
@@ -109,7 +100,7 @@ class PunchFormDialogState extends State<PunchFormDialog> {
         time!.minute,
       );
       await widget.controller.adjustPunch({
-        'employee_id': employeeId,
+        'employee_id': empId,
         'date': date!.toIso8601String().substring(0, 10),
         'punch_time': dt.toIso8601String(),
         'punch_type': punchType,
@@ -129,18 +120,21 @@ class PunchFormDialogState extends State<PunchFormDialog> {
       behavior: SnackBarBehavior.floating,
     ),
   );
-
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadiusGeometry.circular(20.0),
+      ),
+      insetPadding: const EdgeInsets.symmetric(
+        horizontal: 20.0,
+        vertical: 40.0,
+      ),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 460),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header
             Container(
               padding: const EdgeInsets.fromLTRB(18, 16, 12, 16),
               decoration: const BoxDecoration(
@@ -149,20 +143,8 @@ class PunchFormDialogState extends State<PunchFormDialog> {
               ),
               child: Row(
                 children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      Icons.tune_rounded,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
+                  const Icon(Icons.tune_rounded, color: Colors.white),
+                  const SizedBox(width: 10),
                   const Expanded(
                     child: Text(
                       'Manual Punch Adjustment',
@@ -185,30 +167,23 @@ class PunchFormDialogState extends State<PunchFormDialog> {
                 ],
               ),
             ),
-
-            // Form
             Padding(
               padding: const EdgeInsets.all(20),
               child: Form(
                 key: formKey,
                 child: Column(
                   children: [
-                    // Employee
                     Obx(() {
-                      final emps = empCtrl.employees;
-                      final ids = emps.map((e) => e.id).toList();
-                      final safe = ids.contains(employeeId) ? employeeId : null;
+                      final ids = empCtrl.employees.map((e) => e.id).toList();
                       return DropdownButtonFormField<String>(
-                        value: safe,
+                        value: ids.contains(empId) ? empId : null,
                         isExpanded: true,
                         decoration: deco(
                           Icons.person_rounded,
                           'Select employee',
                         ),
-                        dropdownColor: AppColors.surface,
-                        validator: (v) =>
-                            v == null ? 'Select an employee' : null,
-                        items: emps
+                        validator: (v) => v == null ? 'Required' : null,
+                        items: empCtrl.employees
                             .map(
                               (e) => DropdownMenuItem(
                                 value: e.id,
@@ -220,131 +195,34 @@ class PunchFormDialogState extends State<PunchFormDialog> {
                               ),
                             )
                             .toList(),
-                        onChanged: (v) => setState(() => employeeId = v),
+                        onChanged: (v) => setState(() => empId = v),
                       );
                     }),
                     const SizedBox(height: 14),
-
-                    // Date
                     GestureDetector(
                       onTap: pickDate,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 14,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceVariant,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: date != null
-                                ? AppColors.warning.withOpacity(0.5)
-                                : AppColors.border,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.calendar_today_rounded,
-                              size: 18,
-                              color: date != null
-                                  ? AppColors.warning
-                                  : AppColors.textMuted,
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                displayDate(date),
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: date != null
-                                      ? AppColors.textPrimary
-                                      : AppColors.textMuted,
-                                  fontWeight: date != null
-                                      ? FontWeight.w600
-                                      : FontWeight.w400,
-                                ),
-                              ),
-                            ),
-                            const Text(
-                              'Date *',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: AppColors.textMuted,
-                              ),
-                            ),
-                          ],
-                        ),
+                      child: PickerBox(
+                        icon: Icons.calendar_today_rounded,
+                        label: displayDate(date),
+                        trailingLabel: 'Date *',
+                        selected: date != null,
+                        color: AppColors.warning,
                       ),
                     ),
                     const SizedBox(height: 14),
-
-                    // Time (picker)
                     GestureDetector(
                       onTap: pickTime,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 14,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceVariant,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: time != null
-                                ? AppColors.warning.withOpacity(0.5)
-                                : AppColors.border,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.access_time_rounded,
-                              size: 18,
-                              color: time != null
-                                  ? AppColors.warning
-                                  : AppColors.textMuted,
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                time != null
-                                    ? displayTime(time)
-                                    : 'Select Time',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: time != null
-                                      ? AppColors.textPrimary
-                                      : AppColors.textMuted,
-                                  fontWeight: time != null
-                                      ? FontWeight.w600
-                                      : FontWeight.w400,
-                                ),
-                              ),
-                            ),
-                            if (time != null)
-                              Text(
-                                fmt24(time!),
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textMuted,
-                                ),
-                              ),
-                            const SizedBox(width: 6),
-                            const Text(
-                              'Time *',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: AppColors.textMuted,
-                              ),
-                            ),
-                          ],
-                        ),
+                      child: PickerBox(
+                        icon: Icons.access_time_rounded,
+                        label: time != null
+                            ? '${displayTime(time!)}  (${fmt24(time!)})'
+                            : 'Select Time',
+                        trailingLabel: 'Time *',
+                        selected: time != null,
+                        color: AppColors.warning,
                       ),
                     ),
                     const SizedBox(height: 16),
-
-                    // Punch type
                     Row(
                       children: [
                         const Text(
@@ -369,34 +247,9 @@ class PunchFormDialogState extends State<PunchFormDialog> {
                           color: AppColors.error,
                           onTap: () => setState(() => punchType = 'out'),
                         ),
-                        if (date != null && time != null) ...[
-                          const Spacer(),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.warning.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              '${date!.day.toString().padLeft(2, '0')}/'
-                              '${date!.month.toString().padLeft(2, '0')} '
-                              '${fmt24(time!)}',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.warning,
-                              ),
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                     const SizedBox(height: 20),
-
-                    // Buttons
                     Row(
                       children: [
                         Expanded(
@@ -454,7 +307,7 @@ class PunchFormDialogState extends State<PunchFormDialog> {
 
   InputDecoration deco(IconData icon, String hint) => InputDecoration(
     hintText: hint,
-    hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
+    hintStyle: const TextStyle(color: AppColors.textMuted),
     prefixIcon: Icon(icon, size: 18, color: AppColors.textMuted),
     filled: true,
     fillColor: AppColors.surfaceVariant,
