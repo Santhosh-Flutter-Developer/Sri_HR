@@ -7,12 +7,14 @@ class EmptyState extends StatelessWidget {
   final IconData icon;
   final String? actionLabel;
   final VoidCallback? onAction;
+  final Color? color;
   const EmptyState({
     super.key,
     required this.message,
     required this.icon,
     this.actionLabel,
     this.onAction,
+    this.color,
   });
 
   @override
@@ -62,6 +64,7 @@ class EmptyState extends StatelessWidget {
               onPressed: onAction,
               icon: Icons.add,
               label: actionLabel!,
+              color:color?? AppColors.primary,
             ),
           ],
         ],

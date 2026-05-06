@@ -13,6 +13,7 @@ AuthController get auth => Get.find<AuthController>();
 class EmployeeStatusController extends GetxController {
   final repo = EmployeeStatusRepository();
   final statuses = <EmployeeStatusModel>[].obs;
+  final filteredStatuses = <EmployeeStatusModel>[].obs;
   final isLoading = false.obs;
 
   @override
@@ -25,10 +26,22 @@ class EmployeeStatusController extends GetxController {
     isLoading.value = true;
     try {
       statuses.value = await repo.getStatuses(auth.companyId);
+      filteredStatuses.value = statuses.value;
     } catch (e) {
       log("ERROR:$e");
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  void search(String query) {
+    if (query.isEmpty) {
+      filteredStatuses.value = statuses;
+    } else {
+      filteredStatuses.value = statuses.where((item) {
+        final name = item.name.toString().toLowerCase();
+        return name.contains(query.toString().toLowerCase());
+      }).toList();
     }
   }
 
@@ -64,15 +77,16 @@ class EmployeeStatusController extends GetxController {
     }
   }
 
-  void showDialog(BuildContext context,EmployeeStatusController controller, dynamic item) {
-
+  void showDialog(
+    BuildContext context,
+    EmployeeStatusController controller,
+    dynamic item,
+  ) {
     Get.dialog(
       Dialog(
+        insetPadding: EdgeInsets.all(4.0),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: EmployeeStatusForm(
-          item: item,
-          controller:controller, 
-        )
+        child: EmployeeStatusForm(item: item, controller: controller),
       ),
     );
   }
