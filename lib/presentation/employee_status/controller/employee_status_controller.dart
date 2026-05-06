@@ -72,6 +72,9 @@ class EmployeeStatusController extends GetxController {
       await repo.delete(id);
       statuses.removeWhere((x) => x.id == id);
       showSuccess('Status deleted');
+      Future.delayed(Duration(seconds: 2), () {
+        load();
+      });
     } catch (e) {
       showError('$e');
     }

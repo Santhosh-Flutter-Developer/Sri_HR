@@ -145,6 +145,9 @@ class _EmployeeStatusFormState extends State<EmployeeStatusForm> {
                               );
                             }
                             Get.back();
+                            Future.delayed(Duration(seconds: 2), () {
+                              widget.controller.load();
+                            });
                           },
                         ),
                       ),
