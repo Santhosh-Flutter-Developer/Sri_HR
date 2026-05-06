@@ -29,7 +29,7 @@ class PermissionMatrix extends StatelessWidget {
     final isWide = MediaQuery.of(context).size.width >= 800;
     return Container(
       margin: isWide
-          ? EdgeInsets.fromLTRB(0, 24, 24, 24)
+          ? EdgeInsets.fromLTRB(0, 10, 24, 24)
           : EdgeInsets.fromLTRB(0, 24, 0, 24),
       decoration: BoxDecoration(
         color: AppColors.surface,

@@ -35,9 +35,8 @@ class Company extends StatelessWidget {
               : IconButton(
                   onPressed: () =>
                       controller.showAddBranchDialog(context, controller),
-                  icon: Icon(Icons.add_business_rounded),
+                  icon: Icon(Icons.add),
                 ),
-        const SizedBox(width: 16.0),
       ],
       child: Obx(() {
         if (controller.isLoading.value && controller.companies.isEmpty) {

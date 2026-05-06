@@ -52,30 +52,59 @@ class Designation extends StatelessWidget {
                     : null,
                 onAction: () => showRoleForm(context, controller),
               )
-            : isWide
-            ? Column(
-                children: [
-                  searchWidget(context),
-                  Expanded(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Left: list
-                        Flexible(flex: 2, child: designationList(context)),
-                        // Right: permissions panel
-                        Flexible(flex: 3, child: designationPermission()),
-                      ],
-                    ),
-                  ),
-                ],
-              )
-            : controller.enable.value
-            ? designationPermission()
-            : Column(
-                children: [
-                  searchWidget(context),
-                  Expanded(child: designationList(context)),
-                ],
+            : RefreshIndicator(
+                onRefresh: controller.loadRoles,
+                child: isWide
+                    ? Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Expanded(child: searchWidget(context)),
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  right: 8.0,
+                                  top: 10.0,
+                                  // bottom: 20.0,
+                                ),
+                                child: IconButton(
+                                  onPressed: controller.loadRoles,
+                                  icon: Icon(
+                                    Icons.refresh,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          Expanded(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Left: list
+                                Flexible(
+                                  flex: 2,
+                                  child: designationList(context),
+                                ),
+                                // Right: permissions panel
+                                Flexible(
+                                  flex: 3,
+                                  child: designationPermission(),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      )
+                    : controller.enable.value
+                    ? designationPermission()
+                    : Column(
+                        children: [
+                          searchWidget(context),
+                          Expanded(child: designationList(context)),
+                        ],
+                      ),
               ),
       ),
     );
@@ -87,7 +116,7 @@ class Designation extends StatelessWidget {
       padding: EdgeInsets.only(
         top: isWide ? 24.0 : 10.0,
         left: isWide ? 24.0 : 10.0,
-        right: isWide ? 24.0 : 10.0,
+        right: 10.0,
         bottom: 10.0,
       ),
       child: SriSearchBar(
