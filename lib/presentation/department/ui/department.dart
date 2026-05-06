@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/department/controller/department_controller.dart';
 import 'package:sri_hr/presentation/department/widgets/department_card.dart';
@@ -7,6 +8,7 @@ import 'package:sri_hr/widgets/app_shell.dart';
 import 'package:sri_hr/widgets/empty_state.dart';
 import 'package:sri_hr/widgets/loading_overlay.dart';
 import 'package:sri_hr/widgets/sri_button.dart';
+import 'package:sri_hr/widgets/sri_search_bar.dart';
 
 class Department extends StatelessWidget {
   Department({super.key});
@@ -35,28 +37,77 @@ class Department extends StatelessWidget {
                   icon: Icon(Icons.add),
                 ),
       ],
-      child: Obx(
-        () => controller.isLoading.value
-            ? const LoadingOverlay()
-            : controller.departments.isEmpty
-            ? EmptyState(
-                message: 'No departments yet',
-                icon: Icons.account_tree_outlined,
-                actionLabel: auth.canAdd('department')
-                    ? 'Add Department'
-                    : null,
-                onAction: () => controller.showForm(context, controller),
-              )
-            : ListView.builder(
-                padding: const EdgeInsets.all(24.0),
-                itemCount: controller.departments.length,
-                itemBuilder: (_, i) {
-                  final d = controller.departments[i];
-                  return DepartmentCard(
-                    item: d,
-                  );
-                },
+      child: RefreshIndicator(
+        onRefresh: controller.loadDepartments,
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(child: searchWidget(context)),
+                if (isWide)
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      right: 8.0,
+                      top: 10.0,
+                      // bottom: 20.0,
+                    ),
+                    child: IconButton(
+                      onPressed: controller.loadDepartments,
+                      icon: Icon(Icons.refresh, color: AppColors.primary),
+                    ),
+                  ),
+              ],
+            ),
+            Expanded(
+              child: Obx(
+                () => controller.isLoading.value
+                    ? const LoadingOverlay()
+                    : controller.filteredDepartments.isEmpty
+                    ? EmptyState(
+                        message: 'No departments yet',
+                        icon: Icons.account_tree_outlined,
+                        actionLabel: auth.canAdd('department')
+                            ? 'Add Department'
+                            : null,
+                        onAction: () =>
+                            controller.showForm(context, controller),
+                      )
+                    : ListView.builder(
+                        padding: EdgeInsets.only(
+                          top: 10.0,
+                          left: isWide ? 24.0 : 10.0,
+                          right: isWide ? 24.0 : 10.0,
+                          bottom: 10.0,
+                        ),
+                        itemCount: controller.filteredDepartments.length,
+                        itemBuilder: (_, i) {
+                          final d = controller.filteredDepartments[i];
+                          return DepartmentCard(item: d);
+                        },
+                      ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget searchWidget(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width >= 800;
+    return Padding(
+      padding: EdgeInsets.only(
+        top: isWide ? 24.0 : 10.0,
+        left: isWide ? 24.0 : 10.0,
+        right: 10.0,
+        bottom: 10.0,
+      ),
+      child: SriSearchBar(
+        label: "Search Departments",
+        prefixIcon: Icons.search,
+        onChanged: controller.search,
       ),
     );
   }

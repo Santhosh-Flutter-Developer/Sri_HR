@@ -40,46 +40,44 @@ class Designation extends StatelessWidget {
                   icon: Icon(Icons.add),
                 ),
       ],
-      child: Obx(
-        () => controller.isLoading.value
-            ? const LoadingOverlay()
-            : controller.roles.isEmpty
-            ? EmptyState(
-                message: 'No designations created yet',
-                icon: Icons.badge_outlined,
-                actionLabel: auth.canAdd('designation')
-                    ? 'Add Designation'
-                    : null,
-                onAction: () => showRoleForm(context, controller),
-              )
-            : RefreshIndicator(
-                onRefresh: controller.loadRoles,
-                child: isWide
-                    ? Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Expanded(child: searchWidget(context)),
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                  right: 8.0,
-                                  top: 10.0,
-                                  // bottom: 20.0,
-                                ),
-                                child: IconButton(
-                                  onPressed: controller.loadRoles,
-                                  icon: Icon(
-                                    Icons.refresh,
-                                    color: AppColors.primary,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          Expanded(
-                            child: Row(
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(child: searchWidget(context)),
+              if (isWide)
+                Padding(
+                  padding: const EdgeInsets.only(
+                    right: 8.0,
+                    top: 10.0,
+                    // bottom: 20.0,
+                  ),
+                  child: IconButton(
+                    onPressed: controller.loadRoles,
+                    icon: Icon(Icons.refresh, color: AppColors.primary),
+                  ),
+                ),
+            ],
+          ),
+          Expanded(
+            child: Obx(
+              () => controller.isLoading.value
+                  ? const LoadingOverlay()
+                  : controller.filteredroles.isEmpty
+                  ? EmptyState(
+                      message: 'No designations created yet',
+                      icon: Icons.badge_outlined,
+                      actionLabel: auth.canAdd('designation')
+                          ? 'Add Designation'
+                          : null,
+                      onAction: () => showRoleForm(context, controller),
+                    )
+                  : RefreshIndicator(
+                      onRefresh: controller.loadRoles,
+                      child: isWide
+                          ? Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 // Left: list
@@ -93,19 +91,14 @@ class Designation extends StatelessWidget {
                                   child: designationPermission(),
                                 ),
                               ],
-                            ),
-                          ),
-                        ],
-                      )
-                    : controller.enable.value
-                    ? designationPermission()
-                    : Column(
-                        children: [
-                          searchWidget(context),
-                          Expanded(child: designationList(context)),
-                        ],
-                      ),
-              ),
+                            )
+                          : controller.enable.value
+                          ? designationPermission()
+                          : designationList(context),
+                    ),
+            ),
+          ),
+        ],
       ),
     );
   }

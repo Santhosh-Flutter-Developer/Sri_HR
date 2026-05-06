@@ -50,6 +50,7 @@ class DepartmentCard extends StatelessWidget {
                     fontSize: 14,
                   ),
                 ),
+                SizedBox(height: 4.0),
                 Row(
                   children: [
                     Text(
@@ -75,30 +76,26 @@ class DepartmentCard extends StatelessWidget {
               ],
             ),
           ),
-          Row(
-            children: [
+          PopupMenuButton(
+            itemBuilder: (_) => [
               if (auth.canEdit('department'))
-                GestureDetector(
-                  onTap: () =>
-                      controller.showForm(context, controller, dept: item),
-                  child: const Icon(
-                    Icons.edit_rounded,
-                    size: 16,
-                    color: AppColors.primary,
+                const PopupMenuItem(value: 'edit', child: Text('Edit')),
+              if (auth.canDelete('department'))
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Text(
+                    'Delete',
+                    style: TextStyle(color: AppColors.error),
                   ),
                 ),
-              if (auth.canDelete('department')) ...[
-                const SizedBox(width: 10),
-                GestureDetector(
-                  onTap: () => controller.delete(item.id),
-                  child: const Icon(
-                    Icons.delete_rounded,
-                    size: 16,
-                    color: AppColors.error,
-                  ),
-                ),
-              ],
             ],
+            onSelected: (v) {
+              if (v == 'edit') {
+                controller.showForm(context, controller, dept: item);
+              } else {
+                controller.delete(item.id);
+              }
+            },
           ),
         ],
       ),

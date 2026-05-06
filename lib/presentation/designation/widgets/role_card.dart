@@ -91,7 +91,9 @@ class RoleCard extends StatelessWidget {
               PopupMenuButton(
                 iconColor: isSelected ? Colors.white : AppColors.primary,
                 itemBuilder: (_) => [
+                   if (onEdit != null)
                   const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                   if (onDelete != null)
                   const PopupMenuItem(
                     value: 'delete',
                     child: Text(

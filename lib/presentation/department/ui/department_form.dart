@@ -28,13 +28,12 @@ class _DepartmentFormState extends State<DepartmentForm> {
   @override
   void initState() {
     super.initState();
-    
-      codeCtrl.text = widget.dept?.code ?? '';
-      nameCtrl.text = widget.dept?.name ?? '';
 
-      mobileLogin = widget.dept?.mobileLogin ?? true;
-      outsideAtt = widget.dept?.outsideAttendance ?? false;
-    
+    codeCtrl.text = widget.dept?.code ?? '';
+    nameCtrl.text = widget.dept?.name ?? '';
+
+    mobileLogin = widget.dept?.mobileLogin ?? true;
+    outsideAtt = widget.dept?.outsideAttendance ?? false;
   }
 
   List<dynamic> get fields => [
@@ -179,7 +178,7 @@ class _DepartmentFormState extends State<DepartmentForm> {
                       Expanded(
                         child: SriButton(
                           label: widget.dept == null ? "Create" : "Update",
-                          onPressed: () {
+                          onPressed: () async {
                             if (!formKey.currentState!.validate()) {
                               return;
                             }
@@ -199,7 +198,11 @@ class _DepartmentFormState extends State<DepartmentForm> {
                                 data,
                               );
                             }
+
                             Get.back();
+                            Future.delayed(Duration(seconds: 2), () {
+                              widget.controller.loadDepartments();
+                            });
                           },
                         ),
                       ),

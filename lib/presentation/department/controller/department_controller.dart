@@ -13,6 +13,7 @@ AuthController get auth => Get.find<AuthController>();
 class DepartmentController extends GetxController {
   final repo = DepartmentRepository();
   final departments = <DepartmentModel>[].obs;
+  final filteredDepartments = <DepartmentModel>[].obs;
   final isLoading = false.obs;
 
   @override
@@ -25,10 +26,22 @@ class DepartmentController extends GetxController {
     isLoading.value = true;
     try {
       departments.value = await repo.getDepartments(auth.companyId);
+      filteredDepartments.value = departments.value;
     } catch (e) {
       log("ERROR: $e");
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  void search(String query) {
+    if (query.isEmpty) {
+      filteredDepartments.value = departments;
+    } else {
+      filteredDepartments.value = departments.where((item) {
+        final name = item.name.toString().toLowerCase();
+        return name.contains(query.toString().toLowerCase());
+      }).toList();
     }
   }
 
@@ -68,16 +81,13 @@ class DepartmentController extends GetxController {
     DepartmentController controller, {
     dynamic dept,
   }) {
-    
     Get.dialog(
       Dialog(
+        insetPadding: EdgeInsets.all(4.0),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20.0),
         ),
-        child: DepartmentForm(
-          dept: dept,
-          controller: controller,
-        ),
+        child: DepartmentForm(dept: dept, controller: controller),
       ),
     );
   }
