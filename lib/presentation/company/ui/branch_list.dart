@@ -104,11 +104,11 @@ class BranchList extends StatelessWidget {
                   ),
                 )
               : SizedBox(
-                  height: 200,
+                  // height: 200,
                   child: Obx(
                     () => ListView.separated(
                       shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
+                      // physics: const NeverScrollableScrollPhysics(),
                       itemBuilder: (_, i) {
                         final c = controller.companies[i];
                         final isActive =
