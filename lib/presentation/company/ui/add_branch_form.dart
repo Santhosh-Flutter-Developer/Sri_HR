@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:responsive_grid/responsive_grid.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/presentation/company/controller/company_controller.dart';
 import 'package:sri_hr/widgets/sri_button.dart';
@@ -27,6 +28,7 @@ class _AddBranchFormState extends State<AddBranchForm> {
   final gstin = TextEditingController();
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width >= 500;
     return Container(
       constraints: const BoxConstraints(maxWidth: 580, maxHeight: 620),
       child: Column(
@@ -68,100 +70,172 @@ class _AddBranchFormState extends State<AddBranchForm> {
                 key: formKey,
                 child: Column(
                   children: [
-                    Row(
+                    ResponsiveGridRow(
                       children: [
-                        Expanded(
-                          child: SriTextField(
-                            controller: name,
-                            label: 'Branch Name *',
-                            prefixIcon: Icons.business_rounded,
-                            validator: (v) =>
-                                v?.isEmpty == true ? 'Required' : null,
+                        ResponsiveGridCol(
+                          xl: 6,
+                          lg: 6,
+                          md: 6,
+                          xs: 12,
+                          sm: 12,
+                          child: Padding(
+                            padding: EdgeInsets.only(right: isWide ? 5.0 : 0.0),
+                            child: SriTextField(
+                              controller: name,
+                              label: 'Branch Name *',
+                              prefixIcon: Icons.business_rounded,
+                              validator: (v) =>
+                                  v?.isEmpty == true ? 'Required' : null,
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: SriTextField(
-                            controller: code,
-                            label: 'Branch Code',
-                            prefixIcon: Icons.tag_rounded,
-                            hint: 'e.g. BR-01',
+                        ResponsiveGridCol(
+                          xl: 6,
+                          lg: 6,
+                          md: 6,
+                          xs: 12,
+                          sm: 12,
+                          child: Padding(
+                            padding: EdgeInsets.only(
+                              left: isWide ? 5.0 : 0.0,
+                              top: isWide ? 0.0 : 20.0,
+                            ),
+                            child: SriTextField(
+                              controller: code,
+                              label: 'Branch Code',
+                              prefixIcon: Icons.tag_rounded,
+                              hint: 'e.g. BR-01',
+                            ),
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: SriTextField(
-                            controller: phone,
-                            label: 'Phone',
-                            prefixIcon: Icons.phone_rounded,
-                            keyboardType: TextInputType.phone,
+                        ResponsiveGridCol(
+                          xl: 6,
+                          lg: 6,
+                          md: 6,
+                          xs: 12,
+                          sm: 12,
+                          child: Padding(
+                            padding: EdgeInsets.only(
+                              right: isWide ? 5.0 : 0.0,
+                              top: 20.0,
+                            ),
+                            child: SriTextField(
+                              controller: phone,
+                              label: 'Phone',
+                              prefixIcon: Icons.phone_rounded,
+                              keyboardType: TextInputType.phone,
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: SriTextField(
-                            controller: email,
-                            label: 'Email',
-                            prefixIcon: Icons.email_outlined,
-                            keyboardType: TextInputType.emailAddress,
+                        ResponsiveGridCol(
+                          xl: 6,
+                          lg: 6,
+                          md: 6,
+                          xs: 12,
+                          sm: 12,
+                          child: Padding(
+                            padding: EdgeInsets.only(
+                              left: isWide ? 5.0 : 0.0,
+                              top: 20.0,
+                            ),
+                            child: SriTextField(
+                              controller: email,
+                              label: 'Email',
+                              prefixIcon: Icons.email_outlined,
+                              keyboardType: TextInputType.emailAddress,
+                            ),
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    SriTextField(
-                      controller: gstin,
-                      label: 'GSTIN',
-                      prefixIcon: Icons.numbers_rounded,
-                    ),
-                    const SizedBox(height: 14),
-                    SriTextField(
-                      controller: address,
-                      label: 'Address',
-                      prefixIcon: Icons.home_rounded,
-                      maxLines: 2,
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: SriTextField(
-                            controller: country,
-                            label: 'Country',
-                            prefixIcon: Icons.flag_rounded,
+                        ResponsiveGridCol(
+                          xl: 12,
+                          lg: 12,
+                          md: 12,
+                          xs: 12,
+                          sm: 12,
+                          child: Padding(
+                            padding: EdgeInsets.only(top: 20.0),
+                            child: SriTextField(
+                              controller: gstin,
+                              label: 'GSTIN',
+                              prefixIcon: Icons.numbers_rounded,
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: SriTextField(
-                            controller: state,
-                            label: 'State',
-                            prefixIcon: Icons.map_rounded,
+                        ResponsiveGridCol(
+                          xl: 12,
+                          lg: 12,
+                          md: 12,
+                          xs: 12,
+                          sm: 12,
+                          child: Padding(
+                            padding: EdgeInsets.only(top: 20.0),
+                            child: SriTextField(
+                              controller: address,
+                              label: 'Address',
+                              prefixIcon: Icons.home_rounded,
+                              maxLines: 2,
+                            ),
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: SriTextField(
-                            controller: city,
-                            label: 'City',
-                            prefixIcon: Icons.location_city_rounded,
+                        ResponsiveGridCol(
+                          xl: 6,
+                          lg: 6,
+                          md: 6,
+                          xs: 6,
+                          sm: 6,
+                          child: Padding(
+                            padding: EdgeInsets.only(top: 20.0, right: 5.0),
+                            child: SriTextField(
+                              controller: country,
+                              label: 'Country',
+                              prefixIcon: Icons.flag_rounded,
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: SriTextField(
-                            controller: pincode,
-                            label: 'Pincode',
-                            keyboardType: TextInputType.number,
-                            prefixIcon: Icons.pin_drop_rounded,
+                        ResponsiveGridCol(
+                          xl: 6,
+                          lg: 6,
+                          md: 6,
+                          xs: 6,
+                          sm: 6,
+                          child: Padding(
+                            padding: EdgeInsets.only(top: 20.0, left: 5.0),
+                            child: SriTextField(
+                              controller: state,
+                              label: 'State',
+                              prefixIcon: Icons.map_rounded,
+                            ),
+                          ),
+                        ),
+                        ResponsiveGridCol(
+                          xl: 6,
+                          lg: 6,
+                          md: 6,
+                          xs: 6,
+                          sm: 6,
+                          child: Padding(
+                            padding: EdgeInsets.only(top: 20.0, right: 5.0),
+                            child: SriTextField(
+                              controller: city,
+                              label: 'City',
+                              prefixIcon: Icons.location_city_rounded,
+                            ),
+                          ),
+                        ),
+                        ResponsiveGridCol(
+                          xl: 6,
+                          lg: 6,
+                          md: 6,
+                          xs: 6,
+                          sm: 6,
+                          child: Padding(
+                            padding: EdgeInsets.only(top: 20.0, left: 5.0),
+                            child: SriTextField(
+                              controller: pincode,
+                              label: 'Pincode',
+                              keyboardType: TextInputType.number,
+                              prefixIcon: Icons.pin_drop_rounded,
+                            ),
                           ),
                         ),
                       ],
@@ -193,7 +267,6 @@ class _AddBranchFormState extends State<AddBranchForm> {
                       onPressed: widget.controller.isLoading.value
                           ? null
                           : submit,
-                      icon: Icons.add_business_rounded,
                       isLoading: widget.controller.isLoading.value,
                     ),
                   ),

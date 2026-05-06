@@ -25,7 +25,7 @@ AuthController get auth => Get.find<AuthController>();
 
 class CompanyController extends GetxController {
   final client = SupabaseService.client;
-  final  RxBool enable = false.obs;
+  final RxBool enable = false.obs;
   final companies = <CompanyModel>[].obs;
   final activeCompany = Rxn<CompanyModel>();
   Rxn<CompanyModel> get company => activeCompany;
@@ -287,6 +287,7 @@ class CompanyController extends GetxController {
   void showAddBranchDialog(BuildContext context, CompanyController controller) {
     Get.dialog(
       Dialog(
+        insetPadding: EdgeInsets.all(4.0),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: AddBranchForm(controller: controller),
       ),

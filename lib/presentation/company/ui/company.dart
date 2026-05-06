@@ -28,7 +28,7 @@ class Company extends StatelessWidget {
           isWide
               ? SriButton(
                   label: 'Add Branch',
-                  icon: Icons.add_business_rounded,
+                  icon: Icons.add,
                   onPressed: () =>
                       controller.showAddBranchDialog(context, controller),
                 )
