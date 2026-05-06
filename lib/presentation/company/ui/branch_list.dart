@@ -9,12 +9,14 @@ class BranchList extends StatelessWidget {
   final CompanyController controller;
   final AuthController auth;
   final VoidCallback? onBranchTap;
-  const BranchList({
+  BranchList({
     super.key,
     required this.controller,
     required this.auth,
     this.onBranchTap,
   });
+
+  RxBool switchComp = false.obs;
 
   @override
   Widget build(BuildContext context) {
@@ -70,75 +72,95 @@ class BranchList extends StatelessWidget {
           isWide
               ? Expanded(
                   child: Obx(
-                    () => ListView.separated(
-                      itemBuilder: (_, i) {
-                        final c = controller.companies[i];
-                        final isActive =
-                            controller.activeCompany.value?.id == c.id;
-                        return BranchTile(
-                          company: c,
-                          isActive: isActive,
-                          controller: controller,
-                          onTap: () {
-                            controller.activeCompany.value = c;
-                            if (!isActive) {
-                              controller.confirmSwitch(context, controller, c);
-                            }
-                            onBranchTap?.call();
-                          },
-                          onDelete:
-                              auth.canDelete('company') &&
-                                  controller.companies.length > 1
-                              ? () => controller.confirmDelete(
-                                  context,
-                                  controller,
-                                  c,
-                                )
-                              : null,
-                        );
-                      },
-                      separatorBuilder: (_, _) =>
-                          const Divider(height: 1.0, color: AppColors.border),
-                      itemCount: controller.companies.length,
-                    ),
+                    () => switchComp.value
+                        ? SizedBox()
+                        : ListView.separated(
+                            itemBuilder: (_, i) {
+                              final c = controller.companies[i];
+                              final isActive =
+                                  controller.activeCompany.value?.id == c.id;
+                              return BranchTile(
+                                company: c,
+                                isActive: isActive,
+                                controller: controller,
+                                onTap: () {
+                                  switchComp.value = true;
+                                  controller.activeCompany.value = c;
+                                  if (!isActive) {
+                                    controller.confirmSwitch(
+                                      context,
+                                      controller,
+                                      c,
+                                    );
+                                  }
+                                  onBranchTap?.call();
+                                  switchComp.value = false;
+                                },
+                                onDelete:
+                                    auth.canDelete('company') &&
+                                        controller.companies.length > 1
+                                    ? () => controller.confirmDelete(
+                                        context,
+                                        controller,
+                                        c,
+                                      )
+                                    : null,
+                              );
+                            },
+                            separatorBuilder: (_, _) => const Divider(
+                              height: 1.0,
+                              color: AppColors.border,
+                            ),
+                            itemCount: controller.companies.length,
+                          ),
                   ),
                 )
               : SizedBox(
                   // height: 200,
                   child: Obx(
-                    () => ListView.separated(
-                      shrinkWrap: true,
-                      // physics: const NeverScrollableScrollPhysics(),
-                      itemBuilder: (_, i) {
-                        final c = controller.companies[i];
-                        final isActive =
-                            controller.activeCompany.value?.id == c.id;
-                        return BranchTile(
-                          company: c,
-                          isActive: isActive,
-                          controller: controller,
-                          onTap: () {
-                            controller.activeCompany.value = c;
-                            if (!isActive) {
-                              controller.confirmSwitch(context, controller, c);
-                            }
-                            onBranchTap?.call();
-                          },
-                          onDelete:
-                              auth.canDelete('company') &&
-                                  controller.companies.length > 1
-                              ? () => controller.confirmDelete(
-                                  context,
-                                  controller,
-                                  c,
-                                )
-                              : null,
-                        );
-                      },
-                      separatorBuilder: (_, _) =>
-                          const Divider(height: 1.0, color: AppColors.border),
-                      itemCount: controller.companies.length,
-                    ),
+                    () => switchComp.value
+                        ? SizedBox()
+                        : ListView.separated(
+                            shrinkWrap: true,
+                            // physics: const NeverScrollableScrollPhysics(),
+                            itemBuilder: (_, i) {
+                              final c = controller.companies[i];
+                              final isActive =
+                                  controller.activeCompany.value?.id == c.id;
+                              return BranchTile(
+                                company: c,
+                                isActive: isActive,
+                                controller: controller,
+                                onTap: () {
+                                  switchComp.value = true;
+                                  controller.activeCompany.value = c;
+                                  if (!isActive) {
+                                    controller.confirmSwitch(
+                                      context,
+                                      controller,
+                                      c,
+                                    );
+                                  }
+                                  onBranchTap?.call();
+                                  switchComp.value = false;
+                                },
+                                onDelete:
+                                    auth.canDelete('company') &&
+                                        controller.companies.length > 1
+                                    ? () => controller.confirmDelete(
+                                        context,
+                                        controller,
+                                        c,
+                                      )
+                                    : null,
+                              );
+                            },
+                            separatorBuilder: (_, _) => const Divider(
+                              height: 1.0,
+                              color: AppColors.border,
+                            ),
+                            itemCount: controller.companies.length,
+                          ),
                   ),
                 ),
         ],
