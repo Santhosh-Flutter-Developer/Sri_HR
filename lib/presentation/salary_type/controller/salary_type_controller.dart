@@ -13,6 +13,7 @@ AuthController get auth => Get.find<AuthController>();
 class SalaryTypeController extends GetxController {
   final repo = SalaryTypeRepository();
   final salaryTypes = <SalaryTypeModel>[].obs;
+  final filteredSalaryTypes = <SalaryTypeModel>[].obs;
   final isLoading = false.obs;
 
   @override
@@ -25,10 +26,22 @@ class SalaryTypeController extends GetxController {
     isLoading.value = true;
     try {
       salaryTypes.value = await repo.getSalaryTypes(auth.companyId);
+      filteredSalaryTypes.value = salaryTypes.value;
     } catch (e) {
       log("ERROR:$e");
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  void search(String query) {
+    if (query.isEmpty) {
+      filteredSalaryTypes.value = salaryTypes;
+    } else {
+      filteredSalaryTypes.value = salaryTypes.where((item) {
+        final name = item.name.toString().toLowerCase();
+        return name.contains(query.toString().toLowerCase());
+      }).toList();
     }
   }
 
@@ -59,23 +72,25 @@ class SalaryTypeController extends GetxController {
       await repo.delete(id);
       salaryTypes.removeWhere((x) => x.id == id);
       showSuccess('Salary type deleted');
+      Future.delayed(Duration(seconds: 2), () {
+        load();
+      });
     } catch (e) {
       showError('$e');
     }
   }
 
-  void showDialog(BuildContext context,SalaryTypeController controller, dynamic item) {
-
+  void showDialog(
+    BuildContext context,
+    SalaryTypeController controller,
+    dynamic item,
+  ) {
     Get.dialog(
       Dialog(
+        insetPadding: EdgeInsets.all(4.0),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: SalaryTypeForm(
-          controller: controller,
-          item: item,
-           
-        )
+        child: SalaryTypeForm(controller: controller, item: item),
       ),
     );
   }
-
 }

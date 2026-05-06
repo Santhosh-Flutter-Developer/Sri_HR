@@ -146,6 +146,9 @@ class _SalaryTypeFormState extends State<SalaryTypeForm> {
                               );
                             }
                             Get.back();
+                            Future.delayed(Duration(seconds: 2), () {
+                              widget.controller.load();
+                            });
                           },
                         ),
                       ),
