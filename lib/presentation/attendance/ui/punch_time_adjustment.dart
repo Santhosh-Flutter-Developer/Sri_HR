@@ -76,25 +76,22 @@ class PunchTimeAdjustment extends StatelessWidget {
                   selected: controller.viewMode.value == 'grid',
                   onTap: () => controller.viewMode.value = 'grid',
                 ),
-                const SizedBox(width: 10),
-                if (auth.canAdd('punch_adjustment'))
-                  ElevatedButton.icon(
-                    onPressed: () => controller.showForm(context, controller),
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Add Punch'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.warning,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
-                      ),
-                    ),
-                  ),
-                const SizedBox(width: 16),
               ],
             ),
           ),
         ),
+        const SizedBox(width: 10),
+        if (auth.canAdd('punch_adjustment'))
+          ElevatedButton.icon(
+            onPressed: () => controller.showForm(context, controller),
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text('Add Punch'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.warning,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            ),
+          ),
+        const SizedBox(width: 16),
       ],
       child: Obx(() {
         final manualLogs = controller.logs.where((l) => l.isManual).toList();

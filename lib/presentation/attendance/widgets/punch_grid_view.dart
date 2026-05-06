@@ -26,7 +26,7 @@ class PunchGridView extends StatelessWidget {
         crossAxisCount: cross,
         crossAxisSpacing: 14,
         mainAxisSpacing: 14,
-        childAspectRatio: 1.2,
+        childAspectRatio: 2.8,
       ),
       itemCount: rows.length,
       itemBuilder: (_, i) {
@@ -125,40 +125,83 @@ class PunchGridView extends StatelessWidget {
               const Divider(height: 12),
               Row(
                 children: [
-                  const Icon(
-                    Icons.calendar_today_rounded,
-                    size: 12,
-                    color: AppColors.textMuted,
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.calendar_today_rounded,
+                        size: 12,
+                        color: AppColors.textMuted,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        dateStr,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    dateStr,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
+                  const SizedBox(height: 6),
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        MiniPunchTag(
+                          'IN',
+                          fmtT(inLog),
+                          AppColors.success,
+                          inLog?.isManual ?? false,
+                        ),
+                        const SizedBox(width: 8),
+                        MiniPunchTag(
+                          'OUT',
+                          fmtT(outLog),
+                          AppColors.error,
+                          outLog?.isManual ?? false,
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  MiniPunchTag(
-                    'IN',
-                    fmtT(inLog),
-                    AppColors.success,
-                    inLog?.isManual ?? false,
-                  ),
-                  const SizedBox(width: 8),
-                  MiniPunchTag(
-                    'OUT',
-                    fmtT(outLog),
-                    AppColors.error,
-                    outLog?.isManual ?? false,
-                  ),
-                ],
-              ),
+              // Row(
+              //   children: [
+              //     const Icon(
+              //       Icons.calendar_today_rounded,
+              //       size: 12,
+              //       color: AppColors.textMuted,
+              //     ),
+              //     const SizedBox(width: 4),
+              //     Text(
+              //       dateStr,
+              //       style: const TextStyle(
+              //         fontSize: 11,
+              //         fontWeight: FontWeight.w600,
+              //         color: AppColors.textSecondary,
+              //       ),
+              //     ),
+              //   ],
+              // ),
+              // const SizedBox(height: 6),
+              // Row(
+              //   children: [
+              //     MiniPunchTag(
+              //       'IN',
+              //       fmtT(inLog),
+              //       AppColors.success,
+              //       inLog?.isManual ?? false,
+              //     ),
+              //     const SizedBox(width: 8),
+              //     MiniPunchTag(
+              //       'OUT',
+              //       fmtT(outLog),
+              //       AppColors.error,
+              //       outLog?.isManual ?? false,
+              //     ),
+              //   ],
+              // ),
             ],
           ),
         );
