@@ -19,6 +19,7 @@ import 'package:sri_hr/presentation/employee/ui/employee.dart';
 import 'package:sri_hr/presentation/employee_status/binding/employee_status_binding.dart';
 import 'package:sri_hr/presentation/employee_status/ui/employee_status.dart';
 import 'package:sri_hr/presentation/face_capture/face_capture.dart';
+import 'package:sri_hr/presentation/face_capture/face_recognition.dart';
 import 'package:sri_hr/presentation/holiday/binding/holiday_binding.dart';
 import 'package:sri_hr/presentation/holiday/ui/holiday.dart';
 import 'package:sri_hr/presentation/leave/binding/leave_binding.dart';
@@ -116,9 +117,9 @@ class AppPages {
       middlewares: [AuthMiddleware()],
     ),
     GetPage(name: AppRoutes.routeFaceCapture, page: () => FaceCaptureView()),
-    // GetPage(
-    //   name: AppRoutes.routeFaceRecognition,
-    //   page: () => FaceRecognitionView(),
-    // ),
+    GetPage(
+      name: AppRoutes.routeFaceRecognition,
+      page: () => FaceRecognitionView(),
+    ),
   ];
 }
