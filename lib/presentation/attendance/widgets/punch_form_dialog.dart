@@ -126,10 +126,7 @@ class _PunchFormDialogState extends State<PunchFormDialog> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadiusGeometry.circular(20.0),
       ),
-      insetPadding: const EdgeInsets.symmetric(
-        horizontal: 20.0,
-        vertical: 40.0,
-      ),
+      insetPadding: const EdgeInsets.all(4.0),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 460),
         child: Column(

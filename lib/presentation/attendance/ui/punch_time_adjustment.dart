@@ -10,6 +10,7 @@ import 'package:sri_hr/presentation/attendance/widgets/view_toggle_btn.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/widgets/app_shell.dart';
 import 'package:sri_hr/widgets/empty_state.dart';
+import 'package:sri_hr/widgets/sri_button.dart';
 
 class PunchTimeAdjustment extends StatelessWidget {
   PunchTimeAdjustment({super.key});
@@ -50,48 +51,51 @@ class PunchTimeAdjustment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width >= 800;
     return AppShell(
       currentModule: 'punch_adjustment',
       title: 'Punch Adjustment',
       actions: [
         // View toggle
-        Obx(
-          () => Container(
-            decoration: BoxDecoration(
-              color: AppColors.surfaceVariant,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Row(
-              children: [
-                ViewToggleBtn(
-                  icon: Icons.table_rows_rounded,
-                  tooltip: 'Table',
-                  selected: controller.viewMode.value == 'table',
-                  onTap: () => controller.viewMode.value = 'table',
-                ),
-                ViewToggleBtn(
-                  icon: Icons.grid_view_rounded,
-                  tooltip: 'Grid',
-                  selected: controller.viewMode.value == 'grid',
-                  onTap: () => controller.viewMode.value = 'grid',
-                ),
-              ],
+        if (isWide)
+          Obx(
+            () => Container(
+              decoration: BoxDecoration(
+                color: AppColors.surfaceVariant,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(
+                children: [
+                  ViewToggleBtn(
+                    icon: Icons.table_rows_rounded,
+                    tooltip: 'Table',
+                    selected: controller.viewMode.value == 'table',
+                    onTap: () => controller.viewMode.value = 'table',
+                  ),
+                  ViewToggleBtn(
+                    icon: Icons.grid_view_rounded,
+                    tooltip: 'Grid',
+                    selected: controller.viewMode.value == 'grid',
+                    onTap: () => controller.viewMode.value = 'grid',
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
         const SizedBox(width: 10),
         if (auth.canAdd('punch_adjustment'))
-          ElevatedButton.icon(
-            onPressed: () => controller.showForm(context, controller),
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('Add Punch'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.warning,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            ),
-          ),
-        const SizedBox(width: 16),
+          isWide
+              ? SriButton(
+                  onPressed: () => controller.showForm(context, controller),
+                  icon: Icons.add,
+                  label: 'Add Punch',
+                  color: AppColors.warning,
+                )
+              : IconButton(
+                  onPressed: () => controller.showForm(context, controller),
+                  icon: Icon(Icons.add),
+                ),
       ],
       child: Obx(() {
         final manualLogs = controller.logs.where((l) => l.isManual).toList();
@@ -130,6 +134,40 @@ class PunchTimeAdjustment extends StatelessWidget {
               ),
             ),
             const Divider(height: 1),
+            if (!isWide)
+              Obx(
+                () => Padding(
+                  padding: const EdgeInsets.all(10.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceVariant,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                          children: [
+                            ViewToggleBtn(
+                              icon: Icons.table_rows_rounded,
+                              tooltip: 'Table',
+                              selected: controller.viewMode.value == 'table',
+                              onTap: () => controller.viewMode.value = 'table',
+                            ),
+                            ViewToggleBtn(
+                              icon: Icons.grid_view_rounded,
+                              tooltip: 'Grid',
+                              selected: controller.viewMode.value == 'grid',
+                              onTap: () => controller.viewMode.value = 'grid',
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             Expanded(
               child: controller.viewMode.value == 'table'
                   ? PunchTableView(

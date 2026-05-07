@@ -14,6 +14,8 @@ class MiniPunchTag extends StatelessWidget {
   });
   @override
   Widget build(BuildContext context) => Container(
+    width: 60,
+    height: 60,
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
     decoration: BoxDecoration(
       color: color.withOpacity(0.08),
