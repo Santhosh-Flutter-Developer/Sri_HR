@@ -143,6 +143,7 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width >= 800;
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       insetPadding: const EdgeInsets.all(4.0),
@@ -355,7 +356,12 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text('Cancel'),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          vertical: isWide ? 8.0 : 0.0,
+                        ),
+                        child: const Text('Cancel'),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -368,19 +374,24 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: isLoading
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          vertical: isWide ? 8.0 : 0.0,
+                        ),
+                        child: isLoading
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                'Submit Request',
+                                style: TextStyle(fontWeight: FontWeight.w700),
                               ),
-                            )
-                          : const Text(
-                              'Submit Request',
-                              style: TextStyle(fontWeight: FontWeight.w700),
-                            ),
+                      ),
                     ),
                   ),
                 ],
