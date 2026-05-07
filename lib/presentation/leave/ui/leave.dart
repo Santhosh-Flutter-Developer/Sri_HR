@@ -25,40 +25,7 @@ class Leave extends StatelessWidget {
       currentModule: 'leave_request',
       title: 'Leave Requests',
       actions: [
-        // Filter chips
-        // Obx(
-        //   () => Row(
-        //     children: [
-        //       FilterChips(
-        //         label: 'All',
-        //         selected: controller.filterStatus.value == null,
-        //         onTap: () => controller.filterStatus.value = null,
-        //       ),
-        //       const SizedBox(width: 6),
-        //       FilterChips(
-        //         label: 'Pending',
-        //         color: AppColors.warning,
-        //         selected: controller.filterStatus.value == 'pending',
-        //         onTap: () => controller.filterStatus.value = 'pending',
-        //       ),
-        //       const SizedBox(width: 6),
-        //       FilterChips(
-        //         label: 'Approved',
-        //         color: AppColors.success,
-        //         selected: controller.filterStatus.value == 'approved',
-        //         onTap: () => controller.filterStatus.value = 'approved',
-        //       ),
-        //       const SizedBox(width: 6),
-        //       FilterChips(
-        //         label: 'Rejected',
-        //         color: AppColors.error,
-        //         selected: controller.filterStatus.value == 'rejected',
-        //         onTap: () => controller.filterStatus.value = 'rejected',
-        //       ),
-        //     ],
-        //   ),
-        // ),
-        // const SizedBox(width: 12),
+       
         if (auth.canAdd('leave_request'))
           isWide
               ? SriButton(
@@ -72,7 +39,6 @@ class Leave extends StatelessWidget {
                       controller.openLeaveForm(context, controller),
                   icon: Icon(Icons.add),
                 ),
-        const SizedBox(width: 16),
       ],
       child: Column(
         children: [

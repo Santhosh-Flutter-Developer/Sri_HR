@@ -36,6 +36,8 @@ class PermissionCard extends StatelessWidget {
     final roleName = emp?.role?.name ?? '';
     final initial = empName[0].toUpperCase();
 
+    final isWide = MediaQuery.of(context).size.width >= 800;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
@@ -147,7 +149,13 @@ class PermissionCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 10),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+            child: Row(
+              children: [
                 // Time range
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -240,7 +248,12 @@ class PermissionCard extends StatelessWidget {
                     child: OutlinedButton.icon(
                       onPressed: onReject,
                       icon: const Icon(Icons.close_rounded, size: 14),
-                      label: const Text('Reject'),
+                      label: Padding(
+                        padding: EdgeInsets.symmetric(
+                          vertical: isWide ? 8.0 : 0.0,
+                        ),
+                        child: const Text('Reject'),
+                      ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.error,
                         side: const BorderSide(color: AppColors.error),
@@ -256,7 +269,12 @@ class PermissionCard extends StatelessWidget {
                     child: ElevatedButton.icon(
                       onPressed: onApprove,
                       icon: const Icon(Icons.check_rounded, size: 14),
-                      label: const Text('Approve'),
+                      label: Padding(
+                        padding: EdgeInsets.symmetric(
+                          vertical: isWide ? 8.0 : 0.0,
+                        ),
+                        child: const Text('Approve'),
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.success,
                         padding: const EdgeInsets.symmetric(vertical: 9),

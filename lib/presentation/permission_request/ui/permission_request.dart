@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:responsive_grid/responsive_grid.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/permission_request/controller/permission_request_controller.dart';
@@ -37,16 +38,15 @@ class PermissionRequest extends StatelessWidget {
                   onPressed: () => controller.showForm(context, controller),
                   icon: Icon(Icons.add),
                 ),
-        const SizedBox(width: 16),
       ],
       child: Column(
         children: [
           Obx(
             () => Padding(
-              padding: const EdgeInsets.only(
-                left: 20.0,
-                right: 20.0,
-                top: 20.0,
+              padding: EdgeInsets.only(
+                left: isWide ? 20.0 : 10.0,
+                right: isWide ? 20.0 : 10.0,
+                top: isWide ? 20.0 : 10.0,
               ),
               child: Row(
                 children: [
@@ -95,20 +95,54 @@ class PermissionRequest extends StatelessWidget {
               }
               return RefreshIndicator(
                 onRefresh: controller.load,
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(20),
-                  itemCount: controller.filteredPermission.length,
-                  itemBuilder: (_, i) => PermissionCard(
-                    req: controller.filteredPermission[i],
-                    canApprove: auth.canEdit('permission_request'),
-                    canDelete: auth.canDelete('permission_request'),
-                    onApprove: () =>
-                        controller.approve(controller.filteredPermission[i].id),
-                    onReject: () =>
-                        controller.reject(controller.filteredPermission[i].id),
-                    onDelete: () =>
-                        controller.delete(controller.filteredPermission[i].id),
-                  ),
+                child: ListView(
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.only(
+                        top: isWide ? 24.0 : 10.0,
+                        left: isWide ? 24.0 : 10.0,
+                        right: isWide ? 24.0 : 10.0,
+                        bottom: 10.0,
+                      ),
+                      child: ResponsiveGridRow(
+                        children: List.generate(
+                          controller.filteredPermission.length,
+                          (i) {
+                            return ResponsiveGridCol(
+                              xl: 4,
+                              lg: 4,
+                              md: 6,
+                              sm: 12,
+                              xs: 12,
+                              child: Padding(
+                                padding: EdgeInsets.only(
+                                  right: isWide ? 8.0 : 0.0,
+                                ),
+                                child: PermissionCard(
+                                  req: controller.filteredPermission[i],
+                                  canApprove: auth.canEdit(
+                                    'permission_request',
+                                  ),
+                                  canDelete: auth.canDelete(
+                                    'permission_request',
+                                  ),
+                                  onApprove: () => controller.approve(
+                                    controller.filteredPermission[i].id,
+                                  ),
+                                  onReject: () => controller.reject(
+                                    controller.filteredPermission[i].id,
+                                  ),
+                                  onDelete: () => controller.delete(
+                                    controller.filteredPermission[i].id,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               );
             }),
