@@ -108,19 +108,6 @@ class Department extends StatelessWidget {
                           ),
                         ],
                       ),
-                // ListView.builder(
-                //     padding: EdgeInsets.only(
-                //       top: 10.0,
-                //       left: isWide ? 24.0 : 10.0,
-                //       right: isWide ? 24.0 : 10.0,
-                //       bottom: 10.0,
-                //     ),
-                //     itemCount: controller.filteredDepartments.length,
-                //     itemBuilder: (_, i) {
-                //       final d = controller.filteredDepartments[i];
-                //       return DepartmentCard(item: d);
-                //     },
-                //   ),
               ),
             ),
           ],

@@ -76,28 +76,26 @@ class HolidayCard extends StatelessWidget {
               ],
             ),
           ),
-          Row(
-            children: [
+          PopupMenuButton(
+            itemBuilder: (_) => [
               if (onEdit != null)
-                GestureDetector(
-                  onTap: onEdit,
-                  child: Icon(
-                    Icons.edit_rounded,
-                    size: 16,
-                    color: AppColors.accent,
-                  ),
-                ),
-              if (onEdit != null && onDelete != null) const SizedBox(width: 8),
+                const PopupMenuItem(value: 'edit', child: Text('Edit')),
               if (onDelete != null)
-                GestureDetector(
-                  onTap: onDelete,
-                  child: Icon(
-                    Icons.delete_rounded,
-                    size: 16,
-                    color: AppColors.error,
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Text(
+                    'Delete',
+                    style: TextStyle(color: AppColors.error),
                   ),
                 ),
             ],
+            onSelected: (v) {
+              if (v == 'edit') {
+                onEdit?.call();
+              } else {
+                onDelete?.call();
+              }
+            },
           ),
         ],
       ),

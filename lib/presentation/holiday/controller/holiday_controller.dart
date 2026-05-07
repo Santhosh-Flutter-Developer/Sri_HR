@@ -13,6 +13,7 @@ AuthController get auth => Get.find<AuthController>();
 class HolidayController extends GetxController {
   final repo = HolidayRepository();
   final holidays = <HolidayModel>[].obs;
+  final filteredholidays = <HolidayModel>[].obs;
   final isLoading = false.obs;
   final selectedYear = DateTime.now().year.obs;
 
@@ -29,10 +30,22 @@ class HolidayController extends GetxController {
         auth.companyId,
         year: selectedYear.value,
       );
+      filteredholidays.value = holidays.value;
     } catch (e) {
       log("ERROR: $e");
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  void search(String query) {
+    if (query.isEmpty) {
+      filteredholidays.value = holidays;
+    } else {
+      filteredholidays.value = holidays.where((item) {
+        final name = item.reason.toString().toLowerCase();
+        return name.contains(query.toString().toLowerCase());
+      }).toList();
     }
   }
 
@@ -41,6 +54,9 @@ class HolidayController extends GetxController {
       data['company_id'] = auth.companyId;
       holidays.add(await repo.createHoliday(data));
       showSuccess('Holiday added');
+      Future.delayed(Duration(seconds: 2), () {
+        loadHolidays();
+      });
     } catch (e) {
       showError('$e');
     }
@@ -52,6 +68,9 @@ class HolidayController extends GetxController {
       final idx = holidays.indexWhere((x) => x.id == id);
       if (idx != -1) holidays[idx] = h;
       showSuccess('Holiday updated');
+      Future.delayed(Duration(seconds: 2), () {
+        loadHolidays();
+      });
     } catch (e) {
       showError('$e');
     }
@@ -62,6 +81,9 @@ class HolidayController extends GetxController {
       await repo.deleteHoliday(id);
       holidays.removeWhere((x) => x.id == id);
       showSuccess('Holiday deleted');
+      Future.delayed(Duration(seconds: 2), () {
+        loadHolidays();
+      });
     } catch (e) {
       showError('$e');
     }
@@ -79,6 +101,7 @@ class HolidayController extends GetxController {
   }) {
     Get.dialog(
       Dialog(
+        insetPadding: EdgeInsets.all(4.0),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: HolidayForm(controller: controller, item: holiday),
       ),
