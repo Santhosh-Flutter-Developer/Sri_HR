@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:responsive_grid/responsive_grid.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/leave/controller/leave_controller.dart';
@@ -77,10 +78,10 @@ class Leave extends StatelessWidget {
         children: [
           Obx(
             () => Padding(
-              padding: const EdgeInsets.only(
-                left: 20.0,
-                right: 20.0,
-                top: 20.0,
+              padding: EdgeInsets.only(
+                left: isWide ? 20.0 : 10.0,
+                right: isWide ? 20.0 : 10.0,
+                top: isWide ? 20.0 : 10.0,
               ),
               child: Row(
                 children: [
@@ -132,22 +133,63 @@ class Leave extends StatelessWidget {
               }
               return RefreshIndicator(
                 onRefresh: controller.loadLeaves,
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(20.0),
-                  itemCount: leaves.length,
-                  itemBuilder: (_, i) => LeaveCard(
-                    leave: leaves[i],
-                    canApprove: auth.canEdit('leave_request'),
-                    canDelete: auth.canDelete('leave_request'),
-                    onApprove: () => controller.approve(leaves[i].id),
-                    onReject: () => controller.reject(leaves[i].id),
-                    onDelete: () => controller.confirmDelete(
-                      context,
-                      controller,
-                      leaves[i].id,
+                child: ListView(
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.only(
+                        top: isWide ? 24.0 : 10.0,
+                        left: isWide ? 24.0 : 10.0,
+                        right: isWide ? 24.0 : 10.0,
+                        bottom: 10.0,
+                      ),
+                      child: ResponsiveGridRow(
+                        children: List.generate(leaves.length, (i) {
+                          return ResponsiveGridCol(
+                            xl: 4,
+                            lg: 4,
+                            md: 6,
+                            sm: 12,
+                            xs: 12,
+                            child: Padding(
+                              padding: EdgeInsets.only(
+                                right: isWide ? 8.0 : 0.0,
+                              ),
+                              child: LeaveCard(
+                                leave: leaves[i],
+                                canApprove: auth.canEdit('leave_request'),
+                                canDelete: auth.canDelete('leave_request'),
+                                onApprove: () =>
+                                    controller.approve(leaves[i].id),
+                                onReject: () => controller.reject(leaves[i].id),
+                                onDelete: () => controller.confirmDelete(
+                                  context,
+                                  controller,
+                                  leaves[i].id,
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
+                // ListView.builder(
+                //   padding: EdgeInsets.all(isWide ? 20.0 : 10.0),
+                //   itemCount: leaves.length,
+                //   itemBuilder: (_, i) => LeaveCard(
+                //     leave: leaves[i],
+                //     canApprove: auth.canEdit('leave_request'),
+                //     canDelete: auth.canDelete('leave_request'),
+                //     onApprove: () => controller.approve(leaves[i].id),
+                //     onReject: () => controller.reject(leaves[i].id),
+                //     onDelete: () => controller.confirmDelete(
+                //       context,
+                //       controller,
+                //       leaves[i].id,
+                //     ),
+                //   ),
+                // ),
               );
             }),
           ),

@@ -30,6 +30,7 @@ class LeaveCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width >= 800;
     final emp = leave.employee;
     final empName = emp?.fullName ?? "Unknown Employee";
     final empCode = emp?.employeeCode ?? '';
@@ -95,6 +96,7 @@ class LeaveCard extends StatelessWidget {
                       const SizedBox(height: 3),
                       Wrap(
                         spacing: 8,
+                        runSpacing: 4.0,
                         children: [
                           if (empCode.isNotEmpty)
                             InfoBadge(empCode, AppColors.primary),
@@ -248,7 +250,12 @@ class LeaveCard extends StatelessWidget {
                     child: OutlinedButton.icon(
                       onPressed: onReject,
                       icon: const Icon(Icons.close_rounded, size: 14),
-                      label: const Text('Reject'),
+                      label: Padding(
+                        padding: EdgeInsets.symmetric(
+                          vertical: isWide ? 8.0 : 0.0,
+                        ),
+                        child: const Text('Reject'),
+                      ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.error,
                         side: const BorderSide(color: AppColors.error),
@@ -264,7 +271,12 @@ class LeaveCard extends StatelessWidget {
                     child: ElevatedButton.icon(
                       onPressed: onApprove,
                       icon: const Icon(Icons.check_rounded, size: 14),
-                      label: const Text('Approve'),
+                      label: Padding(
+                        padding: EdgeInsets.symmetric(
+                          vertical: isWide ? 8.0 : 0.0,
+                        ),
+                        child: const Text('Approve'),
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.success,
                         padding: const EdgeInsets.symmetric(vertical: 10),

@@ -145,7 +145,7 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
+      insetPadding: const EdgeInsets.all(4.0),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 540),
         child: Column(
