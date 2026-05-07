@@ -26,6 +26,7 @@ class EmployeeModel {
   final String? pincode;
   final String? email;
   final String? profilePicture;
+  final String? profileTemplate;
   final String? aadharDocUrl;
   final String? otherDocUrl;
   final int casualLeave;
@@ -66,6 +67,7 @@ class EmployeeModel {
     this.mobileLogin = true,
     this.outsideOffice = false,
     this.isActive = true,
+    this.profileTemplate,
     this.department,
     this.role,
   });
@@ -98,6 +100,7 @@ class EmployeeModel {
     pincode: j['pincode'] as String?,
     email: j['email'] as String?,
     profilePicture: j['profile_picture'] as String?,
+    profileTemplate: j['face_template'] as String?,
     aadharDocUrl: j['aadhar_doc_url'] as String?,
     otherDocUrl: j['other_doc_url'] as String?,
     casualLeave: (j['casual_leave'] as int?) ?? 12,
@@ -134,6 +137,7 @@ class EmployeeModel {
     'pincode': pincode,
     'email': email,
     'profile_picture': profilePicture,
+    'face_template': profileTemplate,
     'aadhar_doc_url': aadharDocUrl,
     'other_doc_url': otherDocUrl,
     'casual_leave': casualLeave,

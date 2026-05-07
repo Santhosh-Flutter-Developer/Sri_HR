@@ -1,7 +1,10 @@
+import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_exif_rotation/flutter_exif_rotation.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:responsive_grid/responsive_grid.dart';
@@ -17,6 +20,7 @@ import 'package:sri_hr/presentation/designation/controller/role_controller.dart'
 import 'package:sri_hr/presentation/employee/controller/employee_controller.dart';
 import 'package:sri_hr/presentation/employee_status/controller/employee_status_controller.dart';
 import 'package:sri_hr/presentation/salary_type/controller/salary_type_controller.dart';
+import 'package:sri_hr/routes/app_routes.dart';
 import 'package:sri_hr/widgets/app_shell.dart';
 import 'package:sri_hr/widgets/sri_dropdown.dart';
 import 'package:sri_hr/widgets/sri_textfield.dart';
@@ -128,6 +132,7 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
     mobileLogin = e?.mobileLogin ?? true;
     outsideOffice = e?.outsideOffice ?? false;
     isActive = e?.isActive ?? true;
+    widget.controller.selectedProfile.value = null;
 
     if (!isEdit) _generateCode();
   }
@@ -211,13 +216,20 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
   }
 
   Future<void> _submit() async {
+    final controller = Get.find<EmployeeController>();
     setState(() => isLoading = true);
+    String? profileUrl = widget.employee?.profilePicture;
+    String? profileFaceTemplate = widget.employee?.profileTemplate;
     Uint8List? aadharBytes;
     String? aadharPath;
     if (documents.isNotEmpty) {
       aadharBytes = documents.first['bytes'] as Uint8List;
       aadharPath = documents.first['path'] as String;
     }
+
+    Uint8List template = Get.find<EmployeeController>().faceTemplate;
+
+    String base64Template = base64Encode(template);
     final data = {
       'company_id': companyId,
       'employee_code': code.text.trim(),
@@ -242,6 +254,11 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
       'mobile_login': mobileLogin,
       'outside_office': outsideOffice,
       'is_active': isActive,
+      'face_template': widget.employee != null
+          ? controller.selectedProfile.value != null
+                ? base64Template
+                : widget.employee?.profileTemplate
+          : base64Template,
       'username': username.text.trim(),
       if (!isEdit && password.text.isNotEmpty) 'password': password.text,
     };
@@ -272,12 +289,12 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
         ? AppShell(
             currentModule: 'employee',
             title: 'Employee',
-            child: formWidget(),
+            child: formWidget(widget.employee),
           )
-        : formWidget();
+        : formWidget(widget.employee);
   }
 
-  Widget formWidget() {
+  Widget formWidget(EmployeeModel? employee) {
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
@@ -327,7 +344,7 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
                 key: ValueKey(currentStep),
                 child: Form(
                   key: stepKeys[currentStep],
-                  child: _buildStep(currentStep),
+                  child: _buildStep(currentStep, employee),
                 ),
               ),
             ),
@@ -346,9 +363,9 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
     );
   }
 
-  Widget _buildStep(int step) {
+  Widget _buildStep(int step, EmployeeModel? employe) {
     return switch (step) {
-      0 => _StepBasic(state: this),
+      0 => _StepBasic(state: this, employee: employe),
       1 => _StepAddress(state: this),
       2 => _StepWork(state: this),
       3 => _StepLoginDocs(state: this),
@@ -644,7 +661,8 @@ class _StepFooter extends StatelessWidget {
 // ─────────────────────────────────────────────
 class _StepBasic extends StatelessWidget {
   final _EmployeeFormPageState state;
-  const _StepBasic({required this.state});
+  final EmployeeModel? employee;
+  const _StepBasic({required this.state, required this.employee});
 
   @override
   Widget build(BuildContext context) {
@@ -661,6 +679,7 @@ class _StepBasic extends StatelessWidget {
           // Profile pic
           _ProfilePicPicker(
             bytes: state.profileBytes,
+            employee: employee,
             onPick: (b, p) => state.setState(() {
               state.profileBytes = b;
               state.profilePath = p;
@@ -1729,24 +1748,75 @@ String? _req(String? v) => v == null || v.trim().isEmpty ? 'Required' : null;
 // ─────────────────────────────────────────────
 // PROFILE PIC PICKER
 // ─────────────────────────────────────────────
-class _ProfilePicPicker extends StatelessWidget {
+class _ProfilePicPicker extends StatefulWidget {
   final Uint8List? bytes;
+  final EmployeeModel? employee;
   final void Function(Uint8List, String) onPick;
-  const _ProfilePicPicker({this.bytes, required this.onPick});
+  const _ProfilePicPicker({
+    this.bytes,
+    required this.onPick,
+    required this.employee,
+  });
 
   @override
+  State<_ProfilePicPicker> createState() => _ProfilePicPickerState();
+}
+
+class _ProfilePicPickerState extends State<_ProfilePicPicker> {
+  final controller = Get.isRegistered<EmployeeController>()
+      ? Get.find<EmployeeController>()
+      : Get.put(EmployeeController());
+  @override
   Widget build(BuildContext context) {
-    return Center(
+    return Obx(
+      () => Center(
+        child: GestureDetector(
+          onTap: captureFace,
+          child: Container(
+            width: 90.0,
+            height: 90.0,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.2),
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.primary, width: 2),
+              image: controller.selectedProfile.value != null
+                  ? DecorationImage(
+                      image: FileImage(controller.selectedProfile.value!),
+                      fit: BoxFit.cover,
+                    )
+                  : (widget.employee?.profilePicture != null &&
+                        widget.employee!.profilePicture!.isNotEmpty)
+                  ? DecorationImage(
+                      image: NetworkImage(widget.employee!.profilePicture!),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
+            ),
+            child: controller.selectedProfile.value != null
+                ? SizedBox()
+                : widget.employee?.profilePicture != null
+                ? SizedBox()
+                : const Icon(
+                    Icons.person_outline,
+                    color: AppColors.primary,
+                    size: 40,
+                  ),
+          ),
+        ),
+      ),
+    );
+    /*Center(
       child: GestureDetector(
         onTap: () async {
-          final img = await ImagePicker().pickImage(
-            source: ImageSource.gallery,
-            maxWidth: 400,
-          );
-          if (img != null) {
-            final b = await img.readAsBytes();
-            onPick(b, img.path);
-          }
+          captureFace();
+          // final img = await ImagePicker().pickImage(
+          //   source: ImageSource.gallery,
+          //   maxWidth: 400,
+          // );
+          // if (img != null) {
+          //   final b = await img.readAsBytes();
+          //   widget.onPick(b, img.path);
+          // }
         },
         child: Stack(
           alignment: Alignment.center,
@@ -1754,8 +1824,10 @@ class _ProfilePicPicker extends StatelessWidget {
             CircleAvatar(
               radius: 52,
               backgroundColor: AppColors.primary.withOpacity(0.15),
-              backgroundImage: bytes != null ? MemoryImage(bytes!) : null,
-              child: bytes == null
+              backgroundImage: widget.bytes != null
+                  ? MemoryImage(widget.bytes!)
+                  : null,
+              child: widget.bytes == null
                   ? const Icon(Icons.person, size: 52, color: Colors.white70)
                   : null,
             ),
@@ -1790,6 +1862,99 @@ class _ProfilePicPicker extends StatelessWidget {
           ],
         ),
       ),
+    );*/
+  }
+
+  Future<void> captureFace() async {
+    controller.faceTemplate = "";
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Take Photo'),
+              onTap: () async {
+                Navigator.pop(context, ImageSource.camera);
+                controller.faceTemplate = "";
+
+                final capturedImage = await Get.toNamed(
+                  AppRoutes.routeFaceCapture,
+                );
+
+                File imageFile = await controller.uint8ListToFile(
+                  capturedImage["face_URL"],
+                  'image${DateTime.now()}.png',
+                );
+
+                setState(() {
+                  controller.faceImage = imageFile;
+                  controller.selectedProfile.value = imageFile;
+                  controller.faceTemplate = capturedImage["face_template"];
+                });
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from Gallery'),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
     );
+    if (source == ImageSource.gallery) {
+      if (source != null) {
+        final xFile = await ImagePicker().pickImage(
+          source: source,
+          imageQuality: 85,
+          maxWidth: 512,
+        );
+        if (xFile == null) return;
+        var rotatedImage = await FlutterExifRotation.rotateImage(
+          path: xFile.path,
+        );
+        final faces = await controller.facesdkPlugin.extractFaces(
+          rotatedImage.path,
+        );
+        if (faces.length == 0) {
+          Get.snackbar(
+            "Warning",
+            "No Face Detected!",
+            margin: EdgeInsets.all(10.0),
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: AppColors.warning.withOpacity(0.2),
+            leftBarIndicatorColor: AppColors.warning,
+          );
+          return;
+        }
+        if (faces.length > 1) {
+          Get.snackbar(
+            "Warning",
+            "MultiFace Detected!",
+            margin: EdgeInsets.all(10.0),
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: AppColors.warning.withOpacity(0.2),
+            leftBarIndicatorColor: AppColors.warning,
+          );
+          return;
+        }
+        for (int i = 0; i < faces.length; i++) {
+          if (i == 0) {
+            File imageFile = await controller.uint8ListToFile(
+              faces[i]["faceJpg"],
+              "image${DateTime.now()}.png",
+            );
+            setState(() {
+              controller.faceImage = imageFile;
+              controller.selectedProfile.value = imageFile;
+              controller.faceTemplate = faces[i]["templates"];
+            });
+          }
+        }
+      }
+    }
   }
 }

@@ -1,7 +1,12 @@
+import 'dart:developer';
+import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:facesdk_plugin/facesdk_plugin.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:sri_hr/core/constants/app_constants.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/models/employee_model.dart';
 import 'package:sri_hr/data/services/supabase_service.dart';
@@ -17,6 +22,13 @@ class EmployeeController extends GetxController {
   final employees = <EmployeeModel>[].obs;
   final isLoading = false.obs;
   final searchQuery = ''.obs;
+  dynamic faceTemplate;
+  File? faceImage;
+  final selectedProfile = Rx<File?>(null);
+
+  final facesdkPlugin = FacesdkPlugin();
+  final RxString warningStates = "".obs;
+  final RxBool visibleWarnings = false.obs;
 
   // Only these keys exist as columns in the employees table.
   // Any extra key (password, username, departments, roles…) is stripped before insert.
@@ -47,13 +59,86 @@ class EmployeeController extends GetxController {
     'casual_leave',
     'mobile_login',
     'outside_office',
+    'face_template',
     'is_active',
   };
 
   @override
   void onInit() {
     super.onInit();
+    faceInit();
     loadEmployees();
+  }
+
+  Future<File> uint8ListToFile(Uint8List bytes, String fileName) async {
+    final directory =
+        await getTemporaryDirectory(); // or getApplicationDocumentsDirectory()
+    final filePath = '${directory.path}/$fileName';
+
+    File file = File(filePath);
+    await file.writeAsBytes(bytes);
+
+    return file;
+  }
+
+  Future<void> faceInit() async {
+    RxInt facepluginState = (-1).obs;
+    RxString warningState = "".obs;
+    RxBool visibleWarning = false.obs;
+
+    try {
+      if (Platform.isAndroid) {
+        await facesdkPlugin
+            .setActivation(AppConstants.androidfacesdkLicence)
+            .then((value) {
+              return facepluginState.value = value ?? -1;
+            });
+      } else {
+        await facesdkPlugin.setActivation(AppConstants.iosfacesdkLicence).then((
+          value,
+        ) {
+          return facepluginState.value = value ?? -1;
+        });
+      }
+
+      if (facepluginState.value == 0) {
+        await facesdkPlugin.init().then(
+          (value) => facepluginState.value = value ?? -1,
+        );
+      }
+    } catch (e) {
+      log("Face Init Error: $e");
+    }
+
+    RxInt? livenessLevel = 0.obs;
+
+    try {
+      await facesdkPlugin.setParam({
+        'check_liveness_level': livenessLevel.value,
+      });
+    } catch (e) {
+      log("CHECK_LIVENESS_ERROR:$e");
+    }
+
+    if (facepluginState.value == -1) {
+      warningState.value = "Invalid license!";
+      visibleWarning.value = true;
+    } else if (facepluginState.value == -2) {
+      warningState.value = "License expired!";
+      visibleWarning.value = true;
+    } else if (facepluginState.value == -3) {
+      warningState.value = "Invalid license!";
+      visibleWarning.value = true;
+    } else if (facepluginState.value == -4) {
+      warningState.value = "No activated!";
+      visibleWarning.value = true;
+    } else if (facepluginState.value == -5) {
+      warningState.value = "Init error!";
+      visibleWarning.value = true;
+    }
+
+    warningStates.value = warningState.value;
+    visibleWarnings.value = visibleWarning.value;
   }
 
   List<EmployeeModel> get filteredEmployees {
@@ -141,14 +226,16 @@ class EmployeeController extends GetxController {
       rawData['company_id'] = selectedCompanyId;
 
       // ── Upload profile picture ──────────────────────────
-      if (profileBytes != null && profileBytes.isNotEmpty) {
+      if (selectedProfile.value != null) {
+        final bytes = await selectedProfile.value!.readAsBytes();
         final fileName =
             'profile_${selectedCompanyId}_${rawData['employee_code']}'
             '_${DateTime.now().millisecondsSinceEpoch}.jpg';
         rawData['profile_picture'] = await SupabaseService.uploadFile(
           'profiles',
           fileName,
-          profileBytes,
+          bytes,
+          contentType: 'image/jpeg',
         );
       }
 
@@ -330,21 +417,20 @@ class EmployeeController extends GetxController {
     try {
       rawData.remove('password');
       final String? username = rawData.remove('username') as String?;
-
       // Use company_id from rawData, fall back to active branch
       final String companyId =
           (rawData['company_id'] as String?)?.isNotEmpty == true
           ? rawData['company_id'] as String
           : auth.companyId;
-
-      if (profileBytes != null && profileBytes.isNotEmpty) {
+      if (selectedProfile.value != null) {
+        final bytes = await selectedProfile.value!.readAsBytes();
         final fileName =
             'profile_${companyId}_${rawData['employee_code']}'
             '_${DateTime.now().millisecondsSinceEpoch}.jpg';
         rawData['profile_picture'] = await SupabaseService.uploadFile(
           'profiles',
           fileName,
-          profileBytes,
+          bytes,
         );
       }
 
@@ -353,9 +439,7 @@ class EmployeeController extends GetxController {
         if (v == null || v == '') rawData.remove(key);
       }
       rawData.removeWhere((k, _) => !_employeeCols.contains(k));
-
       final emp = await _repo.updateEmployee(id, rawData);
-
       // Update username in users table if changed
       if (username != null && username.isNotEmpty && emp.userId != null) {
         await SupabaseService.client

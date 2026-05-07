@@ -68,6 +68,11 @@ dependencies:
   dropdown_search: ^7.0.0
   responsive_grid: ^2.4.4
 
+  facesdk_plugin:
+    path: ./facesdk_plugin
+  flutter_exif_rotation: ^0.5.1
+  path_provider: ^2.1.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -79,6 +84,7 @@ flutter:
 
   uses-material-design: true
   assets:
+    - assets/mobilefacenet.tflite
     - assets/images/
     - assets/images/gif/
     - .env
