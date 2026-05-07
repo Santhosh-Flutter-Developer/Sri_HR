@@ -29,45 +29,53 @@ class Attendance extends StatelessWidget {
       currentModule: 'attendance_report',
       title: 'Attendance Report',
       actions: [
-        Obx(
-          () => Container(
-            decoration: BoxDecoration(
-              color: AppColors.surfaceVariant,
-              borderRadius: BorderRadius.circular(10.0),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Row(
-              children: [
-                ViewToggleBtn(
-                  icon: Icons.table_rows_rounded,
-                  tooltip: 'Table View',
-                  selected: controller.viewMode.value == 'table',
-                  onTap: () => controller.viewMode.value = 'table',
-                ),
-                ViewToggleBtn(
-                  icon: Icons.grid_view_rounded,
-                  tooltip: 'Grid View',
-                  selected: controller.viewMode.value == 'grid',
-                  onTap: () => controller.viewMode.value = 'grid',
-                ),
-              ],
+        if (isWide)
+          Obx(
+            () => Container(
+              decoration: BoxDecoration(
+                color: AppColors.surfaceVariant,
+                borderRadius: BorderRadius.circular(10.0),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(
+                children: [
+                  ViewToggleBtn(
+                    icon: Icons.table_rows_rounded,
+                    tooltip: 'Table View',
+                    selected: controller.viewMode.value == 'table',
+                    onTap: () => controller.viewMode.value = 'table',
+                  ),
+                  ViewToggleBtn(
+                    icon: Icons.grid_view_rounded,
+                    tooltip: 'Grid View',
+                    selected: controller.viewMode.value == 'grid',
+                    onTap: () => controller.viewMode.value = 'grid',
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
         const SizedBox(width: 10.0),
-        SriButton(
-          label: "Filter",
-          onPressed: () => controller.showFilterSheet(context, controller),
-          icon: Icons.filter_list_rounded,
-          isOutlined: true,
-        ),
+        isWide
+            ? SriButton(
+                label: "Filter",
+                onPressed: () =>
+                    controller.showFilterSheet(context, controller),
+                icon: Icons.filter_list_rounded,
+                isOutlined: true,
+              )
+            : IconButton(
+                onPressed: () =>
+                    controller.showFilterSheet(context, controller),
+                icon: Icon(Icons.filter_list_rounded),
+              ),
         const SizedBox(width: 10.0),
-        SriButton(
-          label: "Export",
-          onPressed: () => controller.exportCSV(context, controller),
-          icon: Icons.download_rounded,
-        ),
-        const SizedBox(width: 16.0),
+        // SriButton(
+        //   label: "Export",
+        //   onPressed: () => controller.exportCSV(context, controller),
+        //   icon: Icons.download_rounded,
+        // ),
+        // const SizedBox(width: 16.0),
       ],
       child: Column(
         children: [
@@ -79,6 +87,40 @@ class Attendance extends StatelessWidget {
           // Summary
           SummaryStrip(controller: controller),
           const Divider(height: 1.0, color: AppColors.border),
+          if (!isWide)
+            Obx(
+              () => Padding(
+                padding: const EdgeInsets.all(10.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceVariant,
+                        borderRadius: BorderRadius.circular(10.0),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        children: [
+                          ViewToggleBtn(
+                            icon: Icons.table_rows_rounded,
+                            tooltip: 'Table View',
+                            selected: controller.viewMode.value == 'table',
+                            onTap: () => controller.viewMode.value = 'table',
+                          ),
+                          ViewToggleBtn(
+                            icon: Icons.grid_view_rounded,
+                            tooltip: 'Grid View',
+                            selected: controller.viewMode.value == 'grid',
+                            onTap: () => controller.viewMode.value = 'grid',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           // Content
           Expanded(
             child: Obx(() {

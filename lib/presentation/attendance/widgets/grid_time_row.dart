@@ -22,29 +22,32 @@ class GridTimeRow extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 28,
+            // width: 28,
             height: 20,
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(4),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, size: 10, color: color),
-                const SizedBox(width: 2),
-                Text(
-                  type,
-                  style: TextStyle(
-                    fontSize: 8,
-                    fontWeight: FontWeight.w800,
-                    color: color,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 10, color: color),
+                  const SizedBox(width: 2),
+                  Text(
+                    type,
+                    style: TextStyle(
+                      fontSize: 8,
+                      fontWeight: FontWeight.w800,
+                      color: color,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-          const SizedBox(width: 6),
+          const Spacer(),
           Text(
             time,
             style: const TextStyle(
