@@ -167,10 +167,10 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
     });
   }
 
-  void _onDesignationChanged(String? roleId) {
-    setState(() => roleId = roleId);
-    if (roleId == null) return;
-    final role = roleCtrl.roles.firstWhereOrNull((r) => r.id == roleId);
+  void _onDesignationChanged(String? selectedRoleId) {
+    setState(() => roleId = selectedRoleId);
+    if (selectedRoleId == null) return;
+    final role = roleCtrl.roles.firstWhereOrNull((r) => r.id == selectedRoleId);
     if (role != null) casualLeave.text = '${role.casualLeave}';
   }
 

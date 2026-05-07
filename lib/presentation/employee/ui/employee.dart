@@ -126,25 +126,31 @@ class Employee extends StatelessWidget {
                                     md: 6,
                                     sm: 12,
                                     xs: 12,
-                                    child: EmployeeCard(
-                                      employee: controller.filteredEmployees[i],
-                                      onEdit: auth.canEdit('employee')
-                                          ? () => controller.openForm(
-                                              context,
-                                              controller,
-                                              employee: controller
-                                                  .filteredEmployees[i],
-                                            )
-                                          : null,
-                                      onDelete: auth.canDelete('employee')
-                                          ? () => controller.confirmDelete(
-                                              context,
-                                              controller,
-                                              controller
-                                                  .filteredEmployees[i]
-                                                  .id,
-                                            )
-                                          : null,
+                                    child: Padding(
+                                      padding: EdgeInsets.only(
+                                        right: isWide ? 8.0 : 0.0,
+                                      ),
+                                      child: EmployeeCard(
+                                        employee:
+                                            controller.filteredEmployees[i],
+                                        onEdit: auth.canEdit('employee')
+                                            ? () => controller.openForm(
+                                                context,
+                                                controller,
+                                                employee: controller
+                                                    .filteredEmployees[i],
+                                              )
+                                            : null,
+                                        onDelete: auth.canDelete('employee')
+                                            ? () => controller.confirmDelete(
+                                                context,
+                                                controller,
+                                                controller
+                                                    .filteredEmployees[i]
+                                                    .id,
+                                              )
+                                            : null,
+                                      ),
                                     ),
                                   );
                                 },
