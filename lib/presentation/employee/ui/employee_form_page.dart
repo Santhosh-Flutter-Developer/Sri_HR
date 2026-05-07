@@ -227,9 +227,6 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
       aadharPath = documents.first['path'] as String;
     }
 
-    Uint8List template = Get.find<EmployeeController>().faceTemplate;
-
-    String base64Template = base64Encode(template);
     final data = {
       'company_id': companyId,
       'employee_code': code.text.trim(),
@@ -254,14 +251,21 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
       'mobile_login': mobileLogin,
       'outside_office': outsideOffice,
       'is_active': isActive,
-      'face_template': widget.employee != null
-          ? controller.selectedProfile.value != null
-                ? base64Template
-                : widget.employee?.profileTemplate
-          : base64Template,
       'username': username.text.trim(),
       if (!isEdit && password.text.isNotEmpty) 'password': password.text,
     };
+
+    if (controller.faceTemplate != null) {
+      Uint8List template = controller.faceTemplate;
+      String base64Template = base64Encode(template);
+
+      data['face_template'] = widget.employee != null
+          ? controller.selectedProfile.value != null
+                ? base64Template
+                : widget.employee?.profileTemplate
+          : base64Template;
+    }
+
     if (isEdit) {
       await widget.controller.updateEmployee(
         widget.employee!.id,

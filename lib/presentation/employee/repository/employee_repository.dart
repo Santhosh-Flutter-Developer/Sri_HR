@@ -29,6 +29,15 @@ class EmployeeRepository {
     return row != null ? EmployeeModel.fromJson(row) : null;
   }
 
+  Future<EmployeeModel?> getEmployeeUserId(String id) async {
+    final row = await SupabaseService.client
+        .from('employees')
+        .select('*, departments(*), roles(*)')
+        .eq('user_id', id)
+        .maybeSingle();
+    return row != null ? EmployeeModel.fromJson(row) : null;
+  }
+
   /// Generates a unique employee code that is unique across the ENTIRE
   /// organization (all branches), not just within one company.
   /// Format: [BranchPrefix]-EMP[NNN]  e.g. HQ-EMP001, BR1-EMP001

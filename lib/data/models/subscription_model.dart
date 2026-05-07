@@ -33,7 +33,7 @@ class SubscriptionModel {
       status == SubscriptionStatus.active && expiryDate.isAfter(DateTime.now());
   bool get isExpiringSoon =>
       isActive && expiryDate.difference(DateTime.now()).inDays <= 2;
-  int get daysRemaining => expiryDate.difference(DateTime.now()).inDays + 1;
+  int get daysRemaining => expiryDate.difference(DateTime.now()).inDays;
 
   factory SubscriptionModel.fromJson(Map<String, dynamic> j) =>
       SubscriptionModel(

@@ -26,6 +26,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>camera usage</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>photo library usage</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -66,5 +70,20 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- Camera -->
+	<key>NSCameraUsageDescription</key>
+	<string>GeoPunch needs camera access to capture your face for attendance verification.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>GeoPunch needs photo library access to select face images.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>GeoPunch needs to save attendance photos.</string>
+
+	<!-- Location -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>GeoPunch uses your location to verify you are within the office geofence when marking attendance.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>GeoPunch uses your location to verify you are within the office geofence when marking attendance.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>GeoPunch uses your location to verify you are within the office geofence.</string>
 </dict>
 </plist>

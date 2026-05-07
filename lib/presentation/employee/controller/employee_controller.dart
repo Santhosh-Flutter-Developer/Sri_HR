@@ -201,6 +201,16 @@ class EmployeeController extends GetxController {
     }
   }
 
+  Future<EmployeeModel?> getEmployee(String id) async {
+    try {
+      final emp = await _repo.getEmployeeUserId(id);
+      return emp;
+    } catch (e) {
+      showError("Failed to load employee: $e");
+    }
+    return null;
+  }
+
   // Generate code for a SPECIFIC company (not always the active branch)
   Future<String> generateCode([String? companyId]) =>
       _repo.generateEmployeeCode(companyId ?? auth.companyId);

@@ -8,6 +8,7 @@ import 'package:sri_hr/data/models/role_permission_model.dart';
 import 'package:sri_hr/data/services/supabase_service.dart';
 import 'package:sri_hr/presentation/attendance/controller/attendance_controller.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
+import 'package:sri_hr/presentation/company/repository/company_repository.dart';
 import 'package:sri_hr/presentation/company/ui/add_branch_form.dart';
 import 'package:sri_hr/presentation/dashboard/controller/dashboard_controller.dart';
 import 'package:sri_hr/presentation/department/controller/department_controller.dart';
@@ -24,6 +25,7 @@ import 'package:sri_hr/widgets/sri_button.dart';
 AuthController get auth => Get.find<AuthController>();
 
 class CompanyController extends GetxController {
+  final repo = CompanyRepository();
   final client = SupabaseService.client;
   final RxBool enable = false.obs;
   final companies = <CompanyModel>[].obs;
@@ -293,6 +295,16 @@ class CompanyController extends GetxController {
       ),
       barrierDismissible: false,
     );
+  }
+
+  Future<CompanyModel?> getCompany(String id) async {
+    try {
+      final comp = await repo.getCompany(id);
+      return comp;
+    } catch (e) {
+      showError("Failed to load employee: $e");
+    }
+    return null;
   }
 
   void confirmSwitch(
