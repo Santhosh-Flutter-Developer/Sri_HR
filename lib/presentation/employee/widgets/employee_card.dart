@@ -104,7 +104,11 @@ class EmployeeCard extends StatelessWidget {
                           color: AppColors.textSecondary,
                         ),
                       ),
-                      const SizedBox(width: 12),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
                       const Icon(
                         Icons.badge_outlined,
                         size: 12,
@@ -121,7 +125,7 @@ class EmployeeCard extends StatelessWidget {
                     ],
                   ),
                   if (employee.mobile != null) ...[
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 4),
                     Row(
                       children: [
                         const Icon(
@@ -144,7 +148,7 @@ class EmployeeCard extends StatelessWidget {
               ),
             ),
             Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -169,43 +173,26 @@ class EmployeeCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Row(
-                  children: [
+                PopupMenuButton(
+                  itemBuilder: (_) => [
                     if (onEdit != null)
-                      GestureDetector(
-                        onTap: onEdit,
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(
-                            Icons.edit_rounded,
-                            size: 14,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-                    if (onEdit != null && onDelete != null)
-                      const SizedBox(width: 6),
+                      const PopupMenuItem(value: 'edit', child: Text('Edit')),
                     if (onDelete != null)
-                      GestureDetector(
-                        onTap: onDelete,
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: AppColors.error.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(
-                            Icons.delete_rounded,
-                            size: 14,
-                            color: AppColors.error,
-                          ),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Text(
+                          'Delete',
+                          style: TextStyle(color: AppColors.error),
                         ),
                       ),
                   ],
+                  onSelected: (v) {
+                    if (v == 'edit') {
+                      onEdit?.call();
+                    } else {
+                      onDelete?.call();
+                    }
+                  },
                 ),
               ],
             ),

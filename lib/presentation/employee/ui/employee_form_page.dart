@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:responsive_grid/responsive_grid.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/models/department_model.dart';
 import 'package:sri_hr/data/models/employee_model.dart';
@@ -16,6 +17,7 @@ import 'package:sri_hr/presentation/designation/controller/role_controller.dart'
 import 'package:sri_hr/presentation/employee/controller/employee_controller.dart';
 import 'package:sri_hr/presentation/employee_status/controller/employee_status_controller.dart';
 import 'package:sri_hr/presentation/salary_type/controller/salary_type_controller.dart';
+import 'package:sri_hr/widgets/app_shell.dart';
 import 'package:sri_hr/widgets/sri_dropdown.dart';
 import 'package:sri_hr/widgets/sri_textfield.dart';
 
@@ -265,6 +267,17 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width >= 800;
+    return isWide
+        ? AppShell(
+            currentModule: 'employee',
+            title: 'Employee',
+            child: formWidget(),
+          )
+        : formWidget();
+  }
+
+  Widget formWidget() {
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
@@ -272,7 +285,7 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
         foregroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.white),
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
@@ -474,6 +487,7 @@ class _StepHeader extends StatelessWidget {
                         // Label
                         Text(
                           titles[i],
+                          textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
@@ -536,6 +550,7 @@ class _StepFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width >= 800;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: const BoxDecoration(
@@ -548,7 +563,10 @@ class _StepFooter extends StatelessWidget {
           OutlinedButton.icon(
             onPressed: onBack,
             icon: const Icon(Icons.arrow_back_rounded, size: 16),
-            label: Text(currentStep == 0 ? 'Cancel' : 'Back'),
+            label: Padding(
+              padding: EdgeInsets.symmetric(vertical: isWide ? 4.0 : 0.0),
+              child: Text(currentStep == 0 ? 'Cancel' : 'Back'),
+            ),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
               shape: RoundedRectangleBorder(
@@ -595,12 +613,15 @@ class _StepFooter extends StatelessWidget {
                     isLast ? Icons.check_rounded : Icons.arrow_forward_rounded,
                     size: 16,
                   ),
-            label: Text(
-              isLoading
-                  ? 'Saving...'
-                  : isLast
-                  ? (isEdit ? 'Update Employee' : 'Save Employee')
-                  : 'Next',
+            label: Padding(
+              padding: EdgeInsets.symmetric(vertical: isWide ? 4.0 : 0.0),
+              child: Text(
+                isLoading
+                    ? 'Saving...'
+                    : isLast
+                    ? (isEdit ? 'Update' : 'Save')
+                    : 'Next',
+              ),
             ),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
@@ -627,8 +648,14 @@ class _StepBasic extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width >= 800;
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+      padding: EdgeInsets.fromLTRB(
+        isWide ? 20.0 : 10.0,
+        24,
+        isWide ? 20.0 : 10.0,
+        8,
+      ),
       child: Column(
         children: [
           // Profile pic
@@ -644,64 +671,160 @@ class _StepBasic extends StatelessWidget {
             title: 'Employee Information',
             icon: Icons.badge_rounded,
             children: [
-              _Row2(
-                _SriField(
-                  state.code,
-                  'Employee Code *',
-                  Icons.tag_rounded,
-                  validator: _req,
-                  onChanged: (v) => state.username.text = v,
-                ),
-                _SriField(
-                  state.name,
-                  'Full Name *',
-                  Icons.person_rounded,
-                  validator: _req,
-                ),
-              ),
-              _Gap(),
-              _Row2(
-                _DateField(
-                  context,
-                  state.doj,
-                  'Date of Joining',
-                  Icons.calendar_today_rounded,
-                  lastDate: DateTime.now().add(const Duration(days: 365)),
-                ),
-                _DateField(
-                  context,
-                  state.dob,
-                  'Date of Birth *',
-                  Icons.cake_rounded,
-                  validator: _req,
-                  lastDate: DateTime.now(),
-                ),
-              ),
-              _Gap(),
-              _Row2(
-                _GenderDropdown(
-                  value: state.gender,
-                  onChanged: (v) => state.setState(() => state.gender = v),
-                ),
-                _SriField(
-                  state.fatherName,
-                  'Father / Husband Name',
-                  Icons.people_rounded,
-                ),
-              ),
-              _Gap(),
-              _SriField(
-                state.mobile,
-                'Mobile Number',
-                Icons.phone_rounded,
-                keyboard: TextInputType.phone,
-              ),
-              _Gap(),
-              _SriField(
-                state.email,
-                'Email Address',
-                Icons.email_outlined,
-                keyboard: TextInputType.emailAddress,
+              ResponsiveGridRow(
+                children: [
+                  ResponsiveGridCol(
+                    xl: 6,
+                    lg: 6,
+                    md: 6,
+                    sm: 12,
+                    xs: 12,
+                    child: Padding(
+                      padding: EdgeInsets.only(right: isWide ? 5.0 : 0.0),
+                      child: _SriField(
+                        state.code,
+                        'Employee Code *',
+                        Icons.tag_rounded,
+                        validator: _req,
+                        onChanged: (v) => state.username.text = v,
+                      ),
+                    ),
+                  ),
+                  ResponsiveGridCol(
+                    xl: 6,
+                    lg: 6,
+                    md: 6,
+                    sm: 12,
+                    xs: 12,
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        left: isWide ? 5.0 : 0.0,
+                        top: isWide ? 0.0 : 16.0,
+                      ),
+                      child: _SriField(
+                        state.name,
+                        'Full Name *',
+                        Icons.person_rounded,
+                        validator: _req,
+                      ),
+                    ),
+                  ),
+                  ResponsiveGridCol(
+                    xl: 6,
+                    lg: 6,
+                    md: 6,
+                    sm: 12,
+                    xs: 12,
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        right: isWide ? 5.0 : 0.0,
+                        top: 16.0,
+                      ),
+                      child: _DateField(
+                        context,
+                        state.doj,
+                        'Date of Joining',
+                        Icons.calendar_today_rounded,
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                      ),
+                    ),
+                  ),
+                  ResponsiveGridCol(
+                    xl: 6,
+                    lg: 6,
+                    md: 6,
+                    sm: 12,
+                    xs: 12,
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        left: isWide ? 5.0 : 0.0,
+                        top: 16.0,
+                      ),
+                      child: _DateField(
+                        context,
+                        state.dob,
+                        'Date of Birth *',
+                        Icons.cake_rounded,
+                        validator: _req,
+                        lastDate: DateTime.now(),
+                      ),
+                    ),
+                  ),
+                  ResponsiveGridCol(
+                    xl: 6,
+                    lg: 6,
+                    md: 6,
+                    sm: 12,
+                    xs: 12,
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        right: isWide ? 5.0 : 0.0,
+                        top: 16.0,
+                      ),
+                      child: _GenderDropdown(
+                        value: state.gender,
+                        onChanged: (v) =>
+                            state.setState(() => state.gender = v),
+                      ),
+                    ),
+                  ),
+                  ResponsiveGridCol(
+                    xl: 6,
+                    lg: 6,
+                    md: 6,
+                    sm: 12,
+                    xs: 12,
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        left: isWide ? 5.0 : 0.0,
+                        top: 16.0,
+                      ),
+                      child: _SriField(
+                        state.fatherName,
+                        'Father / Husband Name',
+                        Icons.people_rounded,
+                      ),
+                    ),
+                  ),
+                  ResponsiveGridCol(
+                    xl: 6,
+                    lg: 6,
+                    md: 6,
+                    sm: 12,
+                    xs: 12,
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        right: isWide ? 5.0 : 0.0,
+                        top: 16.0,
+                      ),
+                      child: _SriField(
+                        state.mobile,
+                        'Mobile Number',
+                        Icons.phone_rounded,
+                        keyboard: TextInputType.phone,
+                      ),
+                    ),
+                  ),
+                  ResponsiveGridCol(
+                    xl: 6,
+                    lg: 6,
+                    md: 6,
+                    sm: 12,
+                    xs: 12,
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        left: isWide ? 5.0 : 0.0,
+                        top: 16.0,
+                      ),
+                      child: _SriField(
+                        state.email,
+                        'Email Address',
+                        Icons.email_outlined,
+                        keyboard: TextInputType.emailAddress,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -710,46 +833,72 @@ class _StepBasic extends StatelessWidget {
             title: 'Status & Salary',
             icon: Icons.payments_rounded,
             children: [
-              _Row2(
-                Obx(() {
-                  final ids = state.statusCtrl.statuses
-                      .map((s) => s.id)
-                      .toList();
-                  return SriDropdown<String>(
-                    value: state._safeVal(state.statusId, ids),
-                    label: 'Employee Status',
-                    prefixIcon: Icons.toggle_on_rounded,
-                    items: state.statusCtrl.statuses
-                        .map(
-                          (s) => DropdownMenuItem(
-                            value: s.id,
-                            child: Text(s.name),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (v) => state.setState(() => state.statusId = v),
-                  );
-                }),
-                Obx(() {
-                  final ids = state.salaryCtrl.salaryTypes
-                      .map((s) => s.id)
-                      .toList();
-                  return SriDropdown<String>(
-                    value: state._safeVal(state.salaryTypeId, ids),
-                    label: 'Salary Type',
-                    prefixIcon: Icons.payments_rounded,
-                    items: state.salaryCtrl.salaryTypes
-                        .map(
-                          (s) => DropdownMenuItem(
-                            value: s.id,
-                            child: Text(s.name),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (v) =>
-                        state.setState(() => state.salaryTypeId = v),
-                  );
-                }),
+              ResponsiveGridRow(
+                children: [
+                  ResponsiveGridCol(
+                    xl: 6,
+                    lg: 6,
+                    md: 6,
+                    sm: 12,
+                    xs: 12,
+                    child: Obx(() {
+                      final ids = state.statusCtrl.statuses
+                          .map((s) => s.id)
+                          .toList();
+                      return Padding(
+                        padding: EdgeInsets.only(right: isWide ? 5.0 : 0.0),
+                        child: SriDropdown<String>(
+                          value: state._safeVal(state.statusId, ids),
+                          label: 'Employee Status',
+                          prefixIcon: Icons.toggle_on_rounded,
+                          items: state.statusCtrl.statuses
+                              .map(
+                                (s) => DropdownMenuItem(
+                                  value: s.id,
+                                  child: Text(s.name),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (v) =>
+                              state.setState(() => state.statusId = v),
+                        ),
+                      );
+                    }),
+                  ),
+                  ResponsiveGridCol(
+                    xl: 6,
+                    lg: 6,
+                    md: 6,
+                    sm: 12,
+                    xs: 12,
+                    child: Obx(() {
+                      final ids = state.salaryCtrl.salaryTypes
+                          .map((s) => s.id)
+                          .toList();
+                      return Padding(
+                        padding: EdgeInsets.only(
+                          left: isWide ? 5.0 : 0.0,
+                          top: isWide ? 0.0 : 16.0,
+                        ),
+                        child: SriDropdown<String>(
+                          value: state._safeVal(state.salaryTypeId, ids),
+                          label: 'Salary Type',
+                          prefixIcon: Icons.payments_rounded,
+                          items: state.salaryCtrl.salaryTypes
+                              .map(
+                                (s) => DropdownMenuItem(
+                                  value: s.id,
+                                  child: Text(s.name),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (v) =>
+                              state.setState(() => state.salaryTypeId = v),
+                        ),
+                      );
+                    }),
+                  ),
+                ],
               ),
             ],
           ),
@@ -769,6 +918,7 @@ class _StepAddress extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width >= 800;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
       child: Column(
@@ -777,26 +927,79 @@ class _StepAddress extends StatelessWidget {
             title: 'Residential Address',
             icon: Icons.home_rounded,
             children: [
-              _SriField(
-                state.address,
-                'Full Address',
-                Icons.home_outlined,
-                maxLines: 3,
-              ),
-              _Gap(),
-              _Row2(
-                _SriField(state.country, 'Country', Icons.flag_rounded),
-                _SriField(state.state, 'State', Icons.map_rounded),
-              ),
-              _Gap(),
-              _Row2(
-                _SriField(state.city, 'City', Icons.location_city_rounded),
-                _SriField(
-                  state.pincode,
-                  'Pincode',
-                  Icons.pin_drop_rounded,
-                  keyboard: TextInputType.number,
-                ),
+              ResponsiveGridRow(
+                children: [
+                  ResponsiveGridCol(
+                    xl: 12,
+                    lg: 12,
+                    md: 12,
+                    sm: 12,
+                    xs: 12,
+                    child: _SriField(
+                      state.address,
+                      'Full Address',
+                      Icons.home_outlined,
+                      maxLines: 3,
+                    ),
+                  ),
+                  ResponsiveGridCol(
+                    xl: 6,
+                    lg: 6,
+                    md: 6,
+                    sm: 6,
+                    xs: 6,
+                    child: Padding(
+                      padding: EdgeInsets.only(right: 5.0, top: 16.0),
+                      child: _SriField(
+                        state.country,
+                        'Country',
+                        Icons.flag_rounded,
+                      ),
+                    ),
+                  ),
+                  ResponsiveGridCol(
+                    xl: 6,
+                    lg: 6,
+                    md: 6,
+                    sm: 6,
+                    xs: 6,
+                    child: Padding(
+                      padding: EdgeInsets.only(left: 5.0, top: 16.0),
+                      child: _SriField(state.state, 'State', Icons.map_rounded),
+                    ),
+                  ),
+                  ResponsiveGridCol(
+                    xl: 6,
+                    lg: 6,
+                    md: 6,
+                    sm: 6,
+                    xs: 6,
+                    child: Padding(
+                      padding: EdgeInsets.only(right: 5.0, top: 16.0),
+                      child: _SriField(
+                        state.city,
+                        'City',
+                        Icons.location_city_rounded,
+                      ),
+                    ),
+                  ),
+                  ResponsiveGridCol(
+                    xl: 6,
+                    lg: 6,
+                    md: 6,
+                    sm: 6,
+                    xs: 6,
+                    child: Padding(
+                      padding: EdgeInsets.only(left: 5.0, top: 16.0),
+                      child: _SriField(
+                        state.pincode,
+                        'Pincode',
+                        Icons.pin_drop_rounded,
+                        keyboard: TextInputType.number,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -805,11 +1008,22 @@ class _StepAddress extends StatelessWidget {
             title: 'Aadhar Address',
             icon: Icons.credit_card_rounded,
             children: [
-              _SriField(
-                state.aadharAddress,
-                'Aadhar Registered Address',
-                Icons.credit_card_outlined,
-                maxLines: 3,
+              ResponsiveGridRow(
+                children: [
+                  ResponsiveGridCol(
+                    xl: 12,
+                    lg: 12,
+                    md: 12,
+                    sm: 12,
+                    xs: 12,
+                    child: _SriField(
+                      state.aadharAddress,
+                      'Aadhar Registered Address',
+                      Icons.credit_card_outlined,
+                      maxLines: 3,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -829,6 +1043,7 @@ class _StepWork extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width >= 800;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
       child: Column(
@@ -837,103 +1052,141 @@ class _StepWork extends StatelessWidget {
             title: 'Company & Department',
             icon: Icons.business_rounded,
             children: [
-              // Company dropdown
-              Obx(() {
-                final companies = state.companyCtrl.companies;
-                final ids = companies.map((c) => c.id).toList();
-                return SriDropdown<String>(
-                  value: state._safeVal(state.companyId, ids),
-                  label: 'Company / Branch *',
-                  prefixIcon: Icons.business_rounded,
-                  items: companies
-                      .map(
-                        (c) => DropdownMenuItem(
-                          value: c.id,
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 22,
-                                height: 22,
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(5),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    c.name.substring(0, 1).toUpperCase(),
-                                    style: const TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w800,
-                                      color: AppColors.primary,
+              ResponsiveGridRow(
+                children: [
+                  // Company dropdown
+                  ResponsiveGridCol(
+                    xl: 12,
+                    lg: 12,
+                    md: 12,
+                    sm: 12,
+                    xs: 12,
+                    child: Obx(() {
+                      final companies = state.companyCtrl.companies;
+                      final ids = companies.map((c) => c.id).toList();
+                      return SriDropdown<String>(
+                        value: state._safeVal(state.companyId, ids),
+                        label: 'Company / Branch *',
+                        prefixIcon: Icons.business_rounded,
+                        items: companies
+                            .map(
+                              (c) => DropdownMenuItem(
+                                value: c.id,
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 22,
+                                      height: 22,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary.withOpacity(
+                                          0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(5),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          c.name.substring(0, 1).toUpperCase(),
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: AppColors.primary,
+                                          ),
+                                        ),
+                                      ),
                                     ),
-                                  ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        c.name,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  c.name,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
+                            )
+                            .toList(),
+                        onChanged: (v) async {
+                          state.setState(() {
+                            state.companyId = v;
+                            state.departmentId = null;
+                            state.roleId = null;
+                          });
+                          if (v == null) return;
+                          if (!state.isEdit) state._generateCode(v);
+                          await state._loadBranchData(v);
+                        },
+                        validator: (v) => v == null ? 'Required' : null,
+                      );
+                    }),
+                  ),
+                  ResponsiveGridCol(
+                    xl: 6,
+                    lg: 6,
+                    md: 6,
+                    sm: 12,
+                    xs: 12,
+                    child: Obx(() {
+                      final ids = state.deptCtrl.departments
+                          .map((d) => d.id)
+                          .toList();
+                      return Padding(
+                        padding: EdgeInsets.only(
+                          right: isWide ? 5.0 : 0.0,
+                          top: 16.0,
                         ),
-                      )
-                      .toList(),
-                  onChanged: (v) async {
-                    state.setState(() {
-                      state.companyId = v;
-                      state.departmentId = null;
-                      state.roleId = null;
-                    });
-                    if (v == null) return;
-                    if (!state.isEdit) state._generateCode(v);
-                    await state._loadBranchData(v);
-                  },
-                  validator: (v) => v == null ? 'Required' : null,
-                );
-              }),
-              _Gap(),
-              _Row2(
-                Obx(() {
-                  final ids = state.deptCtrl.departments
-                      .map((d) => d.id)
-                      .toList();
-                  return SriDropdown<String>(
-                    value: state._safeVal(state.departmentId, ids),
-                    label: 'Department *',
-                    prefixIcon: Icons.account_tree_rounded,
-                    items: state.deptCtrl.departments
-                        .map(
-                          (d) => DropdownMenuItem(
-                            value: d.id,
-                            child: Text(d.name),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: state._onDepartmentChanged,
-                    validator: (v) => v == null ? 'Required' : null,
-                  );
-                }),
-                Obx(() {
-                  final ids = state.roleCtrl.roles.map((r) => r.id).toList();
-                  return SriDropdown<String>(
-                    value: state._safeVal(state.roleId, ids),
-                    label: 'Designation *',
-                    prefixIcon: Icons.badge_rounded,
-                    items: state.roleCtrl.roles
-                        .map(
-                          (r) => DropdownMenuItem(
-                            value: r.id,
-                            child: Text(r.name),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: state._onDesignationChanged,
-                    validator: (v) => v == null ? 'Required' : null,
-                  );
-                }),
+                        child: SriDropdown<String>(
+                          value: state._safeVal(state.departmentId, ids),
+                          label: 'Department *',
+                          prefixIcon: Icons.account_tree_rounded,
+                          items: state.deptCtrl.departments
+                              .map(
+                                (d) => DropdownMenuItem(
+                                  value: d.id,
+                                  child: Text(d.name),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: state._onDepartmentChanged,
+                          validator: (v) => v == null ? 'Required' : null,
+                        ),
+                      );
+                    }),
+                  ),
+                  ResponsiveGridCol(
+                    xl: 6,
+                    lg: 6,
+                    md: 6,
+                    sm: 12,
+                    xs: 12,
+                    child: Obx(() {
+                      final ids = state.roleCtrl.roles
+                          .map((r) => r.id)
+                          .toList();
+                      return Padding(
+                        padding: EdgeInsets.only(
+                          left: isWide ? 5.0 : 0.0,
+                          top: 16.0,
+                        ),
+                        child: SriDropdown<String>(
+                          value: state._safeVal(state.roleId, ids),
+                          label: 'Designation *',
+                          prefixIcon: Icons.badge_rounded,
+                          items: state.roleCtrl.roles
+                              .map(
+                                (r) => DropdownMenuItem(
+                                  value: r.id,
+                                  child: Text(r.name),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: state._onDesignationChanged,
+                          validator: (v) => v == null ? 'Required' : null,
+                        ),
+                      );
+                    }),
+                  ),
+                ],
               ),
             ],
           ),
@@ -942,36 +1195,77 @@ class _StepWork extends StatelessWidget {
             title: 'Work Settings',
             icon: Icons.tune_rounded,
             children: [
-              _SriField(
-                state.casualLeave,
-                'Casual Leave (days/year)',
-                Icons.event_busy_rounded,
-                keyboard: TextInputType.number,
-              ),
-              _Gap(),
-              _ToggleCard(
-                icon: Icons.phone_android_rounded,
-                label: 'Mobile Login Allowed',
-                subtitle: 'Can login via mobile app',
-                value: state.mobileLogin,
-                onChanged: (v) => state.setState(() => state.mobileLogin = v),
-              ),
-              const SizedBox(height: 10),
-              _ToggleCard(
-                icon: Icons.location_off_rounded,
-                label: 'Outside Office Allowed',
-                subtitle: 'Can mark attendance outside office',
-                value: state.outsideOffice,
-                onChanged: (v) => state.setState(() => state.outsideOffice = v),
-              ),
-              const SizedBox(height: 10),
-              _ToggleCard(
-                icon: Icons.check_circle_rounded,
-                label: 'Active Employee',
-                subtitle: 'Inactive employees cannot login',
-                value: state.isActive,
-                color: AppColors.accentGreen,
-                onChanged: (v) => state.setState(() => state.isActive = v),
+              ResponsiveGridRow(
+                children: [
+                  ResponsiveGridCol(
+                    xl: 12,
+                    lg: 12,
+                    md: 12,
+                    sm: 12,
+                    xs: 12,
+                    child: _SriField(
+                      state.casualLeave,
+                      'Casual Leave (days/year)',
+                      Icons.event_busy_rounded,
+                      keyboard: TextInputType.number,
+                    ),
+                  ),
+                  ResponsiveGridCol(
+                    xl: 12,
+                    lg: 12,
+                    md: 12,
+                    sm: 12,
+                    xs: 12,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 16.0),
+                      child: _ToggleCard(
+                        icon: Icons.phone_android_rounded,
+                        label: 'Mobile Login Allowed',
+                        subtitle: 'Can login via mobile app',
+                        value: state.mobileLogin,
+                        onChanged: (v) =>
+                            state.setState(() => state.mobileLogin = v),
+                      ),
+                    ),
+                  ),
+                  ResponsiveGridCol(
+                    xl: 12,
+                    lg: 12,
+                    md: 12,
+                    sm: 12,
+                    xs: 12,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 16.0),
+                      child: _ToggleCard(
+                        icon: Icons.location_off_rounded,
+                        label: 'Outside Office Allowed',
+                        subtitle: 'Can mark attendance outside office',
+                        value: state.outsideOffice,
+                        onChanged: (v) =>
+                            state.setState(() => state.outsideOffice = v),
+                      ),
+                    ),
+                  ),
+                  ResponsiveGridCol(
+                    xl: 12,
+                    lg: 12,
+                    md: 12,
+                    sm: 12,
+                    xs: 12,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 16.0),
+                      child: _ToggleCard(
+                        icon: Icons.check_circle_rounded,
+                        label: 'Active Employee',
+                        subtitle: 'Inactive employees cannot login',
+                        value: state.isActive,
+                        color: AppColors.accentGreen,
+                        onChanged: (v) =>
+                            state.setState(() => state.isActive = v),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -999,22 +1293,43 @@ class _StepLoginDocs extends StatelessWidget {
             title: 'Login Credentials',
             icon: Icons.lock_rounded,
             children: [
-              _SriField(
-                state.username,
-                'Username',
-                Icons.person_outline_rounded,
-                hint: 'Default: Employee Code',
+              ResponsiveGridRow(
+                children: [
+                  ResponsiveGridCol(
+                    xl: 12,
+                    lg: 12,
+                    md: 12,
+                    sm: 12,
+                    xs: 12,
+                    child: _SriField(
+                      state.username,
+                      'Username',
+                      Icons.person_outline_rounded,
+                      hint: 'Default: Employee Code',
+                    ),
+                  ),
+                  if (!state.isEdit)
+                    ResponsiveGridCol(
+                      xl: 12,
+                      lg: 12,
+                      md: 12,
+                      sm: 12,
+                      xs: 12,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 16.0),
+                        child: SriTextField(
+                          controller: state.password,
+                          label: 'Password',
+                          prefixIcon: Icons.lock_outline_rounded,
+                          obscureText: true,
+                          hint: 'Leave blank for no login access',
+                        ),
+                      ),
+                    ),
+                ],
               ),
-              if (!state.isEdit) ...[
-                _Gap(),
-                SriTextField(
-                  controller: state.password,
-                  label: 'Password',
-                  prefixIcon: Icons.lock_outline_rounded,
-                  obscureText: true,
-                  hint: 'Leave blank for no login access',
-                ),
-              ],
+
+              if (!state.isEdit) ...[_Gap()],
               const SizedBox(height: 10),
               Container(
                 padding: const EdgeInsets.all(12),
@@ -1057,40 +1372,42 @@ class _StepLoginDocs extends StatelessWidget {
             ),
             children: [
               if (state.documents.isEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: 28),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.06),
-                          borderRadius: BorderRadius.circular(16),
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 28),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.06),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Icon(
+                            Icons.folder_open_rounded,
+                            size: 28,
+                            color: AppColors.textMuted,
+                          ),
                         ),
-                        child: const Icon(
-                          Icons.folder_open_rounded,
-                          size: 28,
-                          color: AppColors.textMuted,
+                        const SizedBox(height: 10),
+                        const Text(
+                          'No documents attached',
+                          style: TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 13,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 10),
-                      const Text(
-                        'No documents attached',
-                        style: TextStyle(
-                          color: AppColors.textMuted,
-                          fontSize: 13,
+                        const SizedBox(height: 4),
+                        const Text(
+                          'PDF, JPG, PNG, DOC supported',
+                          style: TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 11,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'PDF, JPG, PNG, DOC supported',
-                        style: TextStyle(
-                          color: AppColors.textMuted,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 )
               else
@@ -1405,14 +1722,6 @@ Widget _GenderDropdown({
   );
 }
 
-Widget _Row2(Widget a, Widget b) => Row(
-  children: [
-    Expanded(child: a),
-    const SizedBox(width: 14),
-    Expanded(child: b),
-  ],
-);
-
 Widget _Gap() => const SizedBox(height: 14);
 
 String? _req(String? v) => v == null || v.trim().isEmpty ? 'Required' : null;
@@ -1444,7 +1753,7 @@ class _ProfilePicPicker extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 52,
-              backgroundColor: Colors.white.withOpacity(0.15),
+              backgroundColor: AppColors.primary.withOpacity(0.15),
               backgroundImage: bytes != null ? MemoryImage(bytes!) : null,
               child: bytes == null
                   ? const Icon(Icons.person, size: 52, color: Colors.white70)
