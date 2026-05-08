@@ -67,6 +67,7 @@ dependencies:
   font_awesome_flutter: ^11.0.0
   dropdown_search: ^7.0.0
   responsive_grid: ^2.4.4
+  http: ^1.2.0
 
   facesdk_plugin:
     path: ./facesdk_plugin

@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pinput/pinput.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
+import 'package:sri_hr/data/services/sms_service.dart';
+import 'package:sri_hr/data/utils/otp_generator.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/auth/login/widgets/branding_panel.dart';
 import 'package:sri_hr/presentation/auth/signup/widgets/step_indicator.dart';
@@ -9,7 +13,6 @@ import 'package:sri_hr/presentation/auth/signup/widgets/step_title.dart';
 import 'package:sri_hr/widgets/sri_button.dart';
 import 'package:sri_hr/widgets/sri_card.dart';
 import 'package:sri_hr/widgets/sri_textfield.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SignupController extends GetxController {
   final formKey = GlobalKey<FormState>();
@@ -30,6 +33,12 @@ class SignupController extends GetxController {
   final password = TextEditingController();
   final confirmPassword = TextEditingController();
   final otp = TextEditingController();
+  String otpCode = '';
+  late String _activeOtp;
+  // RxInt _resendSeconds = 60.obs;
+  // RxInt _resendCount = 0.obs;
+  // RxBool _canResend = false.obs;
+  Timer? _timer;
 
   RxBool showPass = false.obs;
   RxBool showConfirmPass = false.obs;
@@ -43,6 +52,7 @@ class SignupController extends GetxController {
   @override
   void onClose() {
     super.onClose();
+    _timer?.cancel();
     formKey.currentState?.dispose();
     for (final c in [
       compName,
@@ -66,6 +76,7 @@ class SignupController extends GetxController {
   @override
   void dispose() {
     super.dispose();
+    _timer?.cancel();
     formKey.currentState?.dispose();
     for (final c in [
       compName,
@@ -103,8 +114,17 @@ class SignupController extends GetxController {
     try {
       sendingOtp.value = true;
 
-      await Supabase.instance.client.auth.signInWithOtp(
-        phone: '+91$phone', // India country code
+      // await Supabase.instance.client.auth.signInWithOtp(
+      //   phone: '+91$phone', // India country code
+      // );
+
+      otpCode = OtpGenerator.generate();
+      final mobileWithCode = '91$phone';
+
+      final sent = await SmsService.sendOtp(
+        mobileNumber: mobileWithCode,
+        otp: otpCode,
+        appName: 'Srisoft',
       );
 
       sendingOtp.value = false;
@@ -117,6 +137,8 @@ class SignupController extends GetxController {
         backgroundColor: AppColors.success,
         colorText: Colors.white,
       );
+      _activeOtp = otpCode;
+      // _startCountdown();
     } catch (e) {
       sendingOtp.value = false;
 
@@ -129,6 +151,59 @@ class SignupController extends GetxController {
       );
     }
   }
+
+  // void _startCountdown() {
+  //   _resendSeconds.value = 60;
+  //   _canResend.value = false;
+  //   _timer?.cancel();
+  //   _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+  //     if (_resendSeconds.value <= 1) {
+  //       t.cancel();
+  //       _canResend.value = true;
+  //     } else {
+  //       _resendSeconds.value--;
+  //     }
+  //   });
+  // }
+
+  // Future<void> _resendOtp() async {
+  //   if (_resendCount.value >= 3) {
+  //     Get.snackbar(
+  //       'Warning',
+  //       "Maximum resend limit reached. Please try again later.",
+  //       snackPosition: SnackPosition.BOTTOM,
+  //       backgroundColor: AppColors.warning,
+  //       colorText: Colors.white,
+  //     );
+  //   }
+  //   final newOtp = OtpGenerator.generate();
+  //   final sent = await SmsService.sendOtp(
+  //     mobileNumber: '91${mobile.text.toString()}',
+  //     otp: newOtp,
+  //     appName: 'Srisoft',
+  //   );
+  //   if (sent) {
+  //     _activeOtp = newOtp;
+  //     _resendCount.value++;
+  //     pincode.clear();
+  //     _startCountdown();
+  //     Get.snackbar(
+  //       'Success',
+  //       "OTP resent successfully",
+  //       snackPosition: SnackPosition.BOTTOM,
+  //       backgroundColor: AppColors.success,
+  //       colorText: Colors.white,
+  //     );
+  //   } else {
+  //     Get.snackbar(
+  //       'Error',
+  //       "Failed to resend OTP",
+  //       snackPosition: SnackPosition.BOTTOM,
+  //       backgroundColor: AppColors.error,
+  //       colorText: Colors.white,
+  //     );
+  //   }
+  // }
 
   /*Future<void> sendOtp() async {
     if (mobile.text.length != 10) {
@@ -171,13 +246,14 @@ class SignupController extends GetxController {
     }
 
     try {
-      final response = await Supabase.instance.client.auth.verifyOTP(
-        phone: '+91$phone',
-        token: otpcode,
-        type: OtpType.sms,
-      );
+      // final response = await Supabase.instance.client.auth.verifyOTP(
+      //   phone: '+91$phone',
+      //   token: otpcode,
+      //   type: OtpType.sms,
+      // );
 
-      if (response.session != null) {
+      if (otpcode == _activeOtp) {
+        _timer?.cancel();
         otpVerified.value = true;
 
         Get.snackbar(
@@ -185,6 +261,15 @@ class SignupController extends GetxController {
           'Mobile number verified!',
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: AppColors.success,
+          colorText: Colors.white,
+        );
+      } else {
+        pincode.clear();
+        Get.snackbar(
+          'ERROR',
+          'Incorrect OTP. Please try again',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.error,
           colorText: Colors.white,
         );
       }
@@ -524,6 +609,7 @@ class SignupController extends GetxController {
             ],
           ),
         ),
+       
       ],
       if (otpVerified.value) ...[
         const SizedBox(height: 12),
