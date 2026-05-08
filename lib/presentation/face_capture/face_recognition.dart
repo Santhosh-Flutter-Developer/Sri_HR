@@ -8,13 +8,16 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:sri_hr/core/constants/app_constants.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/models/attendance_log_model.dart';
 import 'package:sri_hr/data/models/employee_model.dart';
 import 'package:sri_hr/data/services/location_service.dart';
+import 'package:sri_hr/presentation/attendance/controller/attendance_controller.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/company/controller/company_controller.dart';
 import 'package:sri_hr/presentation/employee/controller/employee_controller.dart';
+import 'package:sri_hr/routes/app_routes.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -34,6 +37,10 @@ final companyController = Get.isRegistered<CompanyController>()
     ? Get.find<CompanyController>()
     : Get.put(CompanyController());
 
+final attendanceController = Get.isRegistered<AttendanceController>()
+    ? Get.find<AttendanceController>()
+    : Get.put(AttendanceController());
+
 final _uuid = const Uuid();
 
 RxList<EmployeeModel> employees = <EmployeeModel>[].obs;
@@ -48,6 +55,7 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
   AttendanceLogModel? todayAttendance;
   bool isCheckIn = true;
   bool showToast = true;
+  bool callApi = true;
   bool faceRecognized = false;
 
   dynamic _faces;
@@ -60,6 +68,8 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
   String _identifiedYaw = "";
   String _identifiedRoll = "";
   String _identifiedPitch = "";
+  String warningStates = "";
+  bool visibleWarnings = false;
 
   var _identifiedFace;
 
@@ -70,12 +80,88 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
   @override
   void initState() {
     super.initState();
+    init();
     loadSettings();
     getEmployee();
   }
 
   Future<void> _loadTodayAttendance() async {
+    if (employee != null) {
+      todayAttendance = await attendanceController.getTodayAttendance(
+        employee!.id,
+      );
+      isCheckIn = todayAttendance?.punchTime == null;
+    }
     setState(() {});
+  }
+
+  Future<void> init() async {
+    int facepluginState = -1;
+    String warningState = "";
+    bool visibleWarning = false;
+    try {
+      if (Platform.isAndroid) {
+        await _facesdkPlugin
+            .setActivation(AppConstants.androidfacesdkLicence)
+            .then((value) {
+              setState(() {
+                facepluginState = value ?? -1;
+              });
+              return facepluginState;
+            });
+      } else {
+        await _facesdkPlugin.setActivation(AppConstants.iosfacesdkLicence).then(
+          (value) {
+            setState(() {
+              facepluginState = value ?? -1;
+            });
+            return facepluginState;
+          },
+        );
+      }
+      if (facepluginState == 0) {
+        await _facesdkPlugin.init().then(
+          (value) => facepluginState = value ?? -1,
+        );
+      }
+    } catch (e) {
+      debugPrint("Init Error:$e");
+    }
+
+    int? livenessLevel = 0;
+    try {
+      await _facesdkPlugin.setParam({'check_liveness_level': livenessLevel});
+    } catch (e) {
+      debugPrint("CHECK_LIVENESS_ERROR:$e");
+    }
+
+    if (facepluginState == -1) {
+      setState(() {
+        warningState = "Invalid license!";
+        visibleWarning = true;
+      });
+    } else if (facepluginState == -2) {
+      setState(() {
+        warningState = "License expired!";
+        visibleWarning = true;
+      });
+    } else if (facepluginState == -3) {
+      setState(() {
+        warningState = "Invalid license!";
+        visibleWarning = true;
+      });
+    } else if (facepluginState == -4) {
+      warningState = "No activated!";
+      visibleWarning = true;
+    } else if (facepluginState == -5) {
+      warningState = "Init error!";
+      visibleWarning = true;
+    }
+
+    setState(() {
+      warningStates = warningState;
+      visibleWarnings = visibleWarning;
+    });
   }
 
   Future<void> loadSettings() async {
@@ -152,6 +238,7 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
       if (showToast == true) {
         Future.delayed(Duration(seconds: 10), () {
           if (faceRecognized == false) {
+            faceDetectionViewController?.stopCamera();
             Get.back();
             Get.snackbar(
               "Warning",
@@ -172,7 +259,7 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
     }
     Future.delayed(const Duration(milliseconds: 100), () async {
       if (!mounted) return false;
-      // await _loadTodayAttendance();
+      await _loadTodayAttendance();
       // ── Get GPS ──────────────────────────────────────────
       currentPosition = await location.getCurrentPosition();
 
@@ -185,11 +272,22 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
       final comp = await companyController.getCompany(compId);
       if (comp != null) {
         isInsideGeofence = location.checkGeofence(
-          officeLat: comp.longitude!,
+          officeLat: comp.latitude!,
           officeLng: comp.longitude!,
           radiusInMeters: double.parse(comp.radius.toString()),
           currentPos: currentPosition!,
         );
+
+        if (employee?.outsideOffice != true && isInsideGeofence == false) {
+          faceDetectionViewController?.stopCamera();
+          Get.back();
+          Get.snackbar(
+            "Warning",
+            "You are an outside of office location",
+            backgroundColor: AppColors.warning,
+          );
+          return false;
+        }
       }
 
       setState(() {
@@ -202,6 +300,7 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
         _identifiedPitch = maxPitch.toString();
         _enrolledFace = enrolledFace;
         _identifiedFace = identifiedFace;
+        callApi = true;
       });
 
       if (recognized) {
@@ -222,12 +321,35 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
         if (employee == null || comp == null) {
           throw Exception("Employee or organization not found");
         }
+        if (callApi == true) {
+          if (isCheckIn) {
+            await attendanceController.adjustPunch({
+              'employee_id': employee!.id,
+              'date': DateTime.now().toIso8601String().substring(0, 10),
+              'punch_time': DateTime.now().toIso8601String(),
+              'punch_type': 'in',
+            }, showToast: false);
+          } else {
+            await attendanceController.adjustPunch({
+              'employee_id': employee!.id,
+              'date': DateTime.now().toIso8601String().substring(0, 10),
+              'punch_time': DateTime.now().toIso8601String(),
+              'punch_type': 'out',
+            }, showToast: false);
+          }
 
-        Get.snackbar(
-          "Success",
-          "Face Recognized Successfully",
-          backgroundColor: AppColors.success,
-        );
+          Get.snackbar(
+            "Success",
+            "Face Recognized Successfully",
+            backgroundColor: AppColors.success,
+          );
+        }
+        setState(() {
+          callApi = false;
+        });
+        Future.delayed(Duration(seconds: 3), () {
+          Get.offAllNamed(AppRoutes.routeDashboard);
+        });
       }
     });
 

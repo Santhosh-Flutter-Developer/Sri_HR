@@ -102,10 +102,10 @@ class AttendanceRepository {
           .single();
       logId = row['id'] as String;
     }
-    return _fetchLog(logId);
+    return fetchLog(logId);
   }
 
-  Future<AttendanceLogModel> _fetchLog(String id) async {
+  Future<AttendanceLogModel> fetchLog(String id) async {
     const empSelect =
         '*, employees(id, company_id, department_id, role_id, '
         'employee_code, full_name, mobile, email, profile_picture, '
@@ -118,6 +118,26 @@ class AttendanceRepository {
         .eq('id', id)
         .single();
     return AttendanceLogModel.fromJson(row);
+  }
+
+  Future<AttendanceLogModel?> getTodayAttendance(String employeeId) async {
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    try {
+      final data = await SupabaseService.client
+          .from('attendance_logs')
+          .select()
+          .eq('employee_id', employeeId)
+          .eq('date', today);
+
+      int ind = data.indexWhere((e) => e["punch_type"] == "in");
+      if (ind.toString() != "-1") {
+        return AttendanceLogModel.fromJson(data[ind]);
+      }else{
+        return null;
+      }
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> deleteLog(String id) =>

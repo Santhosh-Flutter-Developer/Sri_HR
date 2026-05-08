@@ -140,7 +140,15 @@ class AttendanceController extends GetxController {
     }
   }
 
-  Future<void> adjustPunch(Map<String, dynamic> data) async {
+  Future<AttendanceLogModel?> getTodayAttendance(String id) async {
+    final todayAtt = await repo.getTodayAttendance(id);
+    return todayAtt;
+  }
+
+  Future<void> adjustPunch(
+    Map<String, dynamic> data, {
+    bool showToast = true,
+  }) async {
     try {
       data['company_id'] = auth.companyId;
       data['adjusted_by'] = auth.userId;
@@ -159,7 +167,9 @@ class AttendanceController extends GetxController {
       } else {
         logs.add(log);
       }
-      showSuccess('Punch adjusted successfully');
+      if (showToast == true) {
+        showSuccess('Punch adjusted successfully');
+      }
     } catch (e) {
       showError('Failed: $e');
     }
