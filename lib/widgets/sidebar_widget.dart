@@ -225,7 +225,9 @@ class SidebarWidget extends StatelessWidget {
   }
 
   Widget _buildCompanySwitcher(BuildContext context) {
-    final companyCtrl = Get.find<CompanyController>();
+    final companyCtrl = Get.isRegistered<CompanyController>()
+        ? Get.find<CompanyController>()
+        : Get.put(CompanyController());
     return Obx(() {
       final companies = companyCtrl.companies;
       final active = companyCtrl.activeCompany.value;
