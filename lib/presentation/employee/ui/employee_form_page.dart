@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_exif_rotation/flutter_exif_rotation.dart';
 import 'package:get/get.dart';
@@ -1772,43 +1772,111 @@ class _ProfilePicPickerState extends State<_ProfilePicPicker> {
       : Get.put(EmployeeController());
   @override
   Widget build(BuildContext context) {
-    return Obx(
-      () => Center(
-        child: GestureDetector(
-          onTap: captureFace,
-          child: Container(
-            width: 90.0,
-            height: 90.0,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.2),
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.primary, width: 2),
-              image: controller.selectedProfile.value != null
-                  ? DecorationImage(
-                      image: FileImage(controller.selectedProfile.value!),
-                      fit: BoxFit.cover,
-                    )
-                  : (widget.employee?.profilePicture != null &&
-                        widget.employee!.profilePicture!.isNotEmpty)
-                  ? DecorationImage(
-                      image: NetworkImage(widget.employee!.profilePicture!),
-                      fit: BoxFit.cover,
-                    )
-                  : null,
-            ),
-            child: controller.selectedProfile.value != null
-                ? SizedBox()
-                : widget.employee?.profilePicture != null
-                ? SizedBox()
-                : const Icon(
-                    Icons.person_outline,
-                    color: AppColors.primary,
-                    size: 40,
+    return kIsWeb
+        ? Center(
+            child: GestureDetector(
+              onTap: () async {
+                final img = await ImagePicker().pickImage(
+                  source: ImageSource.gallery,
+                  maxWidth: 400,
+                );
+                if (img != null) {
+                  final b = await img.readAsBytes();
+                  widget.onPick(b, img.path);
+                }
+              },
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  CircleAvatar(
+                    radius: 52,
+                    backgroundColor: Colors.white.withOpacity(0.15),
+                    backgroundImage: widget.bytes != null
+                        ? MemoryImage(widget.bytes!)
+                        : (widget.employee?.profilePicture != null &&
+                              widget.employee!.profilePicture!.isNotEmpty)
+                        ? NetworkImage(widget.employee!.profilePicture!)
+                        : null,
+                    child: widget.bytes == null && widget.employee?.profilePicture == null &&
+                              widget.employee!.profilePicture!.isEmpty
+                        ? const Icon(
+                            Icons.person,
+                            size: 52,
+                            color: Colors.white70,
+                          )
+                        : null,
                   ),
-          ),
-        ),
-      ),
-    );
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppColors.primary.withOpacity(0.3),
+                          width: 2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.camera_alt_rounded,
+                        size: 17,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+        : Obx(
+            () => Center(
+              child: GestureDetector(
+                onTap: captureFace,
+                child: Container(
+                  width: 90.0,
+                  height: 90.0,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.primary, width: 2),
+                    image: controller.selectedProfile.value != null
+                        ? DecorationImage(
+                            image: FileImage(controller.selectedProfile.value!),
+                            fit: BoxFit.cover,
+                          )
+                        : (widget.employee?.profilePicture != null &&
+                              widget.employee!.profilePicture!.isNotEmpty)
+                        ? DecorationImage(
+                            image: NetworkImage(
+                              widget.employee!.profilePicture!,
+                            ),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
+                  ),
+                  child: controller.selectedProfile.value != null
+                      ? SizedBox()
+                      : widget.employee?.profilePicture != null
+                      ? SizedBox()
+                      : const Icon(
+                          Icons.person_outline,
+                          color: AppColors.primary,
+                          size: 40,
+                        ),
+                ),
+              ),
+            ),
+          );
     /*Center(
       child: GestureDetector(
         onTap: () async {

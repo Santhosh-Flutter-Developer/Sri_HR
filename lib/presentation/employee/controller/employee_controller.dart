@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:facesdk_plugin/facesdk_plugin.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:path_provider/path_provider.dart';
@@ -66,7 +67,9 @@ class EmployeeController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    faceInit();
+    if (!kIsWeb) {
+      faceInit();
+    }
     loadEmployees();
   }
 
@@ -236,17 +239,30 @@ class EmployeeController extends GetxController {
       rawData['company_id'] = selectedCompanyId;
 
       // ── Upload profile picture ──────────────────────────
-      if (selectedProfile.value != null) {
-        final bytes = await selectedProfile.value!.readAsBytes();
-        final fileName =
-            'profile_${selectedCompanyId}_${rawData['employee_code']}'
-            '_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        rawData['profile_picture'] = await SupabaseService.uploadFile(
-          'profiles',
-          fileName,
-          bytes,
-          contentType: 'image/jpeg',
-        );
+      if (kIsWeb) {
+        if (profileBytes != null && profileBytes.isNotEmpty) {
+          final fileName =
+              'profile_${selectedCompanyId}_${rawData['employee_code']}'
+              '_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          rawData['profile_picture'] = await SupabaseService.uploadFile(
+            'profiles',
+            fileName,
+            profileBytes,
+          );
+        }
+      } else {
+        if (selectedProfile.value != null) {
+          final bytes = await selectedProfile.value!.readAsBytes();
+          final fileName =
+              'profile_${selectedCompanyId}_${rawData['employee_code']}'
+              '_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          rawData['profile_picture'] = await SupabaseService.uploadFile(
+            'profiles',
+            fileName,
+            bytes,
+            contentType: 'image/jpeg',
+          );
+        }
       }
 
       // ── Upload aadhar / first document ──────────────────
@@ -432,16 +448,30 @@ class EmployeeController extends GetxController {
           (rawData['company_id'] as String?)?.isNotEmpty == true
           ? rawData['company_id'] as String
           : auth.companyId;
-      if (selectedProfile.value != null) {
-        final bytes = await selectedProfile.value!.readAsBytes();
-        final fileName =
-            'profile_${companyId}_${rawData['employee_code']}'
-            '_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        rawData['profile_picture'] = await SupabaseService.uploadFile(
-          'profiles',
-          fileName,
-          bytes,
-        );
+
+      if (kIsWeb) {
+        if (profileBytes != null && profileBytes.isNotEmpty) {
+          final fileName =
+              'profile_${companyId}_${rawData['employee_code']}'
+              '_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          rawData['profile_picture'] = await SupabaseService.uploadFile(
+            'profiles',
+            fileName,
+            profileBytes,
+          );
+        }
+      } else {
+        if (selectedProfile.value != null) {
+          final bytes = await selectedProfile.value!.readAsBytes();
+          final fileName =
+              'profile_${companyId}_${rawData['employee_code']}'
+              '_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          rawData['profile_picture'] = await SupabaseService.uploadFile(
+            'profiles',
+            fileName,
+            bytes,
+          );
+        }
       }
 
       for (final key in ['status_id', 'salary_type_id', 'user_id']) {
