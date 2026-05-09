@@ -24,7 +24,7 @@ class Dashboard extends StatelessWidget {
     return AppShell(
       currentModule: 'dashboard',
       title: 'Dashboard',
-      floatingActionButton: AttendanceFAB(),
+      floatingActionButton:isWide?SizedBox(): AttendanceFAB(),
       child: Obx(
         () => controller.isLoading.value
             ? const LoadingOverlay()

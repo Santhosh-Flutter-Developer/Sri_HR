@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:razorpay_flutter/razorpay_flutter.dart';
+// import 'package:razorpay_flutter/razorpay_flutter.dart';
+// import 'package:razorpay_web/razorpay_flutter_web.dart' hide Razorpay;
+import 'package:razorpay_web/razorpay_web.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/subscription/controller/subscription_controller.dart';
