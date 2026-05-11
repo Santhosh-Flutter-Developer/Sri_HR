@@ -10,6 +10,7 @@ import 'package:sri_hr/data/models/user_model.dart';
 import 'package:sri_hr/presentation/auth/repository/auth_repository.dart';
 import 'package:sri_hr/presentation/subscription/repository/subscription_repository.dart';
 import 'package:sri_hr/routes/app_routes.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthController extends GetxController {
   final authRepo = AuthRepository();
@@ -76,17 +77,17 @@ class AuthController extends GetxController {
       } else {
         Get.offAllNamed(AppRoutes.routeSubscription);
       }
-    } on Exception catch (e) {
-      final msg = e.toString().replaceAll('Exception: ', '');
-      Get.snackbar(
+    } on AuthException catch(e){
+       Get.snackbar(
         'Login Failed',
-        msg,
+        e.message,
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red.shade600,
         colorText: Colors.white,
         icon: const Icon(Icons.error_outline, color: Colors.white),
       );
-    } finally {
+    }
+     finally {
       isLoading.value = false;
     }
   }
