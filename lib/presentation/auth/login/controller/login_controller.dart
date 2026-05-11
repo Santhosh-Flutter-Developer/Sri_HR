@@ -8,7 +8,7 @@ import 'package:sri_hr/routes/app_routes.dart';
 import 'package:sri_hr/widgets/form_fields.dart';
 
 class LoginController extends GetxController {
-  final formKey = GlobalKey<FormState>();
+  final loginformKey = GlobalKey<FormState>();
   final emailCtrl = TextEditingController();
   final passCtrl = TextEditingController();
   RxBool showPass = true.obs;
@@ -80,7 +80,7 @@ class LoginController extends GetxController {
   void dispose() {
     emailCtrl.dispose();
     passCtrl.dispose();
-    formKey.currentState?.dispose();
+    loginformKey.currentState?.dispose();
     super.dispose();
   }
 
@@ -89,11 +89,11 @@ class LoginController extends GetxController {
     super.onClose();
     emailCtrl.dispose();
     passCtrl.dispose();
-    formKey.currentState?.dispose();
+    loginformKey.currentState?.dispose();
   }
 
   void submit() {
-    if (!formKey.currentState!.validate()) return;
+    if (!loginformKey.currentState!.validate()) return;
     auth.login(emailCtrl.text.trim(), passCtrl.text.trim());
   }
 
@@ -156,7 +156,7 @@ class LoginController extends GetxController {
 
   Widget loginForm() {
     return Form(
-      key: formKey,
+      key: loginformKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

@@ -15,7 +15,7 @@ import 'package:sri_hr/widgets/sri_card.dart';
 import 'package:sri_hr/widgets/sri_textfield.dart';
 
 class SignupController extends GetxController {
-  final formKey = GlobalKey<FormState>();
+  final signupformKey = GlobalKey<FormState>();
   final auth = Get.isRegistered<AuthController>()
       ? Get.find<AuthController>()
       : Get.put(AuthController());
@@ -53,7 +53,7 @@ class SignupController extends GetxController {
   void onClose() {
     super.onClose();
     _timer?.cancel();
-    formKey.currentState?.dispose();
+    signupformKey.currentState?.dispose();
     for (final c in [
       compName,
       personName,
@@ -77,7 +77,7 @@ class SignupController extends GetxController {
   void dispose() {
     super.dispose();
     _timer?.cancel();
-    formKey.currentState?.dispose();
+    signupformKey.currentState?.dispose();
     for (final c in [
       compName,
       personName,
@@ -306,7 +306,7 @@ class SignupController extends GetxController {
   }*/
 
   void submit() {
-    if (!formKey.currentState!.validate()) return;
+    if (!signupformKey.currentState!.validate()) return;
     if (!otpVerified.value) {
       Get.snackbar(
         'OTP Required',
@@ -378,7 +378,7 @@ class SignupController extends GetxController {
               const SizedBox(height: 32.0),
               SriCard(
                 child: Form(
-                  key: formKey,
+                  key: signupformKey,
                   child: Column(
                     children: [
                       AnimatedSwitcher(
@@ -407,7 +407,7 @@ class SignupController extends GetxController {
                                     ? null
                                     : () {
                                         if (step.value < steps.length - 1) {
-                                          if (!formKey.currentState!
+                                          if (!signupformKey.currentState!
                                               .validate()) {
                                             return;
                                           }
