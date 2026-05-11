@@ -77,8 +77,8 @@ class AuthController extends GetxController {
       } else {
         Get.offAllNamed(AppRoutes.routeSubscription);
       }
-    } on AuthException catch(e){
-       Get.snackbar(
+    } on AuthException catch (e) {
+      Get.snackbar(
         'Login Failed',
         e.message,
         snackPosition: SnackPosition.BOTTOM,
@@ -86,8 +86,7 @@ class AuthController extends GetxController {
         colorText: Colors.white,
         icon: const Icon(Icons.error_outline, color: Colors.white),
       );
-    }
-     finally {
+    } finally {
       isLoading.value = false;
     }
   }
@@ -131,14 +130,14 @@ class AuthController extends GetxController {
         duration: const Duration(seconds: 4),
       );
       Get.offAllNamed(AppRoutes.routeLogin);
-    } on Exception catch (e) {
-      final msg = e.toString().replaceAll('Exception: ', '');
+    } on AuthException catch (e) {
       Get.snackbar(
         'Registration Failed',
-        msg,
+        e.message,
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red.shade600,
         colorText: Colors.white,
+        icon: const Icon(Icons.error_outline, color: Colors.white),
       );
     } finally {
       isLoading.value = false;
