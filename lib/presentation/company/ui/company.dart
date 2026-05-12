@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:sri_hr/data/models/subscription_model.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/company/controller/company_controller.dart';
 import 'package:sri_hr/presentation/company/ui/company_body.dart';
@@ -24,7 +25,8 @@ class Company extends StatelessWidget {
       currentModule: 'company',
       title: 'Company Settings',
       actions: [
-        if (auth.canAdd('company'))
+        if (auth.canAdd('company') &&
+            auth.subscription.value!.plan != SubscriptionPlan.trial)
           isWide
               ? SriButton(
                   label: 'Add Branch',
