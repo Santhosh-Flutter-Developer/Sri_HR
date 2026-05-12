@@ -26,7 +26,8 @@ class Employee extends StatelessWidget {
       currentModule: 'employee',
       title: 'Employee',
       actions: [
-        if (auth.canAdd('employee')&& (controller.employees.length < auth.subscription.value!.userLimit))
+        if (auth.canAdd('employee') &&
+            (controller.employees.length < auth.subscription.value!.userLimit))
           isWide
               ? SriButton(
                   label: 'Add Employee',
@@ -101,7 +102,10 @@ class Employee extends StatelessWidget {
                     ? EmptyState(
                         message: 'No employees found',
                         icon: Icons.people_outline,
-                        actionLabel: auth.canAdd('employee')&& (controller.employees.length < auth.subscription.value!.userLimit)
+                        actionLabel:
+                            auth.canAdd('employee') &&
+                                (controller.employees.length <
+                                    auth.subscription.value!.userLimit)
                             ? 'Add Employee'
                             : null,
                         onAction: () =>
@@ -141,7 +145,15 @@ class Employee extends StatelessWidget {
                                                     .filteredEmployees[i],
                                               )
                                             : null,
-                                        onDelete: auth.canDelete('employee')
+                                        onDelete:
+                                            auth.canDelete('employee') &&
+                                                (auth
+                                                        .currentUser
+                                                        .value!
+                                                        .employeeId !=
+                                                    controller
+                                                        .filteredEmployees[i]
+                                                        .id)
                                             ? () => controller.confirmDelete(
                                                 context,
                                                 controller,
