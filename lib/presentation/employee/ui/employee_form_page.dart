@@ -1331,24 +1331,24 @@ class _StepLoginDocs extends StatelessWidget {
                       hint: 'Default: Employee Code',
                     ),
                   ),
-                  if (!state.isEdit)
-                    ResponsiveGridCol(
-                      xl: 12,
-                      lg: 12,
-                      md: 12,
-                      sm: 12,
-                      xs: 12,
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 16.0),
-                        child: SriTextField(
-                          controller: state.password,
-                          label: 'Password',
-                          prefixIcon: Icons.lock_outline_rounded,
-                          obscureText: true,
-                          hint: 'Leave blank for no login access',
-                        ),
+                  // if (!state.isEdit)
+                  ResponsiveGridCol(
+                    xl: 12,
+                    lg: 12,
+                    md: 12,
+                    sm: 12,
+                    xs: 12,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 16.0),
+                      child: SriTextField(
+                        controller: state.password,
+                        label: 'Password',
+                        prefixIcon: Icons.lock_outline_rounded,
+                        obscureText: true,
+                        hint: 'Leave blank for no login access',
                       ),
                     ),
+                  ),
                 ],
               ),
 
@@ -1790,15 +1790,17 @@ class _ProfilePicPickerState extends State<_ProfilePicPicker> {
                 children: [
                   CircleAvatar(
                     radius: 52,
-                    backgroundColor: Colors.white.withOpacity(0.15),
+                    backgroundColor: AppColors.primary.withOpacity(0.15),
                     backgroundImage: widget.bytes != null
                         ? MemoryImage(widget.bytes!)
                         : (widget.employee?.profilePicture != null &&
                               widget.employee!.profilePicture!.isNotEmpty)
                         ? NetworkImage(widget.employee!.profilePicture!)
                         : null,
-                    child: widget.bytes == null && widget.employee?.profilePicture == null &&
-                              widget.employee!.profilePicture!.isEmpty
+                    child:
+                        widget.bytes == null ||
+                            (widget.employee?.profilePicture == null &&
+                                widget.employee!.profilePicture!.isEmpty)
                         ? const Icon(
                             Icons.person,
                             size: 52,

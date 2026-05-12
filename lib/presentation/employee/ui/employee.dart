@@ -26,7 +26,7 @@ class Employee extends StatelessWidget {
       currentModule: 'employee',
       title: 'Employee',
       actions: [
-        if (auth.canAdd('employee'))
+        if (auth.canAdd('employee')&& (controller.employees.length < auth.subscription.value!.userLimit))
           isWide
               ? SriButton(
                   label: 'Add Employee',
@@ -101,7 +101,7 @@ class Employee extends StatelessWidget {
                     ? EmptyState(
                         message: 'No employees found',
                         icon: Icons.people_outline,
-                        actionLabel: auth.canAdd('employee')
+                        actionLabel: auth.canAdd('employee')&& (controller.employees.length < auth.subscription.value!.userLimit)
                             ? 'Add Employee'
                             : null,
                         onAction: () =>
