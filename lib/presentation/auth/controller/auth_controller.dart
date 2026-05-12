@@ -8,6 +8,7 @@ import 'package:sri_hr/data/models/role_permission_model.dart';
 import 'package:sri_hr/data/models/subscription_model.dart';
 import 'package:sri_hr/data/models/user_model.dart';
 import 'package:sri_hr/presentation/auth/repository/auth_repository.dart';
+import 'package:sri_hr/presentation/employee/repository/employee_repository.dart';
 import 'package:sri_hr/presentation/subscription/repository/subscription_repository.dart';
 import 'package:sri_hr/routes/app_routes.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -61,21 +62,35 @@ class AuthController extends GetxController {
       final userRow = await authRepo.login(emailOrUsername, password);
       final user = UserModel.fromJson(userRow);
       currentUser.value = user;
+      final employee = await EmployeeRepository().getEmployeeUserId(user.id);
+      if (employee?.mobileLogin != false && employee?.isActive != false) {
+        // Set reactive company ID
+        activeCompanyId.value = user.companyId;
 
-      // Set reactive company ID
-      activeCompanyId.value = user.companyId;
+        // Persist
+        box.write('current_user', userRow);
 
-      // Persist
-      box.write('current_user', userRow);
+        // Load permissions + subscription
+        await _loadPermissionsAndSubscription();
 
-      // Load permissions + subscription
-      await _loadPermissionsAndSubscription();
-
-      // Navigate
-      if (isSubscriptionActive.value) {
-        Get.offAllNamed(AppRoutes.routeDashboard);
+        // Navigate
+        if (isSubscriptionActive.value) {
+          Get.offAllNamed(AppRoutes.routeDashboard);
+        } else {
+          Get.offAllNamed(AppRoutes.routeSubscription);
+        }
       } else {
-        Get.offAllNamed(AppRoutes.routeSubscription);
+        Get.snackbar(
+          'Login Failed',
+          (employee?.mobileLogin == false || employee?.mobileLogin == null)
+              ? "Mobile login not allowed for this user. Contact Admin..."
+              : "Logged User is inactive. Contact Admin...",
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.amber.shade600,
+          colorText: Colors.white,
+          icon: const Icon(Icons.error_outline, color: Colors.white),
+        );
+        logout();
       }
     } on AuthException catch (e) {
       Get.snackbar(
