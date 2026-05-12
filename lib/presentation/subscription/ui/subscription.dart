@@ -61,7 +61,9 @@ class _SubscriptionState extends State<Subscription> {
   void handlePaymentError(PaymentFailureResponse res) {
     Get.snackbar(
       'Payment Failed',
-      res.message ?? 'Payment could not be processed',
+      res.code.toString() == "2"
+          ? "Payment processing cancelled by user"
+          : res.message ?? 'Payment could not be processed',
       snackPosition: SnackPosition.BOTTOM,
       backgroundColor: AppColors.error,
       colorText: Colors.white,
