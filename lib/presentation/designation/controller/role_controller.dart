@@ -6,6 +6,7 @@ import 'package:sri_hr/data/models/role_permission_model.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/designation/repository/role_repository.dart';
 import 'package:sri_hr/presentation/helper/helper.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 AuthController get auth => Get.find<AuthController>();
 
@@ -97,8 +98,19 @@ class RoleController extends GetxController {
       await repo.deleteRole(id);
       roles.removeWhere((r) => r.id == id);
       showSuccess('Designation deleted');
-    } catch (e) {
-      showError('Failed: $e');
+      Future.delayed(Duration(seconds: 2), () {
+        loadRoles();
+      });
+    } on PostgrestException catch (e) {
+      String message = 'Something went wrong';
+
+      if (e.code == '23503') {
+        message =
+            'Cannot delete this designation because employees are assigned to it.';
+      } else {
+        message = e.message;
+      }
+      showError(message, title: "Delete Failed");
     }
   }
 
