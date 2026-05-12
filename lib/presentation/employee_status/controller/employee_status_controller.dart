@@ -7,6 +7,7 @@ import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/employee_status/repository/employee_status_repository.dart';
 import 'package:sri_hr/presentation/employee_status/ui/employee_status_form.dart';
 import 'package:sri_hr/presentation/helper/helper.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 AuthController get auth => Get.find<AuthController>();
 
@@ -75,8 +76,16 @@ class EmployeeStatusController extends GetxController {
       Future.delayed(Duration(seconds: 2), () {
         load();
       });
-    } catch (e) {
-      showError('$e');
+    }  on PostgrestException catch (e) {
+      String message = 'Something went wrong';
+
+      if (e.code == '23503') {
+        message =
+            'Cannot delete this employee status because employees are assigned to it.';
+      } else {
+        message = e.message;
+      }
+      showError(message,title: "Delete Failed");
     }
   }
 
