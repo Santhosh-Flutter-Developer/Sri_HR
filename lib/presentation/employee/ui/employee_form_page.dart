@@ -19,6 +19,7 @@ import 'package:sri_hr/presentation/department/controller/department_controller.
 import 'package:sri_hr/presentation/designation/controller/role_controller.dart';
 import 'package:sri_hr/presentation/employee/controller/employee_controller.dart';
 import 'package:sri_hr/presentation/employee_status/controller/employee_status_controller.dart';
+import 'package:sri_hr/presentation/helper/helper.dart';
 import 'package:sri_hr/presentation/salary_type/controller/salary_type_controller.dart';
 import 'package:sri_hr/routes/app_routes.dart';
 import 'package:sri_hr/widgets/app_shell.dart';
@@ -198,8 +199,24 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
 
   // ── Next / Back / Submit ─────────────────────
   void _next() {
+    final controller = Get.isRegistered<EmployeeController>()
+        ? Get.find<EmployeeController>()
+        : Get.put(EmployeeController());
     final valid = stepKeys[currentStep].currentState?.validate() ?? true;
-    if (!valid) return;
+    final profileValid = kIsWeb
+        ? (profileBytes != null ||
+              (widget.employee?.profilePicture != null &&
+                  widget.employee!.profilePicture!.isNotEmpty))
+        : (controller.selectedProfile.value != null ||
+              (widget.employee?.profilePicture != null &&
+                  widget.employee!.profilePicture!.isNotEmpty));
+    if (!profileValid) {
+      showError(
+        "Profile Image is Required. Upload Real Face Image for Face Attendance",
+        title: "Required",
+      );
+    }
+    if (!valid || !profileValid) return;
     if (currentStep < stepTitles.length - 1) {
       setState(() => currentStep++);
     } else {
