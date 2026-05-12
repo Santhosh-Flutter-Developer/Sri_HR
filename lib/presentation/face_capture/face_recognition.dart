@@ -244,7 +244,6 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
         identifiedFace = face["faceJpg"];
         enrolledFace = employee!.profilePicture;
       }
-
       if (showToast == true) {
         Future.delayed(Duration(seconds: 10), () {
           if (faceRecognized == false) {
@@ -272,7 +271,6 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
       await _loadTodayAttendance();
       // ── Get GPS ──────────────────────────────────────────
       currentPosition = await location.getCurrentPosition();
-
       if (currentPosition == null) {
         throw Exception('Unable to get GPS location. Please enable location.');
       }
@@ -281,19 +279,31 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
       final compId = employee!.companyId;
       final comp = await companyController.getCompany(compId);
       if (comp != null) {
-        isInsideGeofence = location.checkGeofence(
-          officeLat: comp.latitude!,
-          officeLng: comp.longitude!,
-          radiusInMeters: double.parse(comp.radius.toString()),
-          currentPos: currentPosition!,
-        );
+        if (comp.latitude != null && comp.longitude != null) {
+          isInsideGeofence = location.checkGeofence(
+            officeLat: comp.latitude!,
+            officeLng: comp.longitude!,
+            radiusInMeters: double.parse(comp.radius.toString()),
+            currentPos: currentPosition!,
+          );
 
-        if (employee?.outsideOffice != true && isInsideGeofence == false) {
+          if (employee?.outsideOffice != true && isInsideGeofence == false) {
+            faceDetectionViewController?.stopCamera();
+            Get.back();
+            Get.snackbar(
+              "Warning",
+              "You are an outside of office location",
+              backgroundColor: AppColors.warning,
+            );
+            return false;
+          }
+        } else {
+          faceRecognized = true;
           faceDetectionViewController?.stopCamera();
           Get.back();
           Get.snackbar(
             "Warning",
-            "You are an outside of office location",
+            "Please configure Company Latitude and Longitude before proceeding",
             backgroundColor: AppColors.warning,
           );
           return false;
@@ -310,7 +320,7 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
         _identifiedPitch = maxPitch.toString();
         _enrolledFace = enrolledFace;
         _identifiedFace = identifiedFace;
-        callApi = true;
+        // callApi = true;
       });
 
       if (recognized) {
@@ -332,6 +342,9 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
           throw Exception("Employee or organization not found");
         }
         if (callApi == true) {
+          setState(() {
+            callApi = false;
+          });
           if (isCheckIn) {
             await attendanceController.adjustPunch({
               'employee_id': employee!.id,
@@ -354,9 +367,7 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
             backgroundColor: AppColors.success,
           );
         }
-        setState(() {
-          callApi = false;
-        });
+
         Future.delayed(Duration(seconds: 3), () {
           Get.offAllNamed(AppRoutes.routeDashboard);
         });
