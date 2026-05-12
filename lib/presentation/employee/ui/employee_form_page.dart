@@ -1823,15 +1823,15 @@ class _ProfilePicPickerState extends State<_ProfilePicPicker> {
                         ? NetworkImage(widget.employee!.profilePicture!)
                         : null,
                     child:
-                        widget.bytes == null ||
-                            (widget.employee?.profilePicture == null &&
+                        widget.bytes == null &&
+                            (widget.employee?.profilePicture == null ||
                                 widget.employee!.profilePicture!.isEmpty)
                         ? const Icon(
                             Icons.person,
                             size: 52,
                             color: Colors.white70,
                           )
-                        : null,
+                        : SizedBox(),
                   ),
                   Positioned(
                     right: 0,
