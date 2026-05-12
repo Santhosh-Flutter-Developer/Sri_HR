@@ -216,6 +216,16 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
       var face = faces[0];
 
       String storedTemplateString = employee?.profileTemplate ?? '';
+      if (storedTemplateString == "") {
+        faceDetectionViewController?.stopCamera();
+        Get.back();
+        Get.snackbar(
+          "Warning",
+          "Logged-in user's face is not registered in the employee records",
+          backgroundColor: AppColors.warning,
+        );
+        return false;
+      }
       Uint8List storedTemplate = base64Decode(storedTemplateString);
       double similarity =
           await _facesdkPlugin.similarityCalculation(
