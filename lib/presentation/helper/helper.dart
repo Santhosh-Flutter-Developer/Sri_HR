@@ -10,8 +10,8 @@ void showSuccess(String msg) => Get.snackbar(
   icon: const Icon(Icons.check_circle, color: Colors.white),
 );
 
-void showError(String msg) => Get.snackbar(
-  'Error', msg,
+void showError(String msg,{String? title}) => Get.snackbar(
+  title??'Error', msg,
   snackPosition: SnackPosition.BOTTOM,
   backgroundColor: const Color(0xFFEF4444),
   colorText: Colors.white,

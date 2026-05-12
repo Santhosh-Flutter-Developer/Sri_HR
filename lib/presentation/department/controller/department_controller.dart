@@ -7,6 +7,7 @@ import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/department/repository/department_repository.dart';
 import 'package:sri_hr/presentation/department/ui/department_form.dart';
 import 'package:sri_hr/presentation/helper/helper.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 AuthController get auth => Get.find<AuthController>();
 
@@ -71,8 +72,16 @@ class DepartmentController extends GetxController {
       await repo.deleteDepartment(id);
       departments.removeWhere((x) => x.id == id);
       showSuccess('Department deleted');
-    } catch (e) {
-      showError('$e');
+    } on PostgrestException catch (e) {
+      String message = 'Something went wrong';
+
+      if (e.code == '23503') {
+        message =
+            'Cannot delete this department because employees are assigned to it.';
+      } else {
+        message = e.message;
+      }
+      showError(message,title: "Delete Failed");
     }
   }
 
