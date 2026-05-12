@@ -667,6 +667,10 @@ class _StepBasic extends StatelessWidget {
   final _EmployeeFormPageState state;
   final EmployeeModel? employee;
   const _StepBasic({required this.state, required this.employee});
+  bool isValidEmail(String email) {
+    final RegExp emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    return emailRegex.hasMatch(email);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -822,9 +826,16 @@ class _StepBasic extends StatelessWidget {
                       ),
                       child: _SriField(
                         state.mobile,
-                        'Mobile Number',
+                        'Mobile Number *',
                         Icons.phone_rounded,
                         keyboard: TextInputType.phone,
+                        validator: (v) {
+                          if (v?.isEmpty == true) {
+                            return 'Mobile Number is Required';
+                          }
+                          if (v!.length != 10) return 'Enter 10 digits';
+                          return null;
+                        },
                       ),
                     ),
                   ),
@@ -841,9 +852,18 @@ class _StepBasic extends StatelessWidget {
                       ),
                       child: _SriField(
                         state.email,
-                        'Email Address',
+                        'Email Address *',
                         Icons.email_outlined,
                         keyboard: TextInputType.emailAddress,
+                        validator: (v) {
+                          if (v == null || v.isEmpty) {
+                            return 'Email is required';
+                          } else if (v.toString().contains('@') &&
+                              !isValidEmail(v)) {
+                            return 'Enter Valid Email';
+                          }
+                          return null;
+                        },
                       ),
                     ),
                   ),
@@ -1342,10 +1362,15 @@ class _StepLoginDocs extends StatelessWidget {
                       padding: const EdgeInsets.only(top: 16.0),
                       child: SriTextField(
                         controller: state.password,
-                        label: 'Password',
+                        label: !state.isEdit ? 'Password *' : 'Password',
                         prefixIcon: Icons.lock_outline_rounded,
                         obscureText: true,
                         hint: 'Leave blank for no login access',
+                        validator: (val) => !state.isEdit
+                            ? val!.isEmpty
+                                  ? "password is required"
+                                  : null
+                            : null,
                       ),
                     ),
                   ),
