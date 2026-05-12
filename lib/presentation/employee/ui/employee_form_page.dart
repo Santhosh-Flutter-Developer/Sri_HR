@@ -163,10 +163,14 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
     super.dispose();
   }
 
+  // ✅ Change this method to use previewCode
   Future<void> _generateCode([String? forCompanyId]) async {
     final cid =
         forCompanyId ?? companyId ?? Get.find<AuthController>().companyId;
-    final codee = await widget.controller.generateCode(cid);
+
+    // Use preview — only shows next code, does NOT reserve it
+    final codee = await widget.controller.previewCode(cid);
+
     setState(() {
       code.text = codee;
       username.text = codee;
@@ -242,6 +246,12 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
     if (documents.isNotEmpty) {
       aadharBytes = documents.first['bytes'] as Uint8List;
       aadharPath = documents.first['path'] as String;
+    }
+
+    if (!isEdit) {
+      final reservedCode = await widget.controller.generateCode(companyId);
+      code.text = reservedCode;
+      username.text = reservedCode;
     }
 
     final data = {

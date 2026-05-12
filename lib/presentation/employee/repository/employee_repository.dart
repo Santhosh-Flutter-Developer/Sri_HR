@@ -38,75 +38,26 @@ class EmployeeRepository {
     return row != null ? EmployeeModel.fromJson(row) : null;
   }
 
-  /// Generates a unique employee code that is unique across the ENTIRE
-  /// organization (all branches), not just within one company.
-  /// Format: [BranchPrefix]-EMP[NNN]  e.g. HQ-EMP001, BR1-EMP001
-  /// The numeric part is org-wide so no two employees share the same number.
+  // Preview only — does NOT reserve the code
+  // Called when form opens
+  Future<String> previewEmployeeCode(String companyId) async {
+    final result = await SupabaseService.client.rpc(
+      'preview_emp_code',
+      params: {'p_company_id': companyId},
+    );
+    if (result == null) throw Exception('Failed to preview employee code');
+    return result as String;
+  }
+
+  // Reserve + generate — called only when actually saving
+  // This is your existing method, keep it as is
   Future<String> generateEmployeeCode(String companyId) async {
-    final client = SupabaseService.client;
-
-    // 1. Get branch code for prefix
-    String branchPrefix = '';
-    try {
-      final companyRow = await client
-          .from('companies')
-          .select('branch_code')
-          .eq('id', companyId)
-          .maybeSingle();
-      final code = companyRow?['branch_code'] as String?;
-      if (code != null && code.isNotEmpty) {
-        branchPrefix = '${code.toUpperCase()}-';
-      }
-    } catch (_) {}
-
-    // 2. Find highest numeric code across ALL branches in the org
-    //    (join via user_company_access to find all sibling companies)
-    try {
-      final orgRows = await client
-          .from('user_company_access')
-          .select('company_id')
-          .eq('user_id', client.auth.currentUser?.id ?? '');
-
-      final allCompanyIds = orgRows
-          .map((r) => r['company_id'] as String)
-          .toList();
-
-      // If org has multiple branches, find max code number across all
-      if (allCompanyIds.isNotEmpty) {
-        final empRows = await client
-            .from('employees')
-            .select('employee_code')
-            .inFilter('company_id', allCompanyIds)
-            .order('created_at', ascending: false);
-
-        if (empRows.isNotEmpty) {
-          // Extract max numeric part from all codes
-          int maxNum = 0;
-          for (final row in empRows) {
-            final codeStr = row['employee_code'] as String? ?? '';
-            final num =
-                int.tryParse(codeStr.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
-            if (num > maxNum) maxNum = num;
-          }
-          return '$branchPrefix'
-              'EMP${(maxNum + 1).toString().padLeft(3, '0')}';
-        }
-      }
-    } catch (_) {}
-
-    // 3. Fallback: check only within current company
-    final rows = await client
-        .from('employees')
-        .select('employee_code')
-        .eq('company_id', companyId)
-        .order('created_at', ascending: false)
-        .limit(1);
-
-    if (rows.isEmpty) return '${branchPrefix}EMP001';
-    final last = rows.first['employee_code'] as String? ?? '';
-    final num = int.tryParse(last.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
-    return '$branchPrefix'
-        'EMP${(num + 1).toString().padLeft(3, '0')}';
+    final result = await SupabaseService.client.rpc(
+      'generate_emp_code',
+      params: {'p_company_id': companyId},
+    );
+    if (result == null) throw Exception('Failed to generate employee code');
+    return result as String;
   }
 
   Future<EmployeeModel> createEmployee(Map<String, dynamic> data) async {

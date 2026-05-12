@@ -214,7 +214,11 @@ class EmployeeController extends GetxController {
     return null;
   }
 
-  // Generate code for a SPECIFIC company (not always the active branch)
+  // Preview — for showing in form (doesn't reserve)
+  Future<String> previewCode([String? companyId]) =>
+      _repo.previewEmployeeCode(companyId ?? auth.companyId);
+
+  // Generate — only called on actual save (reserves the code)
   Future<String> generateCode([String? companyId]) =>
       _repo.generateEmployeeCode(companyId ?? auth.companyId);
 
