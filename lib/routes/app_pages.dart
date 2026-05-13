@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import 'package:sri_hr/presentation/attendance/binding/attendance_binding.dart';
 import 'package:sri_hr/presentation/attendance/ui/attendance.dart';
 import 'package:sri_hr/presentation/attendance/ui/punch_time_adjustment.dart';
+import 'package:sri_hr/presentation/auth/login/controller/login_controller.dart';
 import 'package:sri_hr/presentation/auth/login/ui/login.dart';
 import 'package:sri_hr/presentation/auth/middleware/auth_middleware.dart';
 import 'package:sri_hr/presentation/auth/signup/ui/signup.dart';
@@ -36,7 +37,13 @@ import 'package:sri_hr/routes/app_routes.dart';
 class AppPages {
   static final pages = [
     GetPage(name: AppRoutes.routeSplash, page: () => Splash()),
-    GetPage(name: AppRoutes.routeLogin, page: () => Login()),
+    GetPage(
+      name: AppRoutes.routeLogin,
+      page: () => Login(),
+      binding: BindingsBuilder(() {
+        Get.lazyPut(() => LoginController());
+      }),
+    ),
     GetPage(name: AppRoutes.routeSignup, page: () => Signup()),
     GetPage(
       name: AppRoutes.routeDashboard,

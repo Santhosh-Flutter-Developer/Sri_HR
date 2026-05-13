@@ -76,20 +76,13 @@ class LoginController extends GetxController {
     },
   ];
 
-  @override
-  void dispose() {
-    emailCtrl.dispose();
-    passCtrl.dispose();
-    loginformKey.currentState?.dispose();
-    super.dispose();
-  }
+
 
   @override
   void onClose() {
     super.onClose();
-    emailCtrl.dispose();
-    passCtrl.dispose();
-    loginformKey.currentState?.dispose();
+    emailCtrl.clear();
+    passCtrl.clear();
   }
 
   void submit() {
