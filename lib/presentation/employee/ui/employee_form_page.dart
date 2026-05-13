@@ -279,7 +279,7 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
       'outside_office': outsideOffice,
       'is_active': isActive,
       'username': username.text.trim(),
-      if (!isEdit && password.text.isNotEmpty) 'password': password.text,
+      if (password.text.isNotEmpty) 'password': password.text,
     };
 
     if (controller.faceTemplate != null) {

@@ -445,14 +445,16 @@ class EmployeeController extends GetxController {
   }) async {
     isLoading.value = true;
     try {
-      rawData.remove('password');
+      // ── Pull out non-column values ──────────────────────
+      final String? newPassword = rawData.remove('password') as String?;
       final String? username = rawData.remove('username') as String?;
-      // Use company_id from rawData, fall back to active branch
+
       final String companyId =
           (rawData['company_id'] as String?)?.isNotEmpty == true
           ? rawData['company_id'] as String
           : auth.companyId;
 
+      // ── Upload profile picture ──────────────────────────
       if (kIsWeb) {
         if (profileBytes != null && profileBytes.isNotEmpty) {
           final fileName =
@@ -478,18 +480,42 @@ class EmployeeController extends GetxController {
         }
       }
 
+      // ── Sanitise rawData ────────────────────────────────
       for (final key in ['status_id', 'salary_type_id', 'user_id']) {
         final v = rawData[key];
         if (v == null || v == '') rawData.remove(key);
       }
       rawData.removeWhere((k, _) => !_employeeCols.contains(k));
+
+      // ── Update employees table ──────────────────────────
       final emp = await _repo.updateEmployee(id, rawData);
-      // Update username in users table if changed
-      if (username != null && username.isNotEmpty && emp.userId != null) {
-        await SupabaseService.client
-            .from('users')
-            .update({'username': username})
-            .eq('id', emp.userId!);
+
+      // ── Update users table (username + email) ───────────
+      if (emp.userId != null) {
+        final userUpdates = <String, dynamic>{};
+        if (username != null && username.isNotEmpty) {
+          userUpdates['username'] = username;
+        }
+        final newEmail = rawData['email'] as String?;
+        if (newEmail != null && newEmail.isNotEmpty) {
+          userUpdates['email'] = newEmail;
+        }
+        if (userUpdates.isNotEmpty) {
+          await SupabaseService.client
+              .from('users')
+              .update(userUpdates)
+              .eq('id', emp.userId!);
+        }
+
+        // ── Update Supabase Auth (email + password) ─────────
+        // This is what actually fixes login credentials
+        await _updateAuthUser(
+          userId: emp.userId!,
+          newEmail: newEmail,
+          newPassword: (newPassword != null && newPassword.isNotEmpty)
+              ? newPassword
+              : null,
+        );
       }
 
       final full = await _repo.getEmployee(id) ?? emp;
@@ -501,6 +527,32 @@ class EmployeeController extends GetxController {
       showError('Failed to update employee: $e');
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  Future<void> _updateAuthUser({
+    required String userId,
+    String? newEmail,
+    String? newPassword,
+  }) async {
+    if (newEmail == null && newPassword == null) return;
+
+    try {
+      await SupabaseService.client.rpc(
+        'update_auth_user',
+        params: {
+          'p_user_id': userId,
+          if (newEmail != null && newEmail.isNotEmpty) 'p_email': newEmail,
+          if (newPassword != null && newPassword.isNotEmpty)
+            'p_password': newPassword,
+        },
+      );
+      debugPrint('[EmpCtrl] Auth user updated for $userId');
+    } catch (e) {
+      debugPrint('[EmpCtrl] _updateAuthUser ERROR: $e');
+      showError(
+        'Employee data saved, but login credentials could not be changed: $e',
+      );
     }
   }
 
