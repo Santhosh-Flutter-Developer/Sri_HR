@@ -885,8 +885,7 @@ class _StepBasic extends StatelessWidget {
                         validator: (v) {
                           if (v == null || v.isEmpty) {
                             return 'Email is required';
-                          } else if (v.toString().contains('@') &&
-                              !isValidEmail(v)) {
+                          } else if (!isValidEmail(v)) {
                             return 'Enter Valid Email';
                           }
                           return null;
