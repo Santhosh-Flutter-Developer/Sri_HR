@@ -258,7 +258,9 @@ class SidebarWidget extends StatelessWidget {
                       ),
                       child: Center(
                         child: Text(
-                          active.name.substring(0, 1).toUpperCase(),
+                          active.name.toString().trim().isNotEmpty
+                              ? active.name.substring(0, 1).toUpperCase()
+                              : "",
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w800,

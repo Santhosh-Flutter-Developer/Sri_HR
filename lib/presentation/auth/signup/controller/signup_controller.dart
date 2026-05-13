@@ -97,6 +97,31 @@ class SignupController extends GetxController {
     }
   }
 
+  String? validatePassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Password cannot be empty';
+    }
+    if (value.length < 8) {
+      return 'Must be at least 8 characters';
+    }
+    if (!value.contains(RegExp(r'[A-Z]'))) {
+      return 'Must contain at least one uppercase letter';
+    }
+    if (!value.contains(RegExp(r'[a-z]'))) {
+      return 'Must contain at least one lowercase letter';
+    }
+    if (!value.contains(RegExp(r'[0-9]'))) {
+      return 'Must contain at least one number';
+    }
+    if (!value.contains(RegExp(r'[^A-Za-z0-9\s]'))) {
+      return 'Must contain at least one special character';
+    }
+    if (value.contains(RegExp(r'\s'))) {
+      return 'Password must not contain spaces';
+    }
+    return null; // all good
+  }
+
   Future<void> sendOtp() async {
     final phone = mobile.text.trim();
 
@@ -497,7 +522,9 @@ class SignupController extends GetxController {
         controller: compName,
         label: 'Company Name *',
         prefixIcon: Icons.business_rounded,
-        validator: (v) => v?.isEmpty == true ? 'Company Name Required' : null,
+        validator: (v) => v?.toString().trim().isEmpty == true
+            ? 'Company Name Required'
+            : null,
       ),
       const SizedBox(height: 16),
       SriTextField(
@@ -518,7 +545,9 @@ class SignupController extends GetxController {
         controller: personName,
         label: 'Full Name *',
         prefixIcon: Icons.person_outline,
-        validator: (v) => v?.isEmpty == true ? 'Person Name Required' : null,
+        validator: (v) => v?.toString().trim().isEmpty == true
+            ? 'Person Name Required'
+            : null,
       ),
       const SizedBox(height: 16),
       // Mobile + OTP
@@ -609,7 +638,6 @@ class SignupController extends GetxController {
             ],
           ),
         ),
-       
       ],
       if (otpVerified.value) ...[
         const SizedBox(height: 12),
@@ -656,8 +684,9 @@ class SignupController extends GetxController {
         label: 'Full Address *',
         maxLines: 3,
         prefixIcon: Icons.home_rounded,
-        validator: (v) =>
-            v?.isEmpty == true ? 'Full Address is Required' : null,
+        validator: (v) => v?.toString().trim().isEmpty == true
+            ? 'Full Address is Required'
+            : null,
       ),
       const SizedBox(height: 16),
       Row(
@@ -804,11 +833,7 @@ class SignupController extends GetxController {
         onSuffixTap: () => showPass.value = !showPass.value,
         suffixIcon: showPass.value ? Icons.visibility_off : Icons.visibility,
 
-        validator: (v) {
-          if (v?.isEmpty == true) return 'Password is required';
-          if (v!.length < 6) return 'Min 6 characters';
-          return null;
-        },
+        validator: validatePassword,
       ),
       const SizedBox(height: 16),
       SriTextField(
