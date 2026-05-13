@@ -279,7 +279,7 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
       'outside_office': outsideOffice,
       'is_active': isActive,
       'username': username.text.trim(),
-      if (password.text.isNotEmpty) 'password': password.text,
+      if (password.text.isNotEmpty) 'password': password.text.trim(),
     };
 
     if (controller.faceTemplate != null) {
@@ -1354,6 +1354,31 @@ class _StepLoginDocs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    String? validatePassword(String? value) {
+      if (value == null || value.isEmpty) {
+        return 'Password cannot be empty';
+      }
+      if (value.length < 8) {
+        return 'Must be at least 8 characters';
+      }
+      if (!value.contains(RegExp(r'[A-Z]'))) {
+        return 'Must contain at least one uppercase letter';
+      }
+      if (!value.contains(RegExp(r'[a-z]'))) {
+        return 'Must contain at least one lowercase letter';
+      }
+      if (!value.contains(RegExp(r'[0-9]'))) {
+        return 'Must contain at least one number';
+      }
+      if (!value.contains(RegExp(r'[^A-Za-z0-9\s]'))) {
+        return 'Must contain at least one special character';
+      }
+      if (value.contains(RegExp(r'\s'))) {
+        return 'Password must not contain spaces';
+      }
+      return null; // all good
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
       child: Column(
@@ -1392,11 +1417,7 @@ class _StepLoginDocs extends StatelessWidget {
                         prefixIcon: Icons.lock_outline_rounded,
                         obscureText: true,
                         hint: 'Leave blank for no login access',
-                        validator: (val) => !state.isEdit
-                            ? val!.isEmpty
-                                  ? "password is required"
-                                  : null
-                            : null,
+                        validator: !state.isEdit ? validatePassword : null,
                       ),
                     ),
                   ),
