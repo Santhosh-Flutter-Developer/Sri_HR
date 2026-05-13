@@ -145,7 +145,7 @@ class AuthController extends GetxController {
         pincode: pincode,
         password: password,
       );
-
+     await logout();
       Get.snackbar(
         'Registration Successful!',
         'Your 3-day free trial has started. Please login.',
