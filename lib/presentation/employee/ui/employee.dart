@@ -159,7 +159,12 @@ class Employee extends StatelessWidget {
                                                           .employeeId !=
                                                       controller
                                                           .filteredEmployees[i]
-                                                          .id)
+                                                          .id) &&
+                                                  (controller
+                                                          .filteredEmployees[i]
+                                                          .role
+                                                          ?.name !=
+                                                      "Admin")
                                               ? () => controller.confirmDelete(
                                                   context,
                                                   controller,
