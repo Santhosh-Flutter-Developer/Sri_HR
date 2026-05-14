@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:pinput/pinput.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/services/sms_service.dart';
+import 'package:sri_hr/data/services/supabase_service.dart';
 import 'package:sri_hr/data/utils/otp_generator.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/auth/login/widgets/branding_panel.dart';
@@ -39,7 +40,9 @@ class SignupController extends GetxController {
   // RxInt _resendCount = 0.obs;
   // RxBool _canResend = false.obs;
   Timer? _timer;
-
+  RxBool isChecking = false.obs;
+  RxString emailError = "".obs;
+  Timer? debounce;
   RxBool showPass = false.obs;
   RxBool showConfirmPass = false.obs;
   RxBool otpSent = false.obs;
@@ -53,6 +56,7 @@ class SignupController extends GetxController {
   void onClose() {
     super.onClose();
     _timer?.cancel();
+    debounce?.cancel();
     signupformKey.currentState?.dispose();
     for (final c in [
       compName,
@@ -77,6 +81,7 @@ class SignupController extends GetxController {
   void dispose() {
     super.dispose();
     _timer?.cancel();
+    debounce?.cancel();
     signupformKey.currentState?.dispose();
     for (final c in [
       compName,
@@ -95,6 +100,34 @@ class SignupController extends GetxController {
     ]) {
       c.dispose();
     }
+  }
+
+  bool isValidEmail(String email) {
+    final RegExp emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    return emailRegex.hasMatch(email);
+  }
+
+  Future<bool> isLoginEmailExists(
+    String email, {
+    String? excludeEmployeeId,
+  }) async {
+    try {
+      return await isEmailExists(email, excludeEmployeeId: excludeEmployeeId);
+    } catch (e) {
+      debugPrint('[EmpCtrl] isEmailExists ERROR: $e');
+      return false;
+    }
+  }
+
+  Future<bool> isEmailExists(String email, {String? excludeEmployeeId}) async {
+    final result = await SupabaseService.client.rpc(
+      'check_email_exists',
+      params: {
+        'p_email': email.trim().toLowerCase(),
+        'p_exclude_employee_id': ?excludeEmployeeId,
+      },
+    );
+    return result as bool;
   }
 
   String? validatePassword(String? value) {
@@ -665,16 +698,67 @@ class SignupController extends GetxController {
         ),
       ],
       const SizedBox(height: 16),
-      SriTextField(
-        controller: email,
-        label: 'Email Address *',
-        prefixIcon: Icons.email_outlined,
-        keyboardType: TextInputType.emailAddress,
-        validator: (v) {
-          if (v?.isEmpty == true) return 'Email is Required';
-          if (!GetUtils.isEmail(v!)) return 'Invalid email';
-          return null;
-        },
+      Obx(
+        () => SriTextField(
+          controller: email,
+          label: 'Email Address *',
+          prefixIcon: Icons.email_outlined,
+          errorText: emailError.value != "" ? emailError.value : null,
+          keyboardType: TextInputType.emailAddress,
+          onChanged: (val) {
+            // Cancel previous debounce
+            debounce?.cancel();
+
+            if (val.isEmpty) {
+              emailError.value = "";
+              return;
+            }
+
+            if (!isValidEmail(val)) {
+              emailError.value = 'Enter a valid email address';
+              return;
+            }
+
+            // Debounce API call by 600ms so it doesn't fire on every keystroke
+            debounce = Timer(const Duration(milliseconds: 600), () async {
+              isChecking.value = true;
+              emailError.value = "";
+
+              final exists = await isEmailExists(val);
+
+              isChecking.value = false;
+              emailError.value = (exists
+                  ? 'This email is already registered'
+                  : null)!;
+            });
+          },
+          suffixIconWidget: isChecking.value
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: Padding(
+                    padding: EdgeInsets.all(12.0),
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              : emailError.value == "" && email.text.isNotEmpty
+              ? const Icon(
+                  Icons.check_circle_rounded,
+                  color: AppColors.accentGreen,
+                  size: 18,
+                )
+              : null,
+          validator: (v) {
+            if (v == null || v.isEmpty) {
+              return 'Email is required';
+            } else if (!isValidEmail(v)) {
+              return 'Enter Valid Email';
+            } else if (emailError.value != "") {
+              return emailError.value;
+            }
+            return null;
+          },
+        ),
       ),
       const SizedBox(height: 20),
       StepTitle(title: 'Address Details', icon: Icons.location_on_rounded),
