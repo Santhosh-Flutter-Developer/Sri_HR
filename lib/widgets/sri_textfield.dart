@@ -5,6 +5,7 @@ class SriTextField extends StatelessWidget {
   final TextEditingController? controller;
   final String label;
   final String? hint;
+  final String? errorText;
   final IconData? prefixIcon;
   final bool obscureText;
   final TextInputType? keyboardType;
@@ -15,6 +16,7 @@ class SriTextField extends StatelessWidget {
   final bool enabled;
   final void Function(String)? onChanged;
   final IconData? suffixIcon;
+  final Widget? suffixIconWidget;
   final VoidCallback? onSuffixTap;
 
   const SriTextField({
@@ -22,6 +24,7 @@ class SriTextField extends StatelessWidget {
     this.controller,
     required this.label,
     this.hint,
+    this.errorText,
     this.prefixIcon,
     this.obscureText = false,
     this.keyboardType,
@@ -32,6 +35,7 @@ class SriTextField extends StatelessWidget {
     this.onChanged,
     this.suffixIcon,
     this.onSuffixTap,
+    this.suffixIconWidget,
     this.enabled = true,
   });
 
@@ -50,15 +54,16 @@ class SriTextField extends StatelessWidget {
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
+        errorText: errorText,
         prefixIcon: prefixIcon != null
             ? Icon(prefixIcon, size: 18, color: AppColors.textMuted)
             : null,
-        suffixIcon: suffixIcon != null
+        suffixIcon:suffixIconWidget ?? (suffixIcon != null
             ? GestureDetector(
                 onTap: onSuffixTap,
                 child: Icon(suffixIcon, size: 20, color: AppColors.textMuted),
               )
-            : null,
+            : null),
       ),
     );
   }

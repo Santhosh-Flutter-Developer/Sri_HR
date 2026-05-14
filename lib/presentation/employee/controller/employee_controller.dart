@@ -556,6 +556,18 @@ class EmployeeController extends GetxController {
     }
   }
 
+  Future<bool> isEmailExists(String email, {String? excludeEmployeeId}) async {
+  try {
+    return await _repo.isEmailExists(
+      email,
+      excludeEmployeeId: excludeEmployeeId,
+    );
+  } catch (e) {
+    debugPrint('[EmpCtrl] isEmailExists ERROR: $e');
+    return false;
+  }
+}
+
   Future<void> deleteEmployee(String id) async {
     try {
       // 1. Get employee first to retrieve userId before deleting

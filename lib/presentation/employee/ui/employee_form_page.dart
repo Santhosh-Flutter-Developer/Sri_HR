@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -690,13 +691,64 @@ class _StepFooter extends StatelessWidget {
 // ─────────────────────────────────────────────
 // STEP 1 — BASIC INFO
 // ─────────────────────────────────────────────
-class _StepBasic extends StatelessWidget {
+class _StepBasic extends StatefulWidget {
   final _EmployeeFormPageState state;
   final EmployeeModel? employee;
   const _StepBasic({required this.state, required this.employee});
+
+  @override
+  State<_StepBasic> createState() => _StepBasicState();
+}
+
+class _StepBasicState extends State<_StepBasic> {
+  bool isChecking = false;
+  String? emailError;
+  Timer? debounce;
+
   bool isValidEmail(String email) {
     final RegExp emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
     return emailRegex.hasMatch(email);
+  }
+
+  void onEmailChanged(String value) {
+    // Cancel previous debounce
+    debounce?.cancel();
+
+    if (value.isEmpty) {
+      setState(() => emailError = null);
+      return;
+    }
+
+    if (!isValidEmail(value)) {
+      setState(() => emailError = 'Enter a valid email address');
+      return;
+    }
+
+    // Debounce API call by 600ms so it doesn't fire on every keystroke
+    debounce = Timer(const Duration(milliseconds: 600), () async {
+      setState(() {
+        isChecking = true;
+        emailError = null;
+      });
+
+      final exists = await widget.state.widget.controller.isEmailExists(
+        value,
+        excludeEmployeeId: widget.state.widget.employee?.id,
+      );
+
+      if (mounted) {
+        setState(() {
+          isChecking = false;
+          emailError = exists ? 'This email is already registered' : null;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    debounce?.cancel();
+    super.dispose();
   }
 
   @override
@@ -713,11 +765,11 @@ class _StepBasic extends StatelessWidget {
         children: [
           // Profile pic
           _ProfilePicPicker(
-            bytes: state.profileBytes,
-            employee: employee,
-            onPick: (b, p) => state.setState(() {
-              state.profileBytes = b;
-              state.profilePath = p;
+            bytes: widget.state.profileBytes,
+            employee: widget.employee,
+            onPick: (b, p) => widget.state.setState(() {
+              widget.state.profileBytes = b;
+              widget.state.profilePath = p;
             }),
           ),
           const SizedBox(height: 28),
@@ -736,11 +788,11 @@ class _StepBasic extends StatelessWidget {
                     child: Padding(
                       padding: EdgeInsets.only(right: isWide ? 5.0 : 0.0),
                       child: _SriField(
-                        state.code,
+                        widget.state.code,
                         'Employee Code *',
                         Icons.tag_rounded,
                         validator: _req,
-                        onChanged: (v) => state.username.text = v,
+                        onChanged: (v) => widget.state.username.text = v,
                       ),
                     ),
                   ),
@@ -756,7 +808,7 @@ class _StepBasic extends StatelessWidget {
                         top: isWide ? 0.0 : 16.0,
                       ),
                       child: _SriField(
-                        state.name,
+                        widget.state.name,
                         'Full Name *',
                         Icons.person_rounded,
                         validator: _req,
@@ -776,7 +828,7 @@ class _StepBasic extends StatelessWidget {
                       ),
                       child: _DateField(
                         context,
-                        state.doj,
+                        widget.state.doj,
                         'Date of Joining',
                         Icons.calendar_today_rounded,
                         lastDate: DateTime.now().add(const Duration(days: 365)),
@@ -796,7 +848,7 @@ class _StepBasic extends StatelessWidget {
                       ),
                       child: _DateField(
                         context,
-                        state.dob,
+                        widget.state.dob,
                         'Date of Birth *',
                         Icons.cake_rounded,
                         validator: _req,
@@ -816,9 +868,10 @@ class _StepBasic extends StatelessWidget {
                         top: 16.0,
                       ),
                       child: _GenderDropdown(
-                        value: state.gender,
-                        onChanged: (v) =>
-                            state.setState(() => state.gender = v),
+                        value: widget.state.gender,
+                        onChanged: (v) => widget.state.setState(
+                          () => widget.state.gender = v,
+                        ),
                       ),
                     ),
                   ),
@@ -834,7 +887,7 @@ class _StepBasic extends StatelessWidget {
                         top: 16.0,
                       ),
                       child: _SriField(
-                        state.fatherName,
+                        widget.state.fatherName,
                         'Father / Husband Name',
                         Icons.people_rounded,
                       ),
@@ -852,7 +905,7 @@ class _StepBasic extends StatelessWidget {
                         top: 16.0,
                       ),
                       child: _SriField(
-                        state.mobile,
+                        widget.state.mobile,
                         'Mobile Number *',
                         Icons.phone_rounded,
                         keyboard: TextInputType.phone,
@@ -878,15 +931,38 @@ class _StepBasic extends StatelessWidget {
                         top: 16.0,
                       ),
                       child: _SriField(
-                        state.email,
+                        widget.state.email,
                         'Email Address *',
                         Icons.email_outlined,
                         keyboard: TextInputType.emailAddress,
+                        onChanged: onEmailChanged,
+                        errorText: emailError,
+                        suffixIconWidget: isChecking
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: Padding(
+                                  padding: EdgeInsets.all(12.0),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              )
+                            : emailError == null &&
+                                  widget.state.email.text.isNotEmpty
+                            ? const Icon(
+                                Icons.check_circle_rounded,
+                                color: AppColors.accentGreen,
+                                size: 18,
+                              )
+                            : null,
                         validator: (v) {
                           if (v == null || v.isEmpty) {
                             return 'Email is required';
                           } else if (!isValidEmail(v)) {
                             return 'Enter Valid Email';
+                          } else if (emailError != null) {
+                            return emailError;
                           }
                           return null;
                         },
@@ -911,16 +987,19 @@ class _StepBasic extends StatelessWidget {
                     sm: 12,
                     xs: 12,
                     child: Obx(() {
-                      final ids = state.statusCtrl.statuses
+                      final ids = widget.state.statusCtrl.statuses
                           .map((s) => s.id)
                           .toList();
                       return Padding(
                         padding: EdgeInsets.only(right: isWide ? 5.0 : 0.0),
                         child: SriDropdown<String>(
-                          value: state._safeVal(state.statusId, ids),
+                          value: widget.state._safeVal(
+                            widget.state.statusId,
+                            ids,
+                          ),
                           label: 'Employee Status',
                           prefixIcon: Icons.toggle_on_rounded,
-                          items: state.statusCtrl.statuses
+                          items: widget.state.statusCtrl.statuses
                               .map(
                                 (s) => DropdownMenuItem(
                                   value: s.id,
@@ -928,8 +1007,9 @@ class _StepBasic extends StatelessWidget {
                                 ),
                               )
                               .toList(),
-                          onChanged: (v) =>
-                              state.setState(() => state.statusId = v),
+                          onChanged: (v) => widget.state.setState(
+                            () => widget.state.statusId = v,
+                          ),
                         ),
                       );
                     }),
@@ -941,7 +1021,7 @@ class _StepBasic extends StatelessWidget {
                     sm: 12,
                     xs: 12,
                     child: Obx(() {
-                      final ids = state.salaryCtrl.salaryTypes
+                      final ids = widget.state.salaryCtrl.salaryTypes
                           .map((s) => s.id)
                           .toList();
                       return Padding(
@@ -950,10 +1030,13 @@ class _StepBasic extends StatelessWidget {
                           top: isWide ? 0.0 : 16.0,
                         ),
                         child: SriDropdown<String>(
-                          value: state._safeVal(state.salaryTypeId, ids),
+                          value: widget.state._safeVal(
+                            widget.state.salaryTypeId,
+                            ids,
+                          ),
                           label: 'Salary Type',
                           prefixIcon: Icons.payments_rounded,
-                          items: state.salaryCtrl.salaryTypes
+                          items: widget.state.salaryCtrl.salaryTypes
                               .map(
                                 (s) => DropdownMenuItem(
                                   value: s.id,
@@ -961,8 +1044,9 @@ class _StepBasic extends StatelessWidget {
                                 ),
                               )
                               .toList(),
-                          onChanged: (v) =>
-                              state.setState(() => state.salaryTypeId = v),
+                          onChanged: (v) => widget.state.setState(
+                            () => widget.state.salaryTypeId = v,
+                          ),
                         ),
                       );
                     }),
@@ -1755,8 +1839,10 @@ Widget _SriField(
   String label,
   IconData icon, {
   String? hint,
+  String? errorText,
   TextInputType? keyboard,
   int maxLines = 1,
+  Widget? suffixIconWidget,
   String? Function(String?)? validator,
   void Function(String)? onChanged,
 }) => SriTextField(
@@ -1764,6 +1850,8 @@ Widget _SriField(
   label: label,
   hint: hint,
   prefixIcon: icon,
+  errorText: errorText,
+  suffixIconWidget: suffixIconWidget,
   keyboardType: keyboard,
   maxLines: maxLines,
   validator: validator,

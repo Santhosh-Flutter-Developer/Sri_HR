@@ -29,6 +29,17 @@ class EmployeeRepository {
     return row != null ? EmployeeModel.fromJson(row) : null;
   }
 
+  Future<bool> isEmailExists(String email, {String? excludeEmployeeId}) async {
+  final result = await SupabaseService.client.rpc(
+    'check_email_exists',
+    params: {
+      'p_email': email.trim().toLowerCase(),
+      'p_exclude_employee_id': ?excludeEmployeeId,
+    },
+  );
+  return result as bool;
+}
+
   Future<EmployeeModel?> getEmployeeUserId(String id) async {
     final row = await SupabaseService.client
         .from('employees')
