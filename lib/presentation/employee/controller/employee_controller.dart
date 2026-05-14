@@ -558,7 +558,27 @@ class EmployeeController extends GetxController {
 
   Future<void> deleteEmployee(String id) async {
     try {
+      // 1. Get employee first to retrieve userId before deleting
+      final emp = employees.firstWhereOrNull((e) => e.id == id);
+
+      // 2. Delete from employees table
       await _repo.deleteEmployee(id);
+
+      // 3. Delete from auth.users so they can no longer login
+      if (emp?.userId != null) {
+        try {
+          await SupabaseService.client.rpc(
+            'delete_auth_user',
+            params: {'p_user_id': emp!.userId!},
+          );
+          debugPrint('[EmpCtrl] Auth user deleted: ${emp.userId}');
+        } catch (e) {
+          debugPrint('[EmpCtrl] Auth user delete warning: $e');
+          // Employee is deleted from DB, just auth cleanup failed
+          showError('Employee deleted but login access may still remain: $e');
+        }
+      }
+
       employees.removeWhere((e) => e.id == id);
       showSuccess('Employee deleted');
     } catch (e) {
