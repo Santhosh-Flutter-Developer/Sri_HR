@@ -39,6 +39,7 @@ class EmployeeFormPage extends StatefulWidget {
 class _EmployeeFormPageState extends State<EmployeeFormPage> {
   // Stepper
   int currentStep = 0;
+  bool emailChanged = false;
   final stepKeys = List.generate(4, (_) => GlobalKey<FormState>());
   bool isLoading = false;
   bool get isEdit => widget.employee != null;
@@ -48,6 +49,7 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
       name,
       mobile,
       email,
+      oldEmail,
       fatherName,
       address,
       aadharAddress,
@@ -108,6 +110,7 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
     name = TextEditingController(text: e?.fullName ?? '');
     mobile = TextEditingController(text: e?.mobile ?? '');
     email = TextEditingController(text: e?.email ?? '');
+    oldEmail = TextEditingController(text: e?.email ?? '');
     fatherName = TextEditingController(text: e?.fatherHusbandName ?? '');
     address = TextEditingController(text: e?.address ?? '');
     aadharAddress = TextEditingController(text: e?.aadharAddress ?? '');
@@ -739,6 +742,11 @@ class _StepBasicState extends State<_StepBasic> {
       if (mounted) {
         setState(() {
           isChecking = false;
+          if (widget.state.oldEmail.text.toString() != value) {
+            widget.state.emailChanged = true;
+          } else {
+            widget.state.emailChanged = false;
+          }
           emailError = exists ? 'This email is already registered' : null;
         });
       }
@@ -1501,7 +1509,9 @@ class _StepLoginDocs extends StatelessWidget {
                         prefixIcon: Icons.lock_outline_rounded,
                         obscureText: true,
                         hint: 'Leave blank for no login access',
-                        validator: !state.isEdit ? validatePassword : null,
+                        validator: !state.isEdit || state.emailChanged
+                            ? validatePassword
+                            : null,
                       ),
                     ),
                   ),
