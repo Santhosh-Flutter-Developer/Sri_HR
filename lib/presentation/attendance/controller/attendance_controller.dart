@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/models/attendance_log_model.dart';
+import 'package:sri_hr/data/utils/network_time.dart';
 import 'package:sri_hr/presentation/attendance/repository/attendance_repository.dart';
 import 'package:sri_hr/presentation/attendance/widgets/filter_sheet.dart';
 import 'package:sri_hr/presentation/attendance/widgets/punch_form_dialog.dart';
@@ -29,7 +30,8 @@ class AttendanceController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    final now = DateTime.now();
+    NetworkTime.syncTime();
+    final now = NetworkTime.now();
     fromDate.value = DateTime(now.year, now.month, 1);
     toDate.value = now;
     loadLogs();
@@ -70,7 +72,7 @@ class AttendanceController extends GetxController {
   }
 
   void clearFilters() {
-    final now = DateTime.now();
+    final now = NetworkTime.now();
     fromDate.value = DateTime(now.year, now.month, 1);
     toDate.value = now;
     filterEmployeeId.value = null;

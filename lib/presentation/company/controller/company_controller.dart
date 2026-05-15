@@ -6,6 +6,7 @@ import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/models/company_model.dart';
 import 'package:sri_hr/data/models/role_permission_model.dart';
 import 'package:sri_hr/data/services/supabase_service.dart';
+import 'package:sri_hr/data/utils/network_time.dart';
 import 'package:sri_hr/presentation/attendance/controller/attendance_controller.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/company/repository/company_repository.dart';
@@ -228,7 +229,7 @@ class CompanyController extends GetxController {
     try {
       if (logoBytes != null && logoBytes.isNotEmpty) {
         final fileName =
-            'logo_${cid}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+            'logo_${cid}_${NetworkTime.now().millisecondsSinceEpoch}.jpg';
         data['logo_url'] = await SupabaseService.uploadFile(
           'logos',
           fileName,

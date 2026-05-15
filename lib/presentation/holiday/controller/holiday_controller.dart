@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sri_hr/data/models/holiday_model.dart';
+import 'package:sri_hr/data/utils/network_time.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/helper/helper.dart';
 import 'package:sri_hr/presentation/holiday/repository/holiday_repository.dart';
@@ -15,7 +16,7 @@ class HolidayController extends GetxController {
   final holidays = <HolidayModel>[].obs;
   final filteredholidays = <HolidayModel>[].obs;
   final isLoading = false.obs;
-  final selectedYear = DateTime.now().year.obs;
+  final selectedYear = NetworkTime.now().year.obs;
 
   @override
   void onInit() {

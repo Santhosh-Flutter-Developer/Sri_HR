@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sri_hr/data/models/permission_request_model.dart';
 import 'package:sri_hr/data/services/supabase_service.dart';
+import 'package:sri_hr/data/utils/network_time.dart';
 
 class PermissionRepository {
   static const _permEmpSelect =
@@ -68,7 +69,7 @@ class PermissionRepository {
         .update({
           'status': status,
           'approved_by': approvedBy,
-          'approved_at': DateTime.now().toIso8601String(),
+          'approved_at': NetworkTime.now().toIso8601String(),
         })
         .eq('id', id);
     return _fetchPermOne(id);

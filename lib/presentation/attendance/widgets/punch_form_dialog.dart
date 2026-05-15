@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
+import 'package:sri_hr/data/utils/network_time.dart';
 import 'package:sri_hr/presentation/attendance/controller/attendance_controller.dart';
 import 'package:sri_hr/presentation/attendance/widgets/picker_box.dart';
 import 'package:sri_hr/presentation/attendance/widgets/punch_type_btn.dart';
@@ -28,6 +29,7 @@ class _PunchFormDialogState extends State<PunchFormDialog> {
   @override
   void initState() {
     super.initState();
+    NetworkTime.syncTime();
     empCtrl = Get.find<EmployeeController>();
     final row = widget.prefillRow;
     if (row != null) {
@@ -53,9 +55,9 @@ class _PunchFormDialogState extends State<PunchFormDialog> {
   Future<void> pickDate() async {
     final d = await showDatePicker(
       context: context,
-      initialDate: date ?? DateTime.now(),
+      initialDate: date ?? NetworkTime.now(),
       firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
+      lastDate: NetworkTime.now(),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
           colorScheme: const ColorScheme.light(primary: AppColors.warning),

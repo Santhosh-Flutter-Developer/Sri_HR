@@ -2,6 +2,7 @@ import 'dart:developer';
 
 import 'package:get/get.dart';
 import 'package:sri_hr/data/models/subscription_model.dart';
+import 'package:sri_hr/data/utils/network_time.dart';
 import 'package:sri_hr/presentation/helper/helper.dart';
 import 'package:sri_hr/presentation/subscription/repository/subscription_repository.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
@@ -42,7 +43,7 @@ class SubscriptionController extends GetxController {
   }) async {
     isLoading.value = true;
     try {
-      final now = DateTime.now();
+      final now = NetworkTime.now();
       final days = duration == 'yearly' ? 365 : 30;
       final expiry = now.add(Duration(days: days));
 

@@ -2134,7 +2134,7 @@ class _ProfilePicPickerState extends State<_ProfilePicPicker> {
 
                 File imageFile = await controller.uint8ListToFile(
                   capturedImage["face_URL"],
-                  'image${DateTime.now()}.png',
+                  'image${NetworkTime.now()}.png',
                 );
 
                 setState(() {
@@ -2193,7 +2193,7 @@ class _ProfilePicPickerState extends State<_ProfilePicPicker> {
           if (i == 0) {
             File imageFile = await controller.uint8ListToFile(
               faces[i]["faceJpg"],
-              "image${DateTime.now()}.png",
+              "image${NetworkTime.now()}.png",
             );
             setState(() {
               controller.faceImage = imageFile;

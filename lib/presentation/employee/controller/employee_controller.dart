@@ -11,6 +11,7 @@ import 'package:sri_hr/core/constants/app_constants.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/models/employee_model.dart';
 import 'package:sri_hr/data/services/supabase_service.dart';
+import 'package:sri_hr/data/utils/network_time.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/employee/repository/employee_repository.dart';
 import 'package:sri_hr/presentation/employee/ui/employee_form_page.dart';
@@ -247,7 +248,7 @@ class EmployeeController extends GetxController {
         if (profileBytes != null && profileBytes.isNotEmpty) {
           final fileName =
               'profile_${selectedCompanyId}_${rawData['employee_code']}'
-              '_${DateTime.now().millisecondsSinceEpoch}.jpg';
+              '_${NetworkTime.now().millisecondsSinceEpoch}.jpg';
           rawData['profile_picture'] = await SupabaseService.uploadFile(
             'profiles',
             fileName,
@@ -259,7 +260,7 @@ class EmployeeController extends GetxController {
           final bytes = await selectedProfile.value!.readAsBytes();
           final fileName =
               'profile_${selectedCompanyId}_${rawData['employee_code']}'
-              '_${DateTime.now().millisecondsSinceEpoch}.jpg';
+              '_${NetworkTime.now().millisecondsSinceEpoch}.jpg';
           rawData['profile_picture'] = await SupabaseService.uploadFile(
             'profiles',
             fileName,
@@ -274,7 +275,7 @@ class EmployeeController extends GetxController {
         final ext = aadharPath?.split('.').last ?? 'pdf';
         final fileName =
             'doc_${selectedCompanyId}_${rawData['employee_code']}'
-            '_${DateTime.now().millisecondsSinceEpoch}.$ext';
+            '_${NetworkTime.now().millisecondsSinceEpoch}.$ext';
         rawData['aadhar_doc_url'] = await SupabaseService.uploadFile(
           'documents',
           fileName,
@@ -459,7 +460,7 @@ class EmployeeController extends GetxController {
         if (profileBytes != null && profileBytes.isNotEmpty) {
           final fileName =
               'profile_${companyId}_${rawData['employee_code']}'
-              '_${DateTime.now().millisecondsSinceEpoch}.jpg';
+              '_${NetworkTime.now().millisecondsSinceEpoch}.jpg';
           rawData['profile_picture'] = await SupabaseService.uploadFile(
             'profiles',
             fileName,
@@ -471,7 +472,7 @@ class EmployeeController extends GetxController {
           final bytes = await selectedProfile.value!.readAsBytes();
           final fileName =
               'profile_${companyId}_${rawData['employee_code']}'
-              '_${DateTime.now().millisecondsSinceEpoch}.jpg';
+              '_${NetworkTime.now().millisecondsSinceEpoch}.jpg';
           rawData['profile_picture'] = await SupabaseService.uploadFile(
             'profiles',
             fileName,

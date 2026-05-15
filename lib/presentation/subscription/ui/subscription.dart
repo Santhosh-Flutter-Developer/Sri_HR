@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 // import 'package:razorpay_web/razorpay_flutter_web.dart' hide Razorpay;
 import 'package:razorpay_web/razorpay_web.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
+import 'package:sri_hr/data/utils/network_time.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/subscription/controller/subscription_controller.dart';
 import 'package:sri_hr/presentation/subscription/widgets/current_plan_card.dart';
@@ -54,7 +55,7 @@ class _SubscriptionState extends State<Subscription> {
       duration: selectedDuration,
       amount: amount,
       paymentId:
-          res.paymentId ?? 'pay_${DateTime.now().millisecondsSinceEpoch}',
+          res.paymentId ?? 'pay_${NetworkTime.now().millisecondsSinceEpoch}',
     );
   }
 
@@ -82,7 +83,7 @@ class _SubscriptionState extends State<Subscription> {
         userLimit: plan['user_limit'] as int,
         duration: 'trial',
         amount: 0,
-        paymentId: 'trial_${DateTime.now().millisecondsSinceEpoch}',
+        paymentId: 'trial_${NetworkTime.now().millisecondsSinceEpoch}',
       );
       return;
     }

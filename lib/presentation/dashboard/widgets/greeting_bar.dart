@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
+import 'package:sri_hr/data/utils/network_time.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 
 class GreetingBar extends StatelessWidget {
@@ -9,7 +10,7 @@ class GreetingBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = Get.find<AuthController>();
-    final hour = DateTime.now().hour;
+    final hour = NetworkTime.now().hour;
     final greeting = hour < 12
         ? 'Good morning'
         : hour < 17

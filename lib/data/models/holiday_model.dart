@@ -1,3 +1,5 @@
+import 'package:sri_hr/data/utils/network_time.dart';
+
 class HolidayModel {
   final String id;
   final String companyId;
@@ -17,8 +19,8 @@ class HolidayModel {
     id: (j['id'] as String?) ?? '',
     companyId: (j['company_id'] as String?) ?? '',
     date: j['date'] != null
-        ? (DateTime.tryParse(j['date'] as String) ?? DateTime.now())
-        : DateTime.now(),
+        ? (DateTime.tryParse(j['date'] as String) ?? NetworkTime.now())
+        : NetworkTime.now(),
     reason: (j['reason'] as String?) ?? '',
     days: (j['days'] as int?) ?? 1,
   );

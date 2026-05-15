@@ -1,5 +1,6 @@
 import 'package:sri_hr/data/models/employee_model.dart';
 import 'package:sri_hr/data/models/leave_request_model.dart';
+import 'package:sri_hr/data/utils/network_time.dart';
 
 class PermissionRequestModel {
   final String id;
@@ -36,8 +37,8 @@ class PermissionRequestModel {
         companyId: (j['company_id'] as String?) ?? '',
         employeeId: (j['employee_id'] as String?) ?? '',
         requestDate: j['request_date'] != null
-            ? (DateTime.tryParse(j['request_date'] as String) ?? DateTime.now())
-            : DateTime.now(),
+            ? (DateTime.tryParse(j['request_date'] as String) ?? NetworkTime.now())
+            : NetworkTime.now(),
         fromTime: (j['from_time'] as String?) ?? '',
         toTime: (j['to_time'] as String?) ?? '',
         minutes: j['minutes'] as int?,

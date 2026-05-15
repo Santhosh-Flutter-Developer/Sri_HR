@@ -1,3 +1,5 @@
+import 'package:sri_hr/data/utils/network_time.dart';
+
 enum SubscriptionPlan { trial, basic, pro, premium }
 
 enum SubscriptionStatus { active, expired, cancelled }
@@ -28,12 +30,11 @@ class SubscriptionModel {
     this.amount = 0,
     this.duration = 'trial',
   });
-
   bool get isActive =>
-      status == SubscriptionStatus.active && expiryDate.isAfter(DateTime.now());
+      status == SubscriptionStatus.active && expiryDate.isAfter(NetworkTime.now());
   bool get isExpiringSoon =>
-      isActive && expiryDate.difference(DateTime.now()).inDays <= 2;
-  int get daysRemaining => expiryDate.difference(DateTime.now()).inDays;
+      isActive && expiryDate.difference(NetworkTime.now()).inDays <= 2;
+  int get daysRemaining => expiryDate.difference(NetworkTime.now()).inDays;
 
   factory SubscriptionModel.fromJson(Map<String, dynamic> j) =>
       SubscriptionModel(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
+import 'package:sri_hr/data/utils/network_time.dart';
 import 'package:sri_hr/presentation/attendance/controller/attendance_controller.dart';
 import 'package:sri_hr/presentation/attendance/widgets/date_tap_box.dart';
 import 'package:sri_hr/presentation/attendance/widgets/quick_btn.dart';
@@ -23,6 +24,7 @@ class FilterSheetState extends State<FilterSheet> {
   @override
   void initState() {
     super.initState();
+    NetworkTime.syncTime();
     from = widget.controller.fromDate.value;
     to = widget.controller.toDate.value;
     empId = widget.controller.filterEmployeeId.value;
@@ -37,9 +39,9 @@ class FilterSheetState extends State<FilterSheet> {
   Future<void> pickDate(bool isFrom) async {
     final d = await showDatePicker(
       context: context,
-      initialDate: (isFrom ? from : to) ?? DateTime.now(),
+      initialDate: (isFrom ? from : to) ?? NetworkTime.now(),
       firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
+      lastDate: NetworkTime.now(),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
           colorScheme: const ColorScheme.light(primary: AppColors.primary),
@@ -51,7 +53,7 @@ class FilterSheetState extends State<FilterSheet> {
   }
 
   void quickSelect(String preset) {
-    final now = DateTime.now();
+    final now = NetworkTime.now();
     setState(() {
       switch (preset) {
         case 'today':

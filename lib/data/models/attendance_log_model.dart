@@ -1,4 +1,5 @@
 import 'package:sri_hr/data/models/employee_model.dart';
+import 'package:sri_hr/data/utils/network_time.dart';
 
 enum PunchType { in_, out }
 
@@ -35,11 +36,11 @@ class AttendanceLogModel {
         companyId: (j['company_id'] as String?) ?? '',
         employeeId: (j['employee_id'] as String?) ?? '',
         date: j['date'] != null
-            ? (DateTime.tryParse(j['date'] as String) ?? DateTime.now())
-            : DateTime.now(),
+            ? (DateTime.tryParse(j['date'] as String) ?? NetworkTime.now())
+            : NetworkTime.now(),
         punchTime: j['punch_time'] != null
-            ? (DateTime.tryParse(j['punch_time'] as String) ?? DateTime.now())
-            : DateTime.now(),
+            ? (DateTime.tryParse(j['punch_time'] as String) ?? NetworkTime.now())
+            : NetworkTime.now(),
         punchType: (j['punch_type'] as String?) == 'in'
             ? PunchType.in_
             : PunchType.out,

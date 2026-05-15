@@ -1,3 +1,5 @@
+import 'package:sri_hr/data/utils/network_time.dart';
+
 class UserModel {
   final String id;
   final String companyId;
@@ -37,7 +39,7 @@ class UserModel {
     isActive: (j['is_active'] as bool?) ?? true,
     isAdmin: (j['is_admin'] as bool?) ?? false,
     createdAt:
-        DateTime.tryParse(j['created_at'] as String? ?? '') ?? DateTime.now(),
+        DateTime.tryParse(j['created_at'] as String? ?? '') ?? NetworkTime.now(),
   );
 
   Map<String, dynamic> toJson() => {

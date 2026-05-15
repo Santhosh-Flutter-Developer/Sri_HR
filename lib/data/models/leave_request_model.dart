@@ -1,4 +1,5 @@
 import 'package:sri_hr/data/models/employee_model.dart';
+import 'package:sri_hr/data/utils/network_time.dart';
 
 enum LeaveStatus { pending, approved, rejected }
 
@@ -35,11 +36,11 @@ class LeaveRequestModel {
         companyId: (j['company_id'] as String?) ?? '',
         employeeId: (j['employee_id'] as String?) ?? '',
         fromDate: j['from_date'] != null
-            ? (DateTime.tryParse(j['from_date'] as String) ?? DateTime.now())
-            : DateTime.now(),
+            ? (DateTime.tryParse(j['from_date'] as String) ?? NetworkTime.now())
+            : NetworkTime.now(),
         toDate: j['to_date'] != null
-            ? (DateTime.tryParse(j['to_date'] as String) ?? DateTime.now())
-            : DateTime.now(),
+            ? (DateTime.tryParse(j['to_date'] as String) ?? NetworkTime.now())
+            : NetworkTime.now(),
         days: (j['days'] as int?) ?? 1,
         reason: j['reason'] as String?,
         status: LeaveStatus.values.firstWhere(

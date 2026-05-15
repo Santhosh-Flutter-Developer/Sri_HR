@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sri_hr/data/models/attendance_log_model.dart';
 import 'package:sri_hr/data/services/supabase_service.dart';
+import 'package:sri_hr/data/utils/network_time.dart';
 
 class AttendanceRepository {
   Future<List<AttendanceLogModel>> getAttendanceLogs(
@@ -121,7 +122,8 @@ class AttendanceRepository {
   }
 
   Future<AttendanceLogModel?> getTodayAttendance(String employeeId) async {
-    final today = DateTime.now().toIso8601String().substring(0, 10);
+    await NetworkTime.syncTime();
+    final today = NetworkTime.now().toIso8601String().substring(0, 10);
     try {
       final data = await SupabaseService.client
           .from('attendance_logs')
@@ -132,7 +134,7 @@ class AttendanceRepository {
       int ind = data.indexWhere((e) => e["punch_type"] == "in");
       if (ind.toString() != "-1") {
         return AttendanceLogModel.fromJson(data[ind]);
-      }else{
+      } else {
         return null;
       }
     } catch (_) {

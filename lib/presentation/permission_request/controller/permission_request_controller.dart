@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sri_hr/data/models/permission_request_model.dart';
+import 'package:sri_hr/data/utils/network_time.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/helper/helper.dart';
 import 'package:sri_hr/presentation/permission_request/repository/permission_request_repository.dart';
@@ -83,7 +84,7 @@ class PermissionRequestController extends GetxController {
 
   DateTime parseTime(String t) {
     final parts = t.split(':');
-    final now = DateTime.now();
+    final now = NetworkTime.now();
     return DateTime(
       now.year,
       now.month,
