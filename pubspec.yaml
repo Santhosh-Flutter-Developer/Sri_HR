@@ -69,6 +69,7 @@ dependencies:
   dropdown_search: ^7.0.0
   responsive_grid: ^2.4.4
   http: ^1.2.0
+  ntp: ^2.0.0
 
   facesdk_plugin:
     path: ./facesdk_plugin

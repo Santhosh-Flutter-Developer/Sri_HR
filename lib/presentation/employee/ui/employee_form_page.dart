@@ -14,6 +14,7 @@ import 'package:sri_hr/data/models/department_model.dart';
 import 'package:sri_hr/data/models/employee_model.dart';
 import 'package:sri_hr/data/models/role_model.dart';
 import 'package:sri_hr/data/services/supabase_service.dart';
+import 'package:sri_hr/data/utils/network_time.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/company/controller/company_controller.dart';
 import 'package:sri_hr/presentation/department/controller/department_controller.dart';
@@ -99,6 +100,7 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
   @override
   void initState() {
     super.initState();
+    NetworkTime.syncTime();
     deptCtrl = Get.find<DepartmentController>();
     roleCtrl = Get.find<RoleController>();
     statusCtrl = Get.find<EmployeeStatusController>();
@@ -839,7 +841,9 @@ class _StepBasicState extends State<_StepBasic> {
                         widget.state.doj,
                         'Date of Joining',
                         Icons.calendar_today_rounded,
-                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                        lastDate: NetworkTime.now().add(
+                          const Duration(days: 365),
+                        ),
                       ),
                     ),
                   ),
@@ -860,7 +864,7 @@ class _StepBasicState extends State<_StepBasic> {
                         'Date of Birth *',
                         Icons.cake_rounded,
                         validator: _req,
-                        lastDate: DateTime.now(),
+                        lastDate: NetworkTime.now(),
                       ),
                     ),
                   ),
@@ -1885,7 +1889,7 @@ Widget _DateField(
   onTap: () async {
     final d = await showDatePicker(
       context: ctx,
-      initialDate: DateTime.tryParse(ctrl.text) ?? DateTime.now(),
+      initialDate: DateTime.tryParse(ctrl.text) ?? NetworkTime.now(),
       firstDate: firstDate ?? DateTime(1950),
       lastDate: lastDate ?? DateTime(2100),
       builder: (ctx, child) => Theme(

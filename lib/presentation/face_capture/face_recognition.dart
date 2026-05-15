@@ -13,6 +13,7 @@ import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/models/attendance_log_model.dart';
 import 'package:sri_hr/data/models/employee_model.dart';
 import 'package:sri_hr/data/services/location_service.dart';
+import 'package:sri_hr/data/utils/network_time.dart';
 import 'package:sri_hr/presentation/attendance/controller/attendance_controller.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/company/controller/company_controller.dart';
@@ -345,18 +346,19 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
           setState(() {
             callApi = false;
           });
+          await NetworkTime.syncTime();
           if (isCheckIn) {
             await attendanceController.adjustPunch({
               'employee_id': employee!.id,
-              'date': DateTime.now().toIso8601String().substring(0, 10),
-              'punch_time': DateTime.now().toIso8601String(),
+              'date': NetworkTime.now().toIso8601String().substring(0, 10),
+              'punch_time': NetworkTime.now().toIso8601String(),
               'punch_type': 'in',
             }, showToast: false);
           } else {
             await attendanceController.adjustPunch({
               'employee_id': employee!.id,
-              'date': DateTime.now().toIso8601String().substring(0, 10),
-              'punch_time': DateTime.now().toIso8601String(),
+              'date': NetworkTime.now().toIso8601String().substring(0, 10),
+              'punch_time': NetworkTime.now().toIso8601String(),
               'punch_type': 'out',
             }, showToast: false);
           }

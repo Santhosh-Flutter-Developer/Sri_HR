@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:responsive_grid/responsive_grid.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
+import 'package:sri_hr/data/utils/network_time.dart';
 import 'package:sri_hr/presentation/holiday/controller/holiday_controller.dart';
 import 'package:sri_hr/widgets/form_fields.dart';
 import 'package:sri_hr/widgets/sri_button.dart';
@@ -25,6 +26,7 @@ class _HolidayFormState extends State<HolidayForm> {
   @override
   void initState() {
     super.initState();
+    NetworkTime.syncTime();
     dateCtrl.text = widget.item != null
         ? DateFormat('dd-MM-yyyy').format(widget.item?.date)
         : '';
@@ -141,7 +143,7 @@ class _HolidayFormState extends State<HolidayForm> {
                             onTapDate: () async {
                               final date = await showDatePicker(
                                 context: context,
-                                initialDate: DateTime.now(),
+                                initialDate: NetworkTime.now(),
                                 firstDate: DateTime(2020),
                                 lastDate: DateTime(2100),
                               );

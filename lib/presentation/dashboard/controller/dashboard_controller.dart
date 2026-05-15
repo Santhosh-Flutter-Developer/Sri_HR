@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'package:get/get.dart';
 import 'package:sri_hr/data/models/dashboard_stats_model.dart';
 import 'package:sri_hr/data/services/supabase_service.dart';
+import 'package:sri_hr/data/utils/network_time.dart';
 import 'package:sri_hr/presentation/attendance/repository/attendance_repository.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/employee/repository/employee_repository.dart';
@@ -26,8 +27,9 @@ class DashboardController extends GetxController {
   Future<void> loadStats() async {
     isLoading.value = true;
     try {
+      await NetworkTime.syncTime();
       final companyId = auth.companyId;
-      final today = DateTime.now();
+      final today = NetworkTime.now();
       final totalEmp = await empRepo.countEmployees(companyId);
       final presentCount = await attRepo.getPresentCount(companyId, today);
       final leaveCount = await leaveRepo.getLeaveCount(companyId, today);
