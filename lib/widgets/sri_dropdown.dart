@@ -404,7 +404,9 @@ class _SearchDialogState<T> extends State<_SearchDialog<T>> {
                           ),
                           const SizedBox(height: 10),
                           Text(
-                            'No results for "${_searchCtrl.text}"',
+                            _searchCtrl.text.isEmpty
+                                ? "No results found"
+                                : 'No results for "${_searchCtrl.text}"',
                             style: const TextStyle(
                               color: AppColors.textMuted,
                               fontSize: 13,
