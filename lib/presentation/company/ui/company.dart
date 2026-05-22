@@ -23,7 +23,7 @@ class Company extends StatelessWidget {
     final isWide = MediaQuery.of(context).size.width >= 800;
     return AppShell(
       currentModule: 'company',
-      title: 'Company Settings',
+      title: 'Company',
       actions: [
         if (auth.canAdd('company') &&
             auth.subscription.value!.plan != SubscriptionPlan.trial)
