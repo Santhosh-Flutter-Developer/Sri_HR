@@ -23,7 +23,7 @@ class PickerTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
         color: disabled
-            ? AppColors.border.withOpacity(0.2)
+            ? AppColors.surfaceVariant
             : selected
             ? color.withOpacity(0.06)
             : AppColors.surfaceVariant,
@@ -39,7 +39,7 @@ class PickerTile extends StatelessWidget {
             icon,
             size: 16,
             color: disabled
-                ? AppColors.border
+                ? AppColors.textMuted
                 : selected
                 ? color
                 : AppColors.textMuted,
@@ -47,7 +47,7 @@ class PickerTile extends StatelessWidget {
           const SizedBox(width: 8),
           Flexible(
             child: Text(
-              disabled ? 'Pick from first' : label,
+              disabled ? 'Pick From Time' : label,
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w400,

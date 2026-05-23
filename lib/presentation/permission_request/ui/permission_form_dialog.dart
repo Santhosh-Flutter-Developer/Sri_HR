@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/utils/network_time.dart';
 import 'package:sri_hr/presentation/employee/controller/employee_controller.dart';
+import 'package:sri_hr/presentation/helper/helper.dart';
 import 'package:sri_hr/presentation/permission_request/controller/permission_request_controller.dart';
 import 'package:sri_hr/presentation/permission_request/widgets/form_label.dart';
 import 'package:sri_hr/presentation/permission_request/widgets/picker_tile.dart';
@@ -124,13 +125,7 @@ class PermissionFormDialogState extends State<PermissionFormDialog> {
         final fromMins = fromTime!.hour * 60 + fromTime!.minute;
         final toMins = t.hour * 60 + t.minute;
         if (toMins <= fromMins) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('To Time must be after From Time'),
-              backgroundColor: AppColors.error,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          showError("To Time must be after From Time");
           return;
         }
       }
@@ -315,7 +310,7 @@ class PermissionFormDialogState extends State<PermissionFormDialog> {
                             ),
                             Padding(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
+                                horizontal: 2,
                               ),
                               child: Icon(
                                 Icons.arrow_forward_rounded,
