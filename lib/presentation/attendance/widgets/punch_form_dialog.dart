@@ -6,6 +6,7 @@ import 'package:sri_hr/presentation/attendance/controller/attendance_controller.
 import 'package:sri_hr/presentation/attendance/widgets/picker_box.dart';
 import 'package:sri_hr/presentation/attendance/widgets/punch_type_btn.dart';
 import 'package:sri_hr/presentation/employee/controller/employee_controller.dart';
+import 'package:sri_hr/presentation/helper/helper.dart';
 
 class PunchFormDialog extends StatefulWidget {
   final AttendanceController controller;
@@ -115,13 +116,17 @@ class _PunchFormDialogState extends State<PunchFormDialog> {
     }
   }
 
-  void snack(String msg) => ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(msg),
-      backgroundColor: AppColors.error,
-      behavior: SnackBarBehavior.floating,
-    ),
-  );
+  void snack(String msg) {
+    showError(msg);
+    // ScaffoldMessenger.of(context).showSnackBar(
+    //   SnackBar(
+    //     content: Text(msg),
+    //     backgroundColor: AppColors.error,
+    //     behavior: SnackBarBehavior.floating,
+    //   ),
+    // );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
