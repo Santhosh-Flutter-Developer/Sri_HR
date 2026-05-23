@@ -709,9 +709,45 @@ class _StepBasic extends StatefulWidget {
 }
 
 class _StepBasicState extends State<_StepBasic> {
-  bool isChecking = false;
+  bool isCheckingEmail = false;
+  bool isCheckingMobile = false; // ← add
   String? emailError;
-  Timer? debounce;
+  String? mobileError; // ← add
+  Timer? emailDebounce;
+  Timer? mobileDebounce;
+
+  void onMobileChanged(String value) {
+    mobileDebounce?.cancel();
+
+    if (value.isEmpty) {
+      setState(() => mobileError = null);
+      return;
+    }
+
+    if (value.length != 10) {
+      setState(() => mobileError = 'Enter 10 digits');
+      return;
+    }
+
+    mobileDebounce = Timer(const Duration(milliseconds: 600), () async {
+      setState(() {
+        isCheckingMobile = true;
+        mobileError = null;
+      });
+
+      final exists = await widget.state.widget.controller.isMobileExists(
+        value,
+        excludeEmployeeId: widget.state.widget.employee?.id,
+      );
+
+      if (mounted) {
+        setState(() {
+          isCheckingMobile = false;
+          mobileError = exists ? 'This mobile is already registered' : null;
+        });
+      }
+    });
+  }
 
   bool isValidEmail(String email) {
     final RegExp emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
@@ -720,7 +756,7 @@ class _StepBasicState extends State<_StepBasic> {
 
   void onEmailChanged(String value) {
     // Cancel previous debounce
-    debounce?.cancel();
+    emailDebounce?.cancel();
 
     if (value.isEmpty) {
       setState(() => emailError = null);
@@ -733,9 +769,9 @@ class _StepBasicState extends State<_StepBasic> {
     }
 
     // Debounce API call by 600ms so it doesn't fire on every keystroke
-    debounce = Timer(const Duration(milliseconds: 600), () async {
+    emailDebounce = Timer(const Duration(milliseconds: 600), () async {
       setState(() {
-        isChecking = true;
+        isCheckingEmail = true;
         emailError = null;
       });
 
@@ -746,7 +782,7 @@ class _StepBasicState extends State<_StepBasic> {
 
       if (mounted) {
         setState(() {
-          isChecking = false;
+          isCheckingEmail = false;
           if (widget.state.oldEmail.text.toString() != value) {
             widget.state.emailChanged = true;
           } else {
@@ -760,7 +796,8 @@ class _StepBasicState extends State<_StepBasic> {
 
   @override
   void dispose() {
-    debounce?.cancel();
+    emailDebounce?.cancel();
+    mobileDebounce?.cancel();
     super.dispose();
   }
 
@@ -924,11 +961,34 @@ class _StepBasicState extends State<_StepBasic> {
                         'Mobile Number *',
                         Icons.phone_rounded,
                         keyboard: TextInputType.phone,
+                        onChanged: onMobileChanged, // ← add
+                        errorText: mobileError, // ← add
+                        suffixIconWidget:
+                            isCheckingMobile // ← add
+                            ? const SizedBox(
+                                width: 10,
+                                height: 10,
+                                child: Padding(
+                                  padding: EdgeInsets.all(12.0),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              )
+                            : mobileError == null &&
+                                  widget.state.mobile.text.isNotEmpty
+                            ? const Icon(
+                                Icons.check_circle_rounded,
+                                color: AppColors.accentGreen,
+                                size: 18,
+                              )
+                            : null,
                         validator: (v) {
                           if (v?.isEmpty == true) {
                             return 'Mobile Number is Required';
                           }
                           if (v!.length != 10) return 'Enter 10 digits';
+                          if (mobileError != null) return mobileError; // ← add
                           return null;
                         },
                       ),
@@ -952,7 +1012,7 @@ class _StepBasicState extends State<_StepBasic> {
                         keyboard: TextInputType.emailAddress,
                         onChanged: onEmailChanged,
                         errorText: emailError,
-                        suffixIconWidget: isChecking
+                        suffixIconWidget: isCheckingEmail
                             ? const SizedBox(
                                 width: 16,
                                 height: 16,

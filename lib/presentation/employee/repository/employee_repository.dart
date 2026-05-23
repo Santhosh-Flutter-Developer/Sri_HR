@@ -29,16 +29,30 @@ class EmployeeRepository {
     return row != null ? EmployeeModel.fromJson(row) : null;
   }
 
+  Future<bool> isMobileExists(
+    String mobile, {
+    String? excludeEmployeeId,
+  }) async {
+    final result = await SupabaseService.client.rpc(
+      'check_mobile_exists',
+      params: {
+        'p_mobile': mobile.trim(),
+        'p_exclude_employee_id': excludeEmployeeId,
+      },
+    );
+    return result as bool;
+  }
+
   Future<bool> isEmailExists(String email, {String? excludeEmployeeId}) async {
-  final result = await SupabaseService.client.rpc(
-    'check_email_exists',
-    params: {
-      'p_email': email.trim().toLowerCase(),
-      'p_exclude_employee_id': ?excludeEmployeeId,
-    },
-  );
-  return result as bool;
-}
+    final result = await SupabaseService.client.rpc(
+      'check_email_exists',
+      params: {
+        'p_email': email.trim().toLowerCase(),
+        'p_exclude_employee_id': ?excludeEmployeeId,
+      },
+    );
+    return result as bool;
+  }
 
   Future<EmployeeModel?> getEmployeeUserId(String id) async {
     final row = await SupabaseService.client
