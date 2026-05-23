@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
@@ -5,6 +7,7 @@ import 'package:sri_hr/data/utils/network_time.dart';
 import 'package:sri_hr/presentation/attendance/controller/attendance_controller.dart';
 import 'package:sri_hr/presentation/attendance/widgets/picker_box.dart';
 import 'package:sri_hr/presentation/attendance/widgets/punch_type_btn.dart';
+import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/employee/controller/employee_controller.dart';
 import 'package:sri_hr/presentation/helper/helper.dart';
 
@@ -24,6 +27,7 @@ class _PunchFormDialogState extends State<PunchFormDialog> {
   TimeOfDay? time;
   String punchType = 'in';
   bool loading = false;
+  final auth = Get.find<AuthController>();
 
   late final EmployeeController empCtrl;
 
@@ -34,8 +38,12 @@ class _PunchFormDialogState extends State<PunchFormDialog> {
     empCtrl = Get.find<EmployeeController>();
     final row = widget.prefillRow;
     if (row != null) {
-      empId = row['employeeId'] as String?;
+      empId = !auth.isAdmin ? auth.employeeId : row['employeeId'] as String?;
       date = row['date'] as DateTime?;
+    }
+    if (!auth.isAdmin) {
+      empId =
+          auth.employeeId; // or auth.employeeId depending on your auth model
     }
   }
 
@@ -178,28 +186,44 @@ class _PunchFormDialogState extends State<PunchFormDialog> {
                 child: Column(
                   children: [
                     Obx(() {
-                      final ids = empCtrl.employees.map((e) => e.id).toList();
+                      final allEmps = empCtrl.employees;
+                      log("allEmps:$allEmps");
+                      final emps = auth.isAdmin
+                          ? allEmps
+                          : allEmps.where((e) {
+                              log("e:${e.id}");
+                              log("emp:${auth.employeeId}");
+                              return e.id == auth.employeeId;
+                            }).toList();
+                      final ids = emps.map((e) => e.id).toList();
+                      final safe = ids.contains(empId) ? empId : null;
                       return DropdownButtonFormField<String>(
-                        value: ids.contains(empId) ? empId : null,
+                        value: safe,
+                        initialValue: safe,
                         isExpanded: true,
                         decoration: deco(
                           Icons.person_rounded,
                           'Select employee',
                         ),
                         validator: (v) => v == null ? 'Required' : null,
-                        items: empCtrl.employees
+                        items: emps
                             .map(
                               (e) => DropdownMenuItem(
                                 value: e.id,
                                 child: Text(
                                   '${e.employeeCode} – ${e.fullName}',
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontSize: 14),
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: AppColors.textPrimary,
+                                  ),
                                 ),
                               ),
                             )
                             .toList(),
-                        onChanged: (v) => setState(() => empId = v),
+                        onChanged: auth.isAdmin
+                            ? (v) => setState(() => empId = v)
+                            : null,
                       );
                     }),
                     const SizedBox(height: 14),
