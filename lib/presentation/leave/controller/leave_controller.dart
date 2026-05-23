@@ -59,6 +59,20 @@ class LeaveController extends GetxController {
         throw Exception('Please select To Date');
       }
 
+      // ✅ Check for overlapping leave dates
+      final hasOverlap = await _repo.hasOverlappingLeave(
+        companyId: auth.companyId,
+        employeeId: data['employee_id'] as String,
+        fromDate: data['from_date'] as String,
+        toDate: data['to_date'] as String,
+      );
+
+      if (hasOverlap) {
+        throw Exception(
+          'Leave already applied for the selected date range. Please choose different dates.',
+        );
+      }
+
       debugPrint('[LeaveCtrl] creating leave: $data');
       final leave = await _repo.createLeave(data);
       debugPrint(
@@ -68,10 +82,11 @@ class LeaveController extends GetxController {
       // Insert at top of list
       leaves.insert(0, leave);
       showSuccess('Leave request submitted successfully');
-    } catch (e) {
+    } 
+    catch (e) {
       debugPrint('[LeaveCtrl] create error: $e');
       showError(e.toString().replaceAll('Exception: ', ''));
-      rethrow; // rethrow so the dialog can catch and not close on error
+      // rethrow; // rethrow so the dialog can catch and not close on error
     } finally {
       isLoading.value = false;
     }

@@ -54,6 +54,26 @@ class LeaveRepository {
     return _fetchOne(id);
   }
 
+  Future<bool> hasOverlappingLeave({
+    required String companyId,
+    required String employeeId,
+    required String fromDate,
+    required String toDate,
+  }) async {
+    // ✅ Check if any approved or pending leave overlaps with the selected range
+    // Overlap condition: existing.from_date <= new.to_date AND existing.to_date >= new.from_date
+    final rows = await SupabaseService.client
+        .from('leave_requests')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('employee_id', employeeId)
+        .inFilter('status', ['pending', 'approved']) // ✅ ignore rejected leaves
+        .lte('from_date', toDate) // existing from <= new to
+        .gte('to_date', fromDate); // existing to >= new from
+
+    return rows.isNotEmpty;
+  }
+
   Future<LeaveRequestModel> _fetchOne(String id) async {
     final row = await SupabaseService.client
         .from('leave_requests')
