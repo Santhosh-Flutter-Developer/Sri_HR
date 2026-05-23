@@ -840,8 +840,10 @@ class _StepBasicState extends State<_StepBasic> {
                       child: _SriField(
                         widget.state.code,
                         'Employee Code *',
+                        
                         Icons.tag_rounded,
                         validator: _req,
+                        readOnly: true,
                         onChanged: (v) => widget.state.username.text = v,
                       ),
                     ),
@@ -1919,6 +1921,7 @@ Widget _SriField(
   String? errorText,
   TextInputType? keyboard,
   int maxLines = 1,
+  bool readOnly = false,
   Widget? suffixIconWidget,
   String? Function(String?)? validator,
   void Function(String)? onChanged,
@@ -1928,6 +1931,7 @@ Widget _SriField(
   hint: hint,
   prefixIcon: icon,
   errorText: errorText,
+  readOnly: readOnly,
   suffixIconWidget: suffixIconWidget,
   keyboardType: keyboard,
   maxLines: maxLines,
