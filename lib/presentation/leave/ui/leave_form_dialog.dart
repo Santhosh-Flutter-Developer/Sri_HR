@@ -264,7 +264,7 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
                             ),
                             Padding(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
+                                horizontal: 2,
                               ),
                               child: Icon(
                                 Icons.arrow_forward_rounded,
