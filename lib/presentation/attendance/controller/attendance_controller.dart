@@ -44,7 +44,7 @@ class AttendanceController extends GetxController {
         auth.companyId,
         fromDate: fromDate.value,
         toDate: toDate.value,
-        employeeId: filterEmployeeId.value,
+        employeeId: !auth.isAdmin ? auth.employeeId : filterEmployeeId.value,
       );
     } catch (e) {
       debugPrint('[AttendCtrl] load error: $e');

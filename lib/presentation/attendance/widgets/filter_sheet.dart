@@ -5,6 +5,7 @@ import 'package:sri_hr/data/utils/network_time.dart';
 import 'package:sri_hr/presentation/attendance/controller/attendance_controller.dart';
 import 'package:sri_hr/presentation/attendance/widgets/date_tap_box.dart';
 import 'package:sri_hr/presentation/attendance/widgets/quick_btn.dart';
+import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/employee/controller/employee_controller.dart';
 
 class FilterSheet extends StatefulWidget {
@@ -18,6 +19,7 @@ class FilterSheetState extends State<FilterSheet> {
   late DateTime? from;
   late DateTime? to;
   String? empId;
+  final auth = Get.find<AuthController>();
 
   late final EmployeeController empCtrl;
 
@@ -27,7 +29,9 @@ class FilterSheetState extends State<FilterSheet> {
     NetworkTime.syncTime();
     from = widget.controller.fromDate.value;
     to = widget.controller.toDate.value;
-    empId = widget.controller.filterEmployeeId.value;
+    empId = !auth.isAdmin
+        ? auth.employeeId
+        : widget.controller.filterEmployeeId.value;
     empCtrl = Get.find<EmployeeController>();
   }
 
@@ -165,11 +169,18 @@ class FilterSheetState extends State<FilterSheet> {
 
             // Employee filter
             Obx(() {
-              final emps = empCtrl.employees;
+              final allEmps = empCtrl.employees;
+              // ✅ Non-admin sees only themselves
+              final emps = auth.isAdmin
+                  ? allEmps
+                  : allEmps.where((e) {
+                      return e.id == auth.employeeId;
+                    }).toList();
               final ids = emps.map((e) => e.id).toList();
               final safe = ids.contains(empId) ? empId : null;
               return DropdownButtonFormField<String>(
                 value: safe,
+                initialValue: safe,
                 isExpanded: true,
                 decoration: const InputDecoration(
                   labelText: 'Employee (optional)',
@@ -184,21 +195,34 @@ class FilterSheetState extends State<FilterSheet> {
                   ),
                 ),
                 items: [
-                  const DropdownMenuItem(
-                    value: null,
-                    child: Text('All Employees'),
-                  ),
+                  if (auth.isAdmin)
+                    const DropdownMenuItem(
+                      value: null,
+                      child: Text(
+                        'All Employees',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
                   ...emps.map(
                     (e) => DropdownMenuItem(
                       value: e.id,
                       child: Text(
                         '${e.employeeCode} – ${e.fullName}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textPrimary,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ),
                 ],
-                onChanged: (v) => setState(() => empId = v),
+                onChanged: auth.isAdmin
+                    ? (v) => setState(() => empId = v)
+                    : null,
               );
             }),
             const SizedBox(height: 20),
