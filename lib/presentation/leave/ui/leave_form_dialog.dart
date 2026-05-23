@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/utils/network_time.dart';
 import 'package:sri_hr/presentation/employee/controller/employee_controller.dart';
+import 'package:sri_hr/presentation/helper/helper.dart';
 import 'package:sri_hr/presentation/leave/controller/leave_controller.dart';
 import 'package:sri_hr/presentation/leave/widgets/date_picker_tile.dart';
 import 'package:sri_hr/presentation/leave/widgets/field_label.dart';
@@ -134,13 +135,7 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
   }
 
   void showErr(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    showError(msg);
   }
 
   @override
@@ -162,7 +157,9 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
                   padding: const EdgeInsets.fromLTRB(20, 18, 12, 18),
                   decoration: const BoxDecoration(
                     color: AppColors.primary,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(20),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -202,7 +199,7 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
                     ],
                   ),
                 ),
-      
+
                 // ── Form body ────────────────────────────
                 SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
@@ -249,7 +246,7 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
                           );
                         }),
                         const SizedBox(height: 16),
-      
+
                         // Date row
                         const FieldLabel('Leave Duration *'),
                         const SizedBox(height: 6),
@@ -266,7 +263,9 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
                               ),
                             ),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                              ),
                               child: Icon(
                                 Icons.arrow_forward_rounded,
                                 size: 16,
@@ -289,7 +288,7 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
                             ),
                           ],
                         ),
-      
+
                         // Days summary
                         if (days > 0) ...[
                           const SizedBox(height: 10),
@@ -327,7 +326,7 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
                           ),
                         ],
                         const SizedBox(height: 16),
-      
+
                         // Reason
                         const FieldLabel('Reason (optional)'),
                         const SizedBox(height: 6),
@@ -348,7 +347,7 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
                     ),
                   ),
                 ),
-      
+
                 // ── Footer buttons ───────────────────────
                 Container(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
@@ -396,7 +395,9 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
                                   )
                                 : const Text(
                                     'Submit Request',
-                                    style: TextStyle(fontWeight: FontWeight.w700),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
                           ),
                         ),
