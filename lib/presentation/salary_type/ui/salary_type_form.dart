@@ -62,7 +62,9 @@ class _SalaryTypeFormState extends State<SalaryTypeForm> {
                   Icon(Icons.payments_rounded, color: Colors.white),
                   const SizedBox(width: 10),
                   Text(
-                    widget.item == null ? 'Add Salary Type' : 'Edit Salary Type',
+                    widget.item == null
+                        ? 'Add Salary Type'
+                        : 'Edit Salary Type',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
@@ -98,7 +100,8 @@ class _SalaryTypeFormState extends State<SalaryTypeForm> {
                             child: FormFields(
                               label: fields[index]["label"] ?? "",
                               type: fields[index]["type"] ?? "",
-                              textEditingController: fields[index]["controller"],
+                              textEditingController:
+                                  fields[index]["controller"],
                               obscureText: fields[index]["obscureText"],
                               prefixIcon: fields[index]["prefixIcon"],
                               suffixIcon: fields[index]["suffixIcon"],
@@ -137,20 +140,26 @@ class _SalaryTypeFormState extends State<SalaryTypeForm> {
                           child: SriButton(
                             label: widget.item == null ? "Create" : "Update",
                             color: AppColors.accentOrange,
-                            onPressed: () {
+                            // In SalaryTypeForm — make onPressed async and await the operation
+                            onPressed: () async {
                               if (!formKey.currentState!.validate()) return;
+
+                              final bool success;
                               if (widget.item == null) {
-                                widget.controller.create(nameCtrl.text.trim());
-                              } else {
-                                widget.controller.updateSalaryType(
-                                  widget.item.id,
+                                success = await widget.controller.create(
                                   nameCtrl.text.trim(),
                                 );
+                              } else {
+                                success = await widget.controller
+                                    .updateSalaryType(
+                                      widget.item.id,
+                                      nameCtrl.text.trim(),
+                                    );
                               }
-                              Get.back();
-                              Future.delayed(Duration(seconds: 2), () {
-                                widget.controller.load();
-                              });
+
+                              if (success && context.mounted) {
+                                Navigator.pop(context);
+                              }
                             },
                           ),
                         ),
