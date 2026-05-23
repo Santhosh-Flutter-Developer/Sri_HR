@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
+import 'package:sri_hr/data/models/leave_request_model.dart';
 import 'package:sri_hr/data/utils/network_time.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/employee/controller/employee_controller.dart';
@@ -53,6 +54,53 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
     return toDate!.difference(fromDate!).inDays + 1;
   }
 
+  Widget _leaveStat({
+    required String label,
+    required int value,
+    required Color color,
+    required IconData icon,
+  }) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, size: 16, color: color),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          '$value',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            color: color,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textMuted,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _verticalDivider() {
+    return Container(
+      width: 1,
+      height: 60,
+      color: AppColors.border,
+      margin: const EdgeInsets.symmetric(horizontal: 8),
+    );
+  }
+
   String fmtDate(DateTime? d) {
     if (d == null) return '';
     return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
@@ -86,6 +134,31 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
       if (toDate != null && toDate!.isBefore(d)) toDate = null;
     });
   }
+
+  // Add this getter in LeaveFormDialogState
+  int get casualLeaveTotal {
+    if (auth.isAdmin) {
+      // For admin, show selected employee's casual leave
+      final emp = empCtrl.employees.firstWhereOrNull((e) => e.id == employeeId);
+      return emp?.casualLeave ?? 0;
+    }
+    // For employee, show their own
+    final emp = empCtrl.employees.firstWhereOrNull(
+      (e) => e.id == auth.employeeId,
+    );
+    return emp?.casualLeave ?? 0;
+  }
+
+  int get casualLeaveTaken {
+    // Count approved leaves for selected employee from controller
+    final empId = employeeId ?? auth.employeeId;
+    return widget.controller.leaves
+        .where((l) => l.employeeId == empId && l.status == LeaveStatus.approved)
+        .fold(0, (sum, l) => sum + l.days);
+  }
+
+  int get casualLeaveRemaining =>
+      (casualLeaveTotal - casualLeaveTaken).clamp(0, casualLeaveTotal);
 
   Future<void> pickToDate() async {
     // To Date firstDate = fromDate (or today if not set)
@@ -342,7 +415,111 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
                             ),
                           ),
                         ],
+                        // After the days summary Container
                         const SizedBox(height: 16),
+
+                        // ✅ Casual Leave Summary Card
+                        if (employeeId != null) ...[
+                          const FieldLabel('Casual Leave Summary'),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: Row(
+                              children: [
+                                // Total
+                                Expanded(
+                                  child: _leaveStat(
+                                    label: 'Total',
+                                    value: casualLeaveTotal,
+                                    color: AppColors.primary,
+                                    icon: Icons.event_note_rounded,
+                                  ),
+                                ),
+                                _verticalDivider(),
+                                // Taken
+                                Expanded(
+                                  child: _leaveStat(
+                                    label: 'Taken',
+                                    value: casualLeaveTaken,
+                                    color: AppColors.warning,
+                                    icon: Icons.event_busy_rounded,
+                                  ),
+                                ),
+                                _verticalDivider(),
+                                // Remaining
+                                Expanded(
+                                  child: _leaveStat(
+                                    label: 'Remaining',
+                                    value: casualLeaveRemaining,
+                                    color: casualLeaveRemaining == 0
+                                        ? AppColors.error
+                                        : AppColors.success,
+                                    icon: Icons.event_available_rounded,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+
+                          // ✅ Warning if no leaves remaining
+                          if (casualLeaveRemaining == 0)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 6),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.warning_amber_rounded,
+                                    size: 14,
+                                    color: AppColors.error,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  const Text(
+                                    'No casual leaves remaining!',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.error,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                          // ✅ Warning if applying more days than remaining
+                          if (days > 0 &&
+                              days > casualLeaveRemaining &&
+                              casualLeaveRemaining > 0)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 6),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.info_outline_rounded,
+                                    size: 14,
+                                    color: AppColors.warning,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      'Applying $days days but only $casualLeaveRemaining remaining.',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.warning,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          const SizedBox(height: 12),
+                        ],
 
                         // Reason
                         const FieldLabel('Reason (optional)'),
