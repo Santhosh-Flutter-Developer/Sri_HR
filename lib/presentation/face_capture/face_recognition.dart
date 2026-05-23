@@ -304,7 +304,7 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
           Get.back();
           Get.snackbar(
             "Warning",
-            "Please configure Company Latitude and Longitude before proceeding",
+            "Please configure Company Latitude and Longitude before proceeding. Contact Admin",
             backgroundColor: AppColors.warning,
           );
           return false;
@@ -500,11 +500,15 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
                                         border: Border.all(
                                           color: AppColors.success,
                                         ),
-                                        borderRadius: BorderRadius.circular(8.0),
+                                        borderRadius: BorderRadius.circular(
+                                          8.0,
+                                        ),
                                       ),
                                       padding: EdgeInsets.all(2),
                                       child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(8.0),
+                                        borderRadius: BorderRadius.circular(
+                                          8.0,
+                                        ),
                                         child: Image.network(
                                           _enrolledFace,
                                           width: 160,
@@ -525,11 +529,15 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
                                         border: Border.all(
                                           color: AppColors.success,
                                         ),
-                                        borderRadius: BorderRadius.circular(8.0),
+                                        borderRadius: BorderRadius.circular(
+                                          8.0,
+                                        ),
                                       ),
                                       padding: EdgeInsets.all(2),
                                       child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(8.0),
+                                        borderRadius: BorderRadius.circular(
+                                          8.0,
+                                        ),
                                         child: Image.memory(
                                           _identifiedFace,
                                           width: 160,
