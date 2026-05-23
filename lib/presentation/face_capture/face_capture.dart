@@ -9,7 +9,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
-import 'package:sri_hr/core/theme/app_theme.dart';
 import 'package:sri_hr/widgets/sri_button.dart';
 
 enum ViewMode {
