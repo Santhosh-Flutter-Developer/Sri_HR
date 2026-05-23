@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/utils/network_time.dart';
+import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/employee/controller/employee_controller.dart';
 import 'package:sri_hr/presentation/helper/helper.dart';
 import 'package:sri_hr/presentation/leave/controller/leave_controller.dart';
@@ -25,6 +26,8 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
   DateTime? toDate;
   bool isLoading = false;
 
+  final auth = Get.find<AuthController>();
+
   late final EmployeeController empCtrl;
 
   @override
@@ -33,6 +36,10 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
     NetworkTime.syncTime();
     empCtrl = Get.find<EmployeeController>();
     if (empCtrl.employees.isEmpty) empCtrl.loadEmployees();
+    if (!auth.isAdmin) {
+      employeeId =
+          auth.employeeId; // or auth.employeeId depending on your auth model
+    }
   }
 
   @override
@@ -212,13 +219,21 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
                         const FieldLabel('Employee *'),
                         const SizedBox(height: 6),
                         Obx(() {
-                          final emps = empCtrl.employees;
+                          final allEmps = empCtrl.employees;
+                          // ✅ Non-admin sees only themselves
+                          final emps = auth.isAdmin
+                              ? allEmps
+                              : allEmps.where((e) {
+                                  return e.id == auth.employeeId;
+                                }).toList();
+
                           final ids = emps.map((e) => e.id).toList();
                           final safe = ids.contains(employeeId)
                               ? employeeId
                               : null;
                           return DropdownButtonFormField<String>(
                             value: safe,
+                            initialValue: safe,
                             isExpanded: true,
                             decoration: inputDeco(
                               Icons.person_rounded,
@@ -242,7 +257,9 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
                                   ),
                                 )
                                 .toList(),
-                            onChanged: (v) => setState(() => employeeId = v),
+                            onChanged: auth.isAdmin
+                                ? (v) => setState(() => employeeId = v)
+                                : null, // ✅ Lock dropdown for non-admin
                           );
                         }),
                         const SizedBox(height: 16),

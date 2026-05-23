@@ -29,7 +29,10 @@ class LeaveController extends GetxController {
   Future<void> loadLeaves() async {
     isLoading.value = true;
     try {
-      leaves.value = await _repo.getLeaveRequests(auth.companyId);
+      leaves.value = await _repo.getLeaveRequests(
+        auth.companyId,
+        employeeId: auth.isAdmin ? null : auth.employeeId,
+      );
     } catch (e) {
       debugPrint('[LeaveCtrl] loadLeaves error: $e');
       showError('Failed to load leave requests: $e');

@@ -37,6 +37,7 @@ class AuthController extends GetxController {
 
   void setActiveCompanyId(String id) => activeCompanyId.value = id;
   String get userId => currentUser.value?.id ?? '';
+  String get employeeId => currentUser.value?.employeeId ?? '';
   bool get isAdmin => currentUser.value?.isAdmin ?? false;
   bool get isLoggedIn => currentUser.value != null;
 
@@ -145,7 +146,7 @@ class AuthController extends GetxController {
         pincode: pincode,
         password: password,
       );
-     await logout();
+      await logout();
       Get.snackbar(
         'Registration Successful!',
         'Your 3-day free trial has started. Please login.',
