@@ -822,13 +822,16 @@ class _CaptureViewState extends State<CaptureView>
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: CapturePainter(
-        _animation.value,
-        widget.viewMode,
-        widget.currentFace,
+    return SafeArea(
+      top: false,
+      child: CustomPaint(
+        painter: CapturePainter(
+          _animation.value,
+          widget.viewMode,
+          widget.currentFace,
+        ),
+        child: Container(),
       ),
-      child: Container(),
     );
   }
 }

@@ -21,38 +21,41 @@ class Company extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width >= 800;
-    return AppShell(
-      currentModule: 'company',
-      title: 'Company',
-      actions: [
-        if (auth.canAdd('company') &&
-            auth.subscription.value!.plan != SubscriptionPlan.trial)
-          isWide
-              ? SriButton(
-                  label: 'Add Branch',
-                  icon: Icons.add,
-                  onPressed: () =>
-                      controller.showAddBranchDialog(context, controller),
-                )
-              : IconButton(
-                  onPressed: () =>
-                      controller.showAddBranchDialog(context, controller),
-                  icon: Icon(Icons.add),
-                ),
-      ],
-      child: Obx(() {
-        if (controller.isLoading.value && controller.companies.isEmpty) {
-          return const LoadingOverlay();
-        }
-        if (controller.errorMessage.value.isNotEmpty &&
-            controller.companies.isEmpty) {
-          return ErrorrWidget(
-            message: controller.errorMessage.value,
-            onRetry: controller.loadAllCompanies,
-          );
-        }
-        return CompanyBody(controller: controller, auth: auth);
-      }),
+    return SafeArea(
+      top: false,
+      child: AppShell(
+        currentModule: 'company',
+        title: 'Company',
+        actions: [
+          if (auth.canAdd('company') &&
+              auth.subscription.value!.plan != SubscriptionPlan.trial)
+            isWide
+                ? SriButton(
+                    label: 'Add Branch',
+                    icon: Icons.add,
+                    onPressed: () =>
+                        controller.showAddBranchDialog(context, controller),
+                  )
+                : IconButton(
+                    onPressed: () =>
+                        controller.showAddBranchDialog(context, controller),
+                    icon: Icon(Icons.add),
+                  ),
+        ],
+        child: Obx(() {
+          if (controller.isLoading.value && controller.companies.isEmpty) {
+            return const LoadingOverlay();
+          }
+          if (controller.errorMessage.value.isNotEmpty &&
+              controller.companies.isEmpty) {
+            return ErrorrWidget(
+              message: controller.errorMessage.value,
+              onRetry: controller.loadAllCompanies,
+            );
+          }
+          return CompanyBody(controller: controller, auth: auth);
+        }),
+      ),
     );
   }
 }

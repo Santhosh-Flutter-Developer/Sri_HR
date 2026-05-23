@@ -18,56 +18,25 @@ class CompanyBody extends StatelessWidget {
   }
 
   Widget wideLayout(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 300,
-          child: BranchList(controller: controller, auth: auth),
-        ),
-        const VerticalDivider(width: 1, color: AppColors.border),
-        Expanded(
-          child: Obx(
-            () => controller.activeCompany.value == null
-                ? const Center(
-                    child: Text(
-                      'Select a branch to view details',
-                      style: TextStyle(color: AppColors.textMuted),
-                    ),
-                  )
-                : CompanyDetail(
-                    key: ValueKey(controller.activeCompany.value!.id),
-                    company: controller.activeCompany.value!,
-                    controller: controller,
-                    canEdit: auth.canEdit('company'),
-                  ),
+    return SafeArea(
+      top: false,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 300,
+            child: BranchList(controller: controller, auth: auth),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget narrowLayout(BuildContext context) {
-    return Obx(
-      () => controller.enable.value == false
-          ? SingleChildScrollView(
-              child: Column(
-                children: [
-                  BranchList(
-                    controller: controller,
-                    auth: auth,
-                    onBranchTap: () {
-                      controller.enable.value = true;
-                      controller.enable.refresh();
-                    },
-                  ),
-                  const Divider(height: 1.0, color: AppColors.border),
-                ],
-              ),
-            )
-          : Obx(
+          const VerticalDivider(width: 1, color: AppColors.border),
+          Expanded(
+            child: Obx(
               () => controller.activeCompany.value == null
-                  ? const SizedBox()
+                  ? const Center(
+                      child: Text(
+                        'Select a branch to view details',
+                        style: TextStyle(color: AppColors.textMuted),
+                      ),
+                    )
                   : CompanyDetail(
                       key: ValueKey(controller.activeCompany.value!.id),
                       company: controller.activeCompany.value!,
@@ -75,6 +44,43 @@ class CompanyBody extends StatelessWidget {
                       canEdit: auth.canEdit('company'),
                     ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget narrowLayout(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Obx(
+        () => controller.enable.value == false
+            ? SingleChildScrollView(
+                child: Column(
+                  children: [
+                    BranchList(
+                      controller: controller,
+                      auth: auth,
+                      onBranchTap: () {
+                        controller.enable.value = true;
+                        controller.enable.refresh();
+                      },
+                    ),
+                    const Divider(height: 1.0, color: AppColors.border),
+                  ],
+                ),
+              )
+            : Obx(
+                () => controller.activeCompany.value == null
+                    ? const SizedBox()
+                    : CompanyDetail(
+                        key: ValueKey(controller.activeCompany.value!.id),
+                        company: controller.activeCompany.value!,
+                        controller: controller,
+                        canEdit: auth.canEdit('company'),
+                      ),
+              ),
+      ),
     );
   }
 }

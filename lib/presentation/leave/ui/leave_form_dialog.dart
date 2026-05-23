@@ -146,263 +146,266 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width >= 800;
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      insetPadding: const EdgeInsets.all(4.0),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 540),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // ── Header ──────────────────────────────
-              Container(
-                padding: const EdgeInsets.fromLTRB(20, 18, 12, 18),
-                decoration: const BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.event_busy_rounded,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Text(
-                        'New Leave Request',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(
-                        Icons.close,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ],
-                ),
-              ),
-
-              // ── Form body ────────────────────────────
-              SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-                child: Form(
-                  key: formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+    return SafeArea(
+      top: false,
+      child: Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        insetPadding: const EdgeInsets.all(4.0),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 540),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ── Header ──────────────────────────────
+                Container(
+                  padding: const EdgeInsets.fromLTRB(20, 18, 12, 18),
+                  decoration: const BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                  ),
+                  child: Row(
                     children: [
-                      // Employee dropdown
-                      const FieldLabel('Employee *'),
-                      const SizedBox(height: 6),
-                      Obx(() {
-                        final emps = empCtrl.employees;
-                        final ids = emps.map((e) => e.id).toList();
-                        final safe = ids.contains(employeeId)
-                            ? employeeId
-                            : null;
-                        return DropdownButtonFormField<String>(
-                          value: safe,
-                          isExpanded: true,
-                          decoration: inputDeco(
-                            Icons.person_rounded,
-                            'Select employee',
-                          ),
-                          validator: (v) =>
-                              v == null ? 'Please select an employee' : null,
-                          dropdownColor: AppColors.surface,
-                          items: emps
-                              .map(
-                                (e) => DropdownMenuItem(
-                                  value: e.id,
-                                  child: Text(
-                                    '${e.employeeCode} – ${e.fullName}',
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (v) => setState(() => employeeId = v),
-                        );
-                      }),
-                      const SizedBox(height: 16),
-
-                      // Date row
-                      const FieldLabel('Leave Duration *'),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          // From Date
-                          Expanded(
-                            child: DatePickerTile(
-                              label: 'From Date',
-                              date: fromDate,
-                              displayDate: displayDate(fromDate),
-                              onTap: pickFromDate,
-                              isSelected: fromDate != null,
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 10),
-                            child: Icon(
-                              Icons.arrow_forward_rounded,
-                              size: 16,
-                              color: fromDate != null && toDate != null
-                                  ? AppColors.primary
-                                  : AppColors.textMuted,
-                            ),
-                          ),
-                          // To Date
-                          Expanded(
-                            child: DatePickerTile(
-                              label: 'To Date',
-                              date: toDate,
-                              displayDate: displayDate(toDate),
-                              onTap: pickToDate,
-                              isSelected: toDate != null,
-                              // Visually hint it's disabled if From not picked
-                              disabled: fromDate == null,
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      // Days summary
-                      if (days > 0) ...[
-                        const SizedBox(height: 10),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.07),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: AppColors.primary.withOpacity(0.2),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(
-                                Icons.info_outline_rounded,
-                                size: 15,
-                                color: AppColors.primary,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                '$days day${days != 1 ? 's' : ''} of leave',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                            ],
-                          ),
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                      ],
-                      const SizedBox(height: 16),
-
-                      // Reason
-                      const FieldLabel('Reason (optional)'),
-                      const SizedBox(height: 6),
-                      TextFormField(
-                        controller: reasonCtrl,
-                        maxLines: 3,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: AppColors.textPrimary,
-                        ),
-                        decoration: inputDeco(
-                          Icons.notes_rounded,
-                          'Enter reason for leave...',
+                        child: const Icon(
+                          Icons.event_busy_rounded,
+                          color: Colors.white,
+                          size: 18,
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'New Leave Request',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                        visualDensity: VisualDensity.compact,
+                      ),
                     ],
                   ),
                 ),
-              ),
-
-              // ── Footer buttons ───────────────────────
-              Container(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 13),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(
-                            vertical: isWide ? 8.0 : 0.0,
-                          ),
-                          child: const Text('Cancel'),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: isLoading ? null : submit,
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 13),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(
-                            vertical: isWide ? 8.0 : 0.0,
-                          ),
-                          child: isLoading
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
+      
+                // ── Form body ────────────────────────────
+                SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                  child: Form(
+                    key: formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Employee dropdown
+                        const FieldLabel('Employee *'),
+                        const SizedBox(height: 6),
+                        Obx(() {
+                          final emps = empCtrl.employees;
+                          final ids = emps.map((e) => e.id).toList();
+                          final safe = ids.contains(employeeId)
+                              ? employeeId
+                              : null;
+                          return DropdownButtonFormField<String>(
+                            value: safe,
+                            isExpanded: true,
+                            decoration: inputDeco(
+                              Icons.person_rounded,
+                              'Select employee',
+                            ),
+                            validator: (v) =>
+                                v == null ? 'Please select an employee' : null,
+                            dropdownColor: AppColors.surface,
+                            items: emps
+                                .map(
+                                  (e) => DropdownMenuItem(
+                                    value: e.id,
+                                    child: Text(
+                                      '${e.employeeCode} – ${e.fullName}',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
                                 )
-                              : const Text(
-                                  'Submit Request',
-                                  style: TextStyle(fontWeight: FontWeight.w700),
+                                .toList(),
+                            onChanged: (v) => setState(() => employeeId = v),
+                          );
+                        }),
+                        const SizedBox(height: 16),
+      
+                        // Date row
+                        const FieldLabel('Leave Duration *'),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            // From Date
+                            Expanded(
+                              child: DatePickerTile(
+                                label: 'From Date',
+                                date: fromDate,
+                                displayDate: displayDate(fromDate),
+                                onTap: pickFromDate,
+                                isSelected: fromDate != null,
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                              child: Icon(
+                                Icons.arrow_forward_rounded,
+                                size: 16,
+                                color: fromDate != null && toDate != null
+                                    ? AppColors.primary
+                                    : AppColors.textMuted,
+                              ),
+                            ),
+                            // To Date
+                            Expanded(
+                              child: DatePickerTile(
+                                label: 'To Date',
+                                date: toDate,
+                                displayDate: displayDate(toDate),
+                                onTap: pickToDate,
+                                isSelected: toDate != null,
+                                // Visually hint it's disabled if From not picked
+                                disabled: fromDate == null,
+                              ),
+                            ),
+                          ],
+                        ),
+      
+                        // Days summary
+                        if (days > 0) ...[
+                          const SizedBox(height: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.07),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: AppColors.primary.withOpacity(0.2),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.info_outline_rounded,
+                                  size: 15,
+                                  color: AppColors.primary,
                                 ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '$days day${days != 1 ? 's' : ''} of leave',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 16),
+      
+                        // Reason
+                        const FieldLabel('Reason (optional)'),
+                        const SizedBox(height: 6),
+                        TextFormField(
+                          controller: reasonCtrl,
+                          maxLines: 3,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textPrimary,
+                          ),
+                          decoration: inputDeco(
+                            Icons.notes_rounded,
+                            'Enter reason for leave...',
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
+                    ),
+                  ),
+                ),
+      
+                // ── Footer buttons ───────────────────────
+                Container(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(
+                              vertical: isWide ? 8.0 : 0.0,
+                            ),
+                            child: const Text('Cancel'),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: isLoading ? null : submit,
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(
+                              vertical: isWide ? 8.0 : 0.0,
+                            ),
+                            child: isLoading
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Text(
+                                    'Submit Request',
+                                    style: TextStyle(fontWeight: FontWeight.w700),
+                                  ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

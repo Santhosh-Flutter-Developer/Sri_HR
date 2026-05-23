@@ -92,133 +92,136 @@ class _DepartmentFormState extends State<DepartmentForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 420),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.fromLTRB(20, 18, 14, 18),
-            decoration: const BoxDecoration(
-              color: AppColors.primary,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.account_tree_rounded, color: Colors.white),
-                const SizedBox(width: 10),
-                Text(
-                  widget.dept == null ? 'Add Department' : 'Edit Department',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
+    return SafeArea(
+      top: false,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 18, 14, 18),
+              decoration: const BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.account_tree_rounded, color: Colors.white),
+                  const SizedBox(width: 10),
+                  Text(
+                    widget.dept == null ? 'Add Department' : 'Edit Department',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
                   ),
-                ),
-                const Spacer(),
-                IconButton(
-                  onPressed: () => Get.back(),
-                  icon: const Icon(Icons.close, color: Colors.white),
-                ),
-              ],
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => Get.back(),
+                    icon: const Icon(Icons.close, color: Colors.white),
+                  ),
+                ],
+              ),
             ),
-          ),
-          Flexible(
-            child: SingleChildScrollView(
-              child: Form(
-                key: formKey,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ResponsiveGridRow(
-                        children: [
-                          ...List.generate(fields.length, (index) {
-                            return ResponsiveGridCol(
-                              xl: fields[index]["xl"] ?? 12,
-                              lg: fields[index]["lg"] ?? 12,
-                              md: fields[index]["md"] ?? 12,
-                              xs: fields[index]["xs"] ?? 12,
-                              sm: fields[index]["sm"] ?? 12,
-                              child: FormFields(
-                                label: fields[index]["label"] ?? "",
-                                type: fields[index]["type"] ?? "",
-                                textEditingController:
-                                    fields[index]["controller"],
-                                obscureText: fields[index]["obscureText"],
-                                prefixIcon: fields[index]["prefixIcon"],
-                                suffixIcon: fields[index]["suffixIcon"],
-                                onSuffixTap: fields[index]["onSuffixTap"],
-                                validator: fields[index]["validator"],
-                                hint: fields[index]["hint"],
-                                switchValue: fields[index]["switchValue"],
-                                onSwitchChanged:
-                                    fields[index]["onSwitchChanged"],
-                                keyboardType: fields[index]["keyboardType"],
-                                onPressed: fields[index]["onPressed"],
-                                isLoading: fields[index]["isLoading"],
-                                isFullWidth: fields[index]["isFullWidth"],
-                                topPadding: fields[index]["topPadding"],
-                                bottomPadding: fields[index]["bottomPadding"],
-                                rightPadding: fields[index]["rightPadding"],
-                                leftPadding: fields[index]["leftPadding"],
+            Flexible(
+              child: SingleChildScrollView(
+                child: Form(
+                  key: formKey,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ResponsiveGridRow(
+                          children: [
+                            ...List.generate(fields.length, (index) {
+                              return ResponsiveGridCol(
+                                xl: fields[index]["xl"] ?? 12,
+                                lg: fields[index]["lg"] ?? 12,
+                                md: fields[index]["md"] ?? 12,
+                                xs: fields[index]["xs"] ?? 12,
+                                sm: fields[index]["sm"] ?? 12,
+                                child: FormFields(
+                                  label: fields[index]["label"] ?? "",
+                                  type: fields[index]["type"] ?? "",
+                                  textEditingController:
+                                      fields[index]["controller"],
+                                  obscureText: fields[index]["obscureText"],
+                                  prefixIcon: fields[index]["prefixIcon"],
+                                  suffixIcon: fields[index]["suffixIcon"],
+                                  onSuffixTap: fields[index]["onSuffixTap"],
+                                  validator: fields[index]["validator"],
+                                  hint: fields[index]["hint"],
+                                  switchValue: fields[index]["switchValue"],
+                                  onSwitchChanged:
+                                      fields[index]["onSwitchChanged"],
+                                  keyboardType: fields[index]["keyboardType"],
+                                  onPressed: fields[index]["onPressed"],
+                                  isLoading: fields[index]["isLoading"],
+                                  isFullWidth: fields[index]["isFullWidth"],
+                                  topPadding: fields[index]["topPadding"],
+                                  bottomPadding: fields[index]["bottomPadding"],
+                                  rightPadding: fields[index]["rightPadding"],
+                                  leftPadding: fields[index]["leftPadding"],
+                                ),
+                              );
+                            }),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: SriButton(
+                                label: "Cancel",
+                                onPressed: () => Get.back(),
+                                isOutlined: true,
                               ),
-                            );
-                          }),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: SriButton(
-                              label: "Cancel",
-                              onPressed: () => Get.back(),
-                              isOutlined: true,
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: SriButton(
-                              label: widget.dept == null ? "Create" : "Update",
-                              onPressed: () async {
-                                if (!formKey.currentState!.validate()) {
-                                  return;
-                                }
-                                final data = {
-                                  'company_id':
-                                      Get.find<AuthController>().companyId,
-                                  'code': codeCtrl.text.trim().toUpperCase(),
-                                  'name': nameCtrl.text.trim(),
-                                  'mobile_login': mobileLogin,
-                                  'outside_attendance': outsideAtt,
-                                };
-                                if (widget.dept == null) {
-                                  widget.controller.create(data);
-                                } else {
-                                  widget.controller.updateDepartment(
-                                    widget.dept.id,
-                                    data,
-                                  );
-                                }
-
-                                Get.back();
-                                Future.delayed(Duration(seconds: 2), () {
-                                  widget.controller.loadDepartments();
-                                });
-                              },
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: SriButton(
+                                label: widget.dept == null ? "Create" : "Update",
+                                onPressed: () async {
+                                  if (!formKey.currentState!.validate()) {
+                                    return;
+                                  }
+                                  final data = {
+                                    'company_id':
+                                        Get.find<AuthController>().companyId,
+                                    'code': codeCtrl.text.trim().toUpperCase(),
+                                    'name': nameCtrl.text.trim(),
+                                    'mobile_login': mobileLogin,
+                                    'outside_attendance': outsideAtt,
+                                  };
+                                  if (widget.dept == null) {
+                                    widget.controller.create(data);
+                                  } else {
+                                    widget.controller.updateDepartment(
+                                      widget.dept.id,
+                                      data,
+                                    );
+                                  }
+      
+                                  Get.back();
+                                  Future.delayed(Duration(seconds: 2), () {
+                                    widget.controller.loadDepartments();
+                                  });
+                                },
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

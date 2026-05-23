@@ -107,37 +107,40 @@ class _SubscriptionState extends State<Subscription> {
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width >= 800;
-    return AppShell(
-      currentModule: 'subscription',
-      title: 'Subscription',
-      child: SingleChildScrollView(
-        padding: EdgeInsets.all(isWide ? 24.0 : 10.0),
-        child: Column(
-          children: [
-            CurrentPlanCard(),
-            const SizedBox(height: 28),
-            DurationToggle(
-              selected: selectedDuration,
-              onChanged: (v) => setState(() => selectedDuration = v),
-            ),
-            const SizedBox(height: 20),
-            Obx(
-              () => controller.isLoading.value
-                  ? const LoadingOverlay()
-                  : controller.plans.isEmpty
-                  ? const EmptyState(
-                      message: 'No plans available',
-                      icon: Icons.card_membership_outlined,
-                    )
-                  : PlansGrid(
-                      plans: controller.plans,
-                      duration: selectedDuration,
-                      onSelect: startPayment,
-                    ),
-            ),
-            const SizedBox(height: 24),
-            PaymentInfo(),
-          ],
+    return SafeArea(
+      top: false,
+      child: AppShell(
+        currentModule: 'subscription',
+        title: 'Subscription',
+        child: SingleChildScrollView(
+          padding: EdgeInsets.all(isWide ? 24.0 : 10.0),
+          child: Column(
+            children: [
+              CurrentPlanCard(),
+              const SizedBox(height: 28),
+              DurationToggle(
+                selected: selectedDuration,
+                onChanged: (v) => setState(() => selectedDuration = v),
+              ),
+              const SizedBox(height: 20),
+              Obx(
+                () => controller.isLoading.value
+                    ? const LoadingOverlay()
+                    : controller.plans.isEmpty
+                    ? const EmptyState(
+                        message: 'No plans available',
+                        icon: Icons.card_membership_outlined,
+                      )
+                    : PlansGrid(
+                        plans: controller.plans,
+                        duration: selectedDuration,
+                        onSelect: startPayment,
+                      ),
+              ),
+              const SizedBox(height: 24),
+              PaymentInfo(),
+            ],
+          ),
         ),
       ),
     );

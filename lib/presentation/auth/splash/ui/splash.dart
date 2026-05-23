@@ -14,30 +14,33 @@ class Splash extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.surface,
-      body: AnnotatedRegion<SystemUiOverlayStyle>(
-        value: const SystemUiOverlayStyle(
-          statusBarColor: AppColors.surface,
-          statusBarIconBrightness: Brightness.dark,
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Center(
-              child: Hero(
-                tag: "main_logo",
-                child: Image.asset(
-                  "assets/images/gif/ic_logo.gif",
-                  width: MediaQuery.of(context).size.width * .8,
+    return SafeArea(
+      top: false,
+      child: Scaffold(
+        backgroundColor: AppColors.surface,
+        body: AnnotatedRegion<SystemUiOverlayStyle>(
+          value: const SystemUiOverlayStyle(
+            statusBarColor: AppColors.surface,
+            statusBarIconBrightness: Brightness.dark,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Center(
+                child: Hero(
+                  tag: "main_logo",
+                  child: Image.asset(
+                    "assets/images/gif/ic_logo.gif",
+                    width: MediaQuery.of(context).size.width * .8,
+                  ),
                 ),
               ),
-            ),
-            const AppLinearProgressIndicator(
-              width: 60,
-              color: AppColors.primary,
-            ),
-          ],
+              const AppLinearProgressIndicator(
+                width: 60,
+                color: AppColors.primary,
+              ),
+            ],
+          ),
         ),
       ),
     );

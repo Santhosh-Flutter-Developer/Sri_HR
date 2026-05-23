@@ -21,6 +21,97 @@ class _RoleFormState extends State<RoleForm> {
   RxBool isAdmin = false.obs;
   bool get isEdit => widget.role != null;
 
+  // ── Validators ────────────────────────────────────────────────────
+
+  /// Role name: 2–50 chars, letters/spaces/hyphens only, no leading/trailing spaces.
+  String? _validateName(String? v) {
+    if (v == null || v.trim().isEmpty) return 'Role Name is required';
+    final trimmed = v.trim();
+    if (trimmed.length < 2) return 'Role Name must be at least 2 characters';
+    if (trimmed.length > 50) return 'Role Name must not exceed 50 characters';
+    if (!RegExp(r"^[a-zA-Z\s\-]+$").hasMatch(trimmed)) {
+      return 'Only letters, spaces, and hyphens allowed';
+    }
+    return null;
+  }
+
+  /// HH:MM format guard (also used for "from" and "to").
+  String? _validateTimeFormat(String? v, String fieldName) {
+    if (v == null || v.trim().isEmpty) return '$fieldName is required';
+    if (!RegExp(r'^([01]\d|2[0-3]):[0-5]\d$').hasMatch(v.trim())) {
+      return '$fieldName must be a valid time (HH:MM)';
+    }
+    return null;
+  }
+
+  /// "To" must be strictly after "From".
+  String? _validateToTime(String? v) {
+    final formatErr = _validateTimeFormat(v, 'To Time');
+    if (formatErr != null) return formatErr;
+
+    final fromParts = from.text.split(':');
+    final toParts = v!.split(':');
+    final fromMinutes = int.parse(fromParts[0]) * 60 + int.parse(fromParts[1]);
+    final toMinutes = int.parse(toParts[0]) * 60 + int.parse(toParts[1]);
+
+    if (toMinutes <= fromMinutes) {
+      return 'To Time must be after From Time';
+    }
+
+    // Shift must be at least 1 hour
+    if (toMinutes - fromMinutes < 60) {
+      return 'Shift duration must be at least 1 hour';
+    }
+
+    return null;
+  }
+
+  /// Break time: 0–120 mins, must be less than shift duration.
+  String? _validateBreakTime(String? v) {
+    if (v == null || v.trim().isEmpty) return 'Break Time is required';
+    final mins = int.tryParse(v.trim());
+    if (mins == null) return 'Break Time must be a whole number';
+    if (mins < 0) return 'Break Time cannot be negative';
+    if (mins > 120) return 'Break Time cannot exceed 120 minutes';
+
+    // Ensure break doesn't eat the whole shift
+    final fromParts = from.text.split(':');
+    final toParts = to.text.split(':');
+    if (fromParts.length == 2 && toParts.length == 2) {
+      final shiftMins =
+          (int.tryParse(toParts[0]) ?? 0) * 60 +
+          (int.tryParse(toParts[1]) ?? 0) -
+          (int.tryParse(fromParts[0]) ?? 0) * 60 -
+          (int.tryParse(fromParts[1]) ?? 0);
+      if (shiftMins > 0 && mins >= shiftMins) {
+        return 'Break Time must be less than the total shift duration';
+      }
+    }
+    return null;
+  }
+
+  /// Permission: 0–240 mins.
+  String? _validatePermission(String? v) {
+    if (v == null || v.trim().isEmpty) return 'Permission is required';
+    final mins = int.tryParse(v.trim());
+    if (mins == null) return 'Permission must be a whole number';
+    if (mins < 0) return 'Permission cannot be negative';
+    if (mins > 240) return 'Permission cannot exceed 240 minutes per month';
+    return null;
+  }
+
+  /// Casual leave: 0–30 days (whole numbers only).
+  String? _validateLeave(String? v) {
+    if (v == null || v.trim().isEmpty) return 'Casual Leave is required';
+    final days = int.tryParse(v.trim());
+    if (days == null) return 'Casual Leave must be a whole number';
+    if (days < 0) return 'Casual Leave cannot be negative';
+    if (days > 30) return 'Casual Leave cannot exceed 30 days per year';
+    return null;
+  }
+
+  // ── Field definitions ─────────────────────────────────────────────
+
   List<dynamic> get fields => [
     {
       "label": "Role Name",
@@ -28,10 +119,9 @@ class _RoleFormState extends State<RoleForm> {
       "type": "text",
       "keyboardType": TextInputType.text,
       "prefixIcon": Icons.badge_outlined,
-      "validator": (v) => v!.isEmpty ? "Role Name is required" : null,
+      "validator": (v) => _validateName(v as String?), // ✅
       "bottomPadding": 24.0,
     },
-
     {
       "label": "From Time",
       "controller": from,
@@ -40,12 +130,12 @@ class _RoleFormState extends State<RoleForm> {
       "readOnly": true,
       "prefixIcon": Icons.schedule,
       "onTap": () => pickTime(from),
-      "validator": (v) => v!.isEmpty ? 'From Time is required' : null,
-      "xl": 6,
-      "lg": 6,
-      "md": 6,
-      "xs": 6,
-      "sm": 6,
+      "validator": (v) => _validateTimeFormat(v as String?, 'From Time'), // ✅
+      "xl": 12,
+      "lg": 12,
+      "md": 12,
+      "xs": 12,
+      "sm": 12,
     },
     {
       "label": "To Time",
@@ -55,13 +145,13 @@ class _RoleFormState extends State<RoleForm> {
       "prefixIcon": Icons.schedule,
       "readOnly": true,
       "onTap": () => pickTime(to),
-      "validator": (v) => v!.isEmpty ? 'To Time is required' : null,
-      "leftPadding": 8.0,
-      "xl": 6,
-      "lg": 6,
-      "md": 6,
-      "xs": 6,
-      "sm": 6,
+      "validator": (v) => _validateToTime(v as String?), // ✅
+      "topPadding": 16.0,
+      "xl": 12,
+      "lg": 12,
+      "md": 12,
+      "xs": 12,
+      "sm": 12,
     },
     {
       "label": "Break Time (mins)",
@@ -69,13 +159,13 @@ class _RoleFormState extends State<RoleForm> {
       "type": "text",
       "prefixIcon": Icons.coffee_outlined,
       "keyboardType": TextInputType.number,
-      "validator": (v) => v!.isEmpty ? 'Break Time is required' : null,
+      "validator": (v) => _validateBreakTime(v as String?), // ✅
       "topPadding": 16.0,
-      "xl": 6,
-      "lg": 6,
-      "md": 6,
-      "xs": 6,
-      "sm": 6,
+      "xl": 12,
+      "lg": 12,
+      "md": 12,
+      "xs": 12,
+      "sm": 12,
     },
     {
       "label": "Permission (mins)",
@@ -83,14 +173,13 @@ class _RoleFormState extends State<RoleForm> {
       "type": "text",
       "keyboardType": TextInputType.number,
       "prefixIcon": Icons.timelapse_outlined,
-      "validator": (v) => v!.isEmpty ? 'Permission is required' : null,
-      "leftPadding": 8.0,
+      "validator": (v) => _validatePermission(v as String?), // ✅
       "topPadding": 16.0,
-      "xl": 6,
-      "lg": 6,
-      "md": 6,
-      "xs": 6,
-      "sm": 6,
+      "xl": 12,
+      "lg": 12,
+      "md": 12,
+      "xs": 12,
+      "sm": 12,
     },
     {
       "label": "Casual Leave (days)",
@@ -98,32 +187,49 @@ class _RoleFormState extends State<RoleForm> {
       "type": "text",
       "prefixIcon": Icons.event_available_outlined,
       "keyboardType": TextInputType.number,
-      "validator": (v) => v!.isEmpty ? 'Casual Leave is required' : null,
+      "validator": (v) => _validateLeave(v as String?), // ✅
       "topPadding": 16.0,
     },
     {
       "label": "Admin Role",
-
       "type": "switch",
       "switchValue": isAdmin.value,
-      "onSwitchChanged": (v) {
-        return isAdmin.value = v;
-      },
+      "onSwitchChanged": (v) => isAdmin.value = v,
       "topPadding": 16.0,
     },
   ];
 
+ @override
+void initState() {
+  super.initState();
+  final r = widget.role;
+  name = TextEditingController(text: r?.name ?? '');
+  from = TextEditingController(text: _formatTime(r?.workingFrom ?? '09:00'));
+  to = TextEditingController(text: _formatTime(r?.workingTo ?? '18:00'));
+  breakTime = TextEditingController(text: '${r?.breakMinutes ?? 30}');
+  permMin = TextEditingController(text: '${r?.permissionMinutes ?? 60}');
+  leave = TextEditingController(text: '${r?.casualLeave ?? 12}');
+  isAdmin.value = r?.isAdmin ?? false;
+}
+
+/// Strips seconds from API time strings like "09:00:00" → "09:00"
+String _formatTime(String time) {
+  final parts = time.split(':');
+  if (parts.length >= 2) {
+    return '${parts[0].padLeft(2, '0')}:${parts[1].padLeft(2, '0')}';
+  }
+  return time;
+}
+
   @override
-  void initState() {
-    super.initState();
-    final r = widget.role;
-    name = TextEditingController(text: r?.name ?? '');
-    from = TextEditingController(text: r?.workingFrom ?? '09:00');
-    to = TextEditingController(text: r?.workingTo ?? '18:00');
-    breakTime = TextEditingController(text: '${r?.breakMinutes ?? 30}');
-    permMin = TextEditingController(text: '${r?.permissionMinutes ?? 60}');
-    leave = TextEditingController(text: '${r?.casualLeave ?? 12}');
-    isAdmin.value = r?.isAdmin ?? false;
+  void dispose() {
+    name.dispose();
+    from.dispose();
+    to.dispose();
+    breakTime.dispose();
+    permMin.dispose();
+    leave.dispose();
+    super.dispose();
   }
 
   Future<void> pickTime(TextEditingController ctrl) async {
@@ -139,54 +245,60 @@ class _RoleFormState extends State<RoleForm> {
     if (picked != null) {
       ctrl.text =
           '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+      // Re-validate the whole form so cross-field rules (To > From) update
+      formKey.currentState?.validate();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 480),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.fromLTRB(20, 18, 14, 18),
-            decoration: const BoxDecoration(
-              color: AppColors.primary,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.badge_rounded, color: Colors.white),
-                const SizedBox(width: 10),
-                Text(
-                  isEdit ? 'Edit Designation' : 'Add Designation',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
+    return SafeArea(
+      top: false,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── Header ──────────────────────────────────────────────
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 18, 14, 18),
+              decoration: const BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.badge_rounded, color: Colors.white),
+                  const SizedBox(width: 10),
+                  Text(
+                    isEdit ? 'Edit Designation' : 'Add Designation',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
                   ),
-                ),
-                const Spacer(),
-                IconButton(
-                  onPressed: () => Get.back(),
-                  icon: const Icon(Icons.close, color: Colors.white),
-                ),
-              ],
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => Get.back(),
+                    icon: const Icon(Icons.close, color: Colors.white),
+                  ),
+                ],
+              ),
             ),
-          ),
-          Flexible(
-            child: SingleChildScrollView(
-              child: Obx(
-                () => Form(
-                  key: formKey,
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Column(
-                      children: [
-                        ResponsiveGridRow(
-                          children: [
-                            ...List.generate(fields.length, (ind) {
+
+            // ── Body ─────────────────────────────────────────────────
+            Flexible(
+              child: SingleChildScrollView(
+                child: Obx(
+                  () => Form(
+                    key: formKey,
+                    child: Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Column(
+                        children: [
+                          ResponsiveGridRow(
+                            children: List.generate(fields.length, (ind) {
                               return ResponsiveGridCol(
                                 xl: fields[ind]["xl"] ?? 12,
                                 lg: fields[ind]["lg"] ?? 12,
@@ -219,60 +331,61 @@ class _RoleFormState extends State<RoleForm> {
                                 ),
                               );
                             }),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: SriButton(
-                                label: "Cancel",
-                                isOutlined: true,
-                                onPressed: () => Get.back(),
+                          ),
+                          const SizedBox(height: 20),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: SriButton(
+                                  label: "Cancel",
+                                  isOutlined: true,
+                                  onPressed: () => Get.back(),
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: SriButton(
-                                label: isEdit ? "Update" : "Create",
-                                onPressed: () {
-                                  if (!formKey.currentState!.validate()) return;
-                                  final data = {
-                                    'company_id': auth.companyId,
-                                    'name': name.text.trim(),
-                                    'working_from': from.text,
-                                    'working_to': to.text,
-                                    'break_minutes':
-                                        int.tryParse(breakTime.text) ?? 30,
-                                    'permission_minutes':
-                                        int.tryParse(permMin.text) ?? 60,
-                                    'casual_leave':
-                                        int.tryParse(leave.text) ?? 12,
-                                    'is_admin': isAdmin.value,
-                                  };
-                                  if (isEdit) {
-                                    widget.controller.updateRole(
-                                      widget.role.id,
-                                      data,
-                                    );
-                                  } else {
-                                    widget.controller.createRole(data);
-                                  }
-
-                                  Get.back();
-                                },
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: SriButton(
+                                  label: isEdit ? "Update" : "Create",
+                                  onPressed: () {
+                                    if (!formKey.currentState!.validate()) {
+                                      return;
+                                    }
+                                    final data = {
+                                      'company_id': auth.companyId,
+                                      'name': name.text.trim(),
+                                      'working_from': from.text,
+                                      'working_to': to.text,
+                                      'break_minutes':
+                                          int.tryParse(breakTime.text) ?? 30,
+                                      'permission_minutes':
+                                          int.tryParse(permMin.text) ?? 60,
+                                      'casual_leave':
+                                          int.tryParse(leave.text) ?? 12,
+                                      'is_admin': isAdmin.value,
+                                    };
+                                    if (isEdit) {
+                                      widget.controller.updateRole(
+                                        widget.role.id,
+                                        data,
+                                      );
+                                    } else {
+                                      widget.controller.createRole(data);
+                                    }
+                                    Get.back();
+                                  },
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

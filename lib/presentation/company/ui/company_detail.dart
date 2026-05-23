@@ -70,348 +70,351 @@ class _CompanyDetailState extends State<CompanyDetail> {
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width >= 800;
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(isWide ? 24.0 : 10.0),
-      child: Form(
-        key: formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (!isWide)
-              InkWell(
-                onTap: () {
-                  widget.controller.enable.value = false;
-                  widget.controller.enable.refresh();
-                },
-                child: const Icon(Icons.arrow_back_ios_rounded),
-                // padding: EdgeInsets.zero,
-              ),
-            const SizedBox(height: 20.0),
-            headerCard(),
-            const SizedBox(height: 20.0),
-            SriDetailCard(
-              title: 'Basic Information',
-              icon: Icons.info_outline_rounded,
-              children: [
-                ResponsiveGridRow(
-                  children: [
-                    ResponsiveGridCol(
-                      xl: 6,
-                      lg: 6,
-                      md: 6,
-                      xs: 12,
-                      sm: 12,
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          top: 20.0,
-                          right: isWide ? 8.0 : 0.0,
-                        ),
-                        child: SriTextField(
-                          controller: name,
-                          label: 'Company Name *',
-                          readOnly: !editing,
-                          prefixIcon: Icons.business_rounded,
-                          validator: (v) =>
-                              v?.isEmpty == true ? 'Required' : null,
-                        ),
-                      ),
-                    ),
-                    ResponsiveGridCol(
-                      xl: 6,
-                      lg: 6,
-                      md: 6,
-                      xs: 12,
-                      sm: 12,
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          top: 20.0,
-                          left: isWide ? 8.0 : 0.0,
-                        ),
-                        child: SriTextField(
-                          controller: branchCode,
-                          label: 'Branch Code',
-                          readOnly: !editing,
-                          prefixIcon: Icons.tag_rounded,
-                        ),
-                      ),
-                    ),
-                    ResponsiveGridCol(
-                      xl: 6,
-                      lg: 6,
-                      md: 6,
-                      xs: 12,
-                      sm: 12,
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          top: 20.0,
-                          right: isWide ? 8.0 : 0.0,
-                        ),
-                        child: SriTextField(
-                          controller: phone,
-                          label: 'Phone',
-                          readOnly: !editing,
-                          keyboardType: TextInputType.phone,
-                          prefixIcon: Icons.phone_rounded,
-                        ),
-                      ),
-                    ),
-                    ResponsiveGridCol(
-                      xl: 6,
-                      lg: 6,
-                      md: 6,
-                      xs: 12,
-                      sm: 12,
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          top: 20.0,
-                          left: isWide ? 8.0 : 0.0,
-                        ),
-                        child: SriTextField(
-                          controller: email,
-                          label: 'Email',
-                          readOnly: !editing,
-                          keyboardType: TextInputType.emailAddress,
-                          prefixIcon: Icons.email_outlined,
-                        ),
-                      ),
-                    ),
-                    ResponsiveGridCol(
-                      xl: 6,
-                      lg: 6,
-                      md: 6,
-                      xs: 12,
-                      sm: 12,
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          top: 20.0,
-                          right: isWide ? 8.0 : 0.0,
-                        ),
-                        child: SriTextField(
-                          controller: gstin,
-                          label: 'GSTIN',
-                          readOnly: !editing,
-                          prefixIcon: Icons.numbers_rounded,
-                        ),
-                      ),
-                    ),
-                  ],
+    return SafeArea(
+      top: false,
+      child: SingleChildScrollView(
+        padding: EdgeInsets.all(isWide ? 24.0 : 10.0),
+        child: Form(
+          key: formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (!isWide)
+                InkWell(
+                  onTap: () {
+                    widget.controller.enable.value = false;
+                    widget.controller.enable.refresh();
+                  },
+                  child: const Icon(Icons.arrow_back_ios_rounded),
+                  // padding: EdgeInsets.zero,
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            // ── Address ──────────────────────────────────
-            SriDetailCard(
-              title: 'Address',
-              icon: Icons.location_on_rounded,
-              children: [
-                ResponsiveGridRow(
-                  children: [
-                    ResponsiveGridCol(
-                      xl: 12,
-                      lg: 12,
-                      md: 12,
-                      xs: 12,
-                      sm: 12,
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 20.0),
-                        child: SriTextField(
-                          controller: address,
-                          label: 'Full Address',
-                          readOnly: !editing,
-                          maxLines: 2,
-                          prefixIcon: Icons.home_rounded,
-                        ),
-                      ),
-                    ),
-                    ResponsiveGridCol(
-                      xl: 6,
-                      lg: 6,
-                      md: 6,
-                      xs: 12,
-                      sm: 12,
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          top: 20.0,
-                          right: isWide ? 8.0 : 0.0,
-                        ),
-                        child: SriTextField(
-                          controller: country,
-                          label: 'Country',
-                          readOnly: !editing,
-                          prefixIcon: Icons.flag_rounded,
-                        ),
-                      ),
-                    ),
-                    ResponsiveGridCol(
-                      xl: 6,
-                      lg: 6,
-                      md: 6,
-                      xs: 12,
-                      sm: 12,
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          top: 20.0,
-                          left: isWide ? 8.0 : 0.0,
-                        ),
-                        child: SriTextField(
-                          controller: state,
-                          label: 'State',
-                          readOnly: !editing,
-                          prefixIcon: Icons.map_rounded,
-                        ),
-                      ),
-                    ),
-                    ResponsiveGridCol(
-                      xl: 6,
-                      lg: 6,
-                      md: 6,
-                      xs: 12,
-                      sm: 12,
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          top: 20.0,
-                          right: isWide ? 8.0 : 0.0,
-                        ),
-                        child: SriTextField(
-                          controller: city,
-                          label: 'City',
-                          readOnly: !editing,
-                          prefixIcon: Icons.location_city_rounded,
-                        ),
-                      ),
-                    ),
-                    ResponsiveGridCol(
-                      xl: 6,
-                      lg: 6,
-                      md: 6,
-                      xs: 12,
-                      sm: 12,
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          top: 20.0,
-                          left: isWide ? 8.0 : 0.0,
-                        ),
-                        child: SriTextField(
-                          controller: pincode,
-                          label: 'Pincode',
-                          readOnly: !editing,
-                          keyboardType: TextInputType.number,
-                          prefixIcon: Icons.pin_drop_rounded,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            // ── Geo-fencing ──────────────────────────────
-            SriDetailCard(
-              title: 'Geo-fencing (Attendance)',
-              icon: Icons.radar_rounded,
-              children: [
-                ResponsiveGridRow(
-                  children: [
-                    ResponsiveGridCol(
-                      xl: 4,
-                      lg: 4,
-                      md: 4,
-                      sm: 12,
-                      xs: 12,
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          top: 20.0,
-                          right: isWide ? 8.0 : 0.0,
-                        ),
-                        child: SriTextField(
-                          controller: lat,
-                          label: 'Latitude',
-                          readOnly: !editing,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          prefixIcon: Icons.my_location_rounded,
-                        ),
-                      ),
-                    ),
-                    ResponsiveGridCol(
-                      xl: 4,
-                      lg: 4,
-                      md: 4,
-                      sm: 12,
-                      xs: 12,
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          top: 20.0,
-                          left: isWide ? 8.0 : 0.0,
-                        ),
-                        child: SriTextField(
-                          controller: lon,
-                          label: 'Longitude',
-                          readOnly: !editing,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          prefixIcon: Icons.location_on_rounded,
-                        ),
-                      ),
-                    ),
-                    ResponsiveGridCol(
-                      xl: 4,
-                      lg: 4,
-                      md: 4,
-                      sm: 12,
-                      xs: 12,
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          top: 20.0,
-                          left: isWide ? 8.0 : 0.0,
-                        ),
-                        child: SriTextField(
-                          controller: radius,
-                          label: 'Radius (m)',
-                          readOnly: !editing,
-                          keyboardType: TextInputType.number,
-                          prefixIcon: Icons.circle_outlined,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            // ── Save / Cancel ────────────────────────────
-            if (editing) ...[
-              const SizedBox(height: 20),
-              Row(
+              const SizedBox(height: 20.0),
+              headerCard(),
+              const SizedBox(height: 20.0),
+              SriDetailCard(
+                title: 'Basic Information',
+                icon: Icons.info_outline_rounded,
                 children: [
-                  Expanded(
-                    child: SriButton(
-                      onPressed: () => setState(() {
-                        editing = false;
-                        init(widget.company); // reset
-                      }),
-                      isOutlined: true,
-                      label: 'Cancel',
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Obx(
-                      () => SriButton(
-                        onPressed: widget.controller.isLoading.value
-                            ? null
-                            : save,
-                        isLoading: widget.controller.isLoading.value,
-                        label: 'Save Changes',
+                  ResponsiveGridRow(
+                    children: [
+                      ResponsiveGridCol(
+                        xl: 6,
+                        lg: 6,
+                        md: 6,
+                        xs: 12,
+                        sm: 12,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            top: 20.0,
+                            right: isWide ? 8.0 : 0.0,
+                          ),
+                          child: SriTextField(
+                            controller: name,
+                            label: 'Company Name *',
+                            readOnly: !editing,
+                            prefixIcon: Icons.business_rounded,
+                            validator: (v) =>
+                                v?.isEmpty == true ? 'Required' : null,
+                          ),
+                        ),
                       ),
-                    ),
+                      ResponsiveGridCol(
+                        xl: 6,
+                        lg: 6,
+                        md: 6,
+                        xs: 12,
+                        sm: 12,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            top: 20.0,
+                            left: isWide ? 8.0 : 0.0,
+                          ),
+                          child: SriTextField(
+                            controller: branchCode,
+                            label: 'Branch Code',
+                            readOnly: !editing,
+                            prefixIcon: Icons.tag_rounded,
+                          ),
+                        ),
+                      ),
+                      ResponsiveGridCol(
+                        xl: 6,
+                        lg: 6,
+                        md: 6,
+                        xs: 12,
+                        sm: 12,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            top: 20.0,
+                            right: isWide ? 8.0 : 0.0,
+                          ),
+                          child: SriTextField(
+                            controller: phone,
+                            label: 'Phone',
+                            readOnly: !editing,
+                            keyboardType: TextInputType.phone,
+                            prefixIcon: Icons.phone_rounded,
+                          ),
+                        ),
+                      ),
+                      ResponsiveGridCol(
+                        xl: 6,
+                        lg: 6,
+                        md: 6,
+                        xs: 12,
+                        sm: 12,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            top: 20.0,
+                            left: isWide ? 8.0 : 0.0,
+                          ),
+                          child: SriTextField(
+                            controller: email,
+                            label: 'Email',
+                            readOnly: !editing,
+                            keyboardType: TextInputType.emailAddress,
+                            prefixIcon: Icons.email_outlined,
+                          ),
+                        ),
+                      ),
+                      ResponsiveGridCol(
+                        xl: 6,
+                        lg: 6,
+                        md: 6,
+                        xs: 12,
+                        sm: 12,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            top: 20.0,
+                            right: isWide ? 8.0 : 0.0,
+                          ),
+                          child: SriTextField(
+                            controller: gstin,
+                            label: 'GSTIN',
+                            readOnly: !editing,
+                            prefixIcon: Icons.numbers_rounded,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
+              const SizedBox(height: 16),
+              // ── Address ──────────────────────────────────
+              SriDetailCard(
+                title: 'Address',
+                icon: Icons.location_on_rounded,
+                children: [
+                  ResponsiveGridRow(
+                    children: [
+                      ResponsiveGridCol(
+                        xl: 12,
+                        lg: 12,
+                        md: 12,
+                        xs: 12,
+                        sm: 12,
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 20.0),
+                          child: SriTextField(
+                            controller: address,
+                            label: 'Full Address',
+                            readOnly: !editing,
+                            maxLines: 2,
+                            prefixIcon: Icons.home_rounded,
+                          ),
+                        ),
+                      ),
+                      ResponsiveGridCol(
+                        xl: 6,
+                        lg: 6,
+                        md: 6,
+                        xs: 12,
+                        sm: 12,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            top: 20.0,
+                            right: isWide ? 8.0 : 0.0,
+                          ),
+                          child: SriTextField(
+                            controller: country,
+                            label: 'Country',
+                            readOnly: !editing,
+                            prefixIcon: Icons.flag_rounded,
+                          ),
+                        ),
+                      ),
+                      ResponsiveGridCol(
+                        xl: 6,
+                        lg: 6,
+                        md: 6,
+                        xs: 12,
+                        sm: 12,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            top: 20.0,
+                            left: isWide ? 8.0 : 0.0,
+                          ),
+                          child: SriTextField(
+                            controller: state,
+                            label: 'State',
+                            readOnly: !editing,
+                            prefixIcon: Icons.map_rounded,
+                          ),
+                        ),
+                      ),
+                      ResponsiveGridCol(
+                        xl: 6,
+                        lg: 6,
+                        md: 6,
+                        xs: 12,
+                        sm: 12,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            top: 20.0,
+                            right: isWide ? 8.0 : 0.0,
+                          ),
+                          child: SriTextField(
+                            controller: city,
+                            label: 'City',
+                            readOnly: !editing,
+                            prefixIcon: Icons.location_city_rounded,
+                          ),
+                        ),
+                      ),
+                      ResponsiveGridCol(
+                        xl: 6,
+                        lg: 6,
+                        md: 6,
+                        xs: 12,
+                        sm: 12,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            top: 20.0,
+                            left: isWide ? 8.0 : 0.0,
+                          ),
+                          child: SriTextField(
+                            controller: pincode,
+                            label: 'Pincode',
+                            readOnly: !editing,
+                            keyboardType: TextInputType.number,
+                            prefixIcon: Icons.pin_drop_rounded,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // ── Geo-fencing ──────────────────────────────
+              SriDetailCard(
+                title: 'Geo-fencing (Attendance)',
+                icon: Icons.radar_rounded,
+                children: [
+                  ResponsiveGridRow(
+                    children: [
+                      ResponsiveGridCol(
+                        xl: 4,
+                        lg: 4,
+                        md: 4,
+                        sm: 12,
+                        xs: 12,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            top: 20.0,
+                            right: isWide ? 8.0 : 0.0,
+                          ),
+                          child: SriTextField(
+                            controller: lat,
+                            label: 'Latitude',
+                            readOnly: !editing,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            prefixIcon: Icons.my_location_rounded,
+                          ),
+                        ),
+                      ),
+                      ResponsiveGridCol(
+                        xl: 4,
+                        lg: 4,
+                        md: 4,
+                        sm: 12,
+                        xs: 12,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            top: 20.0,
+                            left: isWide ? 8.0 : 0.0,
+                          ),
+                          child: SriTextField(
+                            controller: lon,
+                            label: 'Longitude',
+                            readOnly: !editing,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            prefixIcon: Icons.location_on_rounded,
+                          ),
+                        ),
+                      ),
+                      ResponsiveGridCol(
+                        xl: 4,
+                        lg: 4,
+                        md: 4,
+                        sm: 12,
+                        xs: 12,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            top: 20.0,
+                            left: isWide ? 8.0 : 0.0,
+                          ),
+                          child: SriTextField(
+                            controller: radius,
+                            label: 'Radius (m)',
+                            readOnly: !editing,
+                            keyboardType: TextInputType.number,
+                            prefixIcon: Icons.circle_outlined,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              // ── Save / Cancel ────────────────────────────
+              if (editing) ...[
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SriButton(
+                        onPressed: () => setState(() {
+                          editing = false;
+                          init(widget.company); // reset
+                        }),
+                        isOutlined: true,
+                        label: 'Cancel',
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Obx(
+                        () => SriButton(
+                          onPressed: widget.controller.isLoading.value
+                              ? null
+                              : save,
+                          isLoading: widget.controller.isLoading.value,
+                          label: 'Save Changes',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 40),
             ],
-            const SizedBox(height: 40),
-          ],
+          ),
         ),
       ),
     );

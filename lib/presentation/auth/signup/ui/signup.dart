@@ -13,10 +13,13 @@ class Signup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width >= 800;
-    return Scaffold(
-      backgroundColor: AppColors.bg,
-      appBar: isWide ? null : AppBar(title: const Text("Register Company")),
-      body: isWide ? controller.wideLayout() : controller.narrowLayout(),
+    return SafeArea(
+      top: false,
+      child: Scaffold(
+        backgroundColor: AppColors.bg,
+        appBar: isWide ? null : AppBar(title: const Text("Register Company")),
+        body: isWide ? controller.wideLayout() : controller.narrowLayout(),
+      ),
     );
   }
 }

@@ -55,15 +55,22 @@ class SriTextField extends StatelessWidget {
         labelText: label,
         hintText: hint,
         errorText: errorText,
+        errorMaxLines: 2,
         prefixIcon: prefixIcon != null
             ? Icon(prefixIcon, size: 18, color: AppColors.textMuted)
             : null,
-        suffixIcon:suffixIconWidget ?? (suffixIcon != null
-            ? GestureDetector(
-                onTap: onSuffixTap,
-                child: Icon(suffixIcon, size: 20, color: AppColors.textMuted),
-              )
-            : null),
+        suffixIcon:
+            suffixIconWidget ??
+            (suffixIcon != null
+                ? GestureDetector(
+                    onTap: onSuffixTap,
+                    child: Icon(
+                      suffixIcon,
+                      size: 20,
+                      color: AppColors.textMuted,
+                    ),
+                  )
+                : null),
       ),
     );
   }

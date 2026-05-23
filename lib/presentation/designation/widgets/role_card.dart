@@ -16,6 +16,14 @@ class RoleCard extends StatelessWidget {
     this.onDelete,
   });
 
+  String _formatTime(String time) {
+    final parts = time.split(':');
+    if (parts.length >= 2) {
+      return '${parts[0].padLeft(2, '0')}:${parts[1].padLeft(2, '0')}';
+    }
+    return time;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -24,7 +32,6 @@ class RoleCard extends StatelessWidget {
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          // margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: isSelected ? AppColors.primary : AppColors.surface,
@@ -77,7 +84,7 @@ class RoleCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '${role.workingFrom} – ${role.workingTo}  •  ${role.casualLeave}d leave',
+                      '${_formatTime(role.workingFrom)} – ${_formatTime(role.workingTo)}  •  ${role.casualLeave}d leave', // ✅
                       style: TextStyle(
                         fontSize: 11,
                         color: isSelected
@@ -91,16 +98,16 @@ class RoleCard extends StatelessWidget {
               PopupMenuButton(
                 iconColor: isSelected ? Colors.white : AppColors.primary,
                 itemBuilder: (_) => [
-                   if (onEdit != null)
-                  const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                   if (onDelete != null)
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: Text(
-                      'Delete',
-                      style: TextStyle(color: AppColors.error),
+                  if (onEdit != null)
+                    const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                  if (onDelete != null)
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Text(
+                        'Delete',
+                        style: TextStyle(color: AppColors.error),
+                      ),
                     ),
-                  ),
                 ],
                 onSelected: (v) {
                   if (v == 'edit') {

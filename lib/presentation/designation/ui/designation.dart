@@ -24,81 +24,84 @@ class Designation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width >= 800;
-    return AppShell(
-      currentModule: 'designation',
-      title: "Designations",
-      actions: [
-        if (auth.canAdd('designation'))
-          isWide
-              ? SriButton(
-                  icon: Icons.add,
-                  onPressed: () => showRoleForm(context, controller),
-                  label: "Add Designation",
-                )
-              : IconButton(
-                  onPressed: () => showRoleForm(context, controller),
-                  icon: Icon(Icons.add),
-                ),
-      ],
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(child: searchWidget(context)),
-              if (isWide)
-                Padding(
-                  padding: const EdgeInsets.only(
-                    right: 8.0,
-                    top: 10.0,
-                    // bottom: 20.0,
+    return SafeArea(
+      top: false,
+      child: AppShell(
+        currentModule: 'designation',
+        title: "Designations",
+        actions: [
+          if (auth.canAdd('designation'))
+            isWide
+                ? SriButton(
+                    icon: Icons.add,
+                    onPressed: () => showRoleForm(context, controller),
+                    label: "Add Designation",
+                  )
+                : IconButton(
+                    onPressed: () => showRoleForm(context, controller),
+                    icon: Icon(Icons.add),
                   ),
-                  child: IconButton(
-                    onPressed: controller.loadRoles,
-                    icon: Icon(Icons.refresh, color: AppColors.primary),
-                  ),
-                ),
-            ],
-          ),
-          Expanded(
-            child: Obx(
-              () => controller.isLoading.value
-                  ? const LoadingOverlay()
-                  : controller.filteredroles.isEmpty
-                  ? EmptyState(
-                      message: 'No designations created yet',
-                      icon: Icons.badge_outlined,
-                      actionLabel: auth.canAdd('designation')
-                          ? 'Add Designation'
-                          : null,
-                      onAction: () => showRoleForm(context, controller),
-                    )
-                  : RefreshIndicator(
-                      onRefresh: controller.loadRoles,
-                      child: isWide
-                          ? Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Left: list
-                                Flexible(
-                                  flex: 2,
-                                  child: designationList(context),
-                                ),
-                                // Right: permissions panel
-                                Flexible(
-                                  flex: 3,
-                                  child: designationPermission(),
-                                ),
-                              ],
-                            )
-                          : controller.enable.value
-                          ? designationPermission()
-                          : designationList(context),
-                    ),
-            ),
-          ),
         ],
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(child: searchWidget(context)),
+                if (isWide)
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      right: 8.0,
+                      top: 10.0,
+                      // bottom: 20.0,
+                    ),
+                    child: IconButton(
+                      onPressed: controller.loadRoles,
+                      icon: Icon(Icons.refresh, color: AppColors.primary),
+                    ),
+                  ),
+              ],
+            ),
+            Expanded(
+              child: Obx(
+                () => controller.isLoading.value
+                    ? const LoadingOverlay()
+                    : controller.filteredroles.isEmpty
+                    ? EmptyState(
+                        message: 'No designations created yet',
+                        icon: Icons.badge_outlined,
+                        actionLabel: auth.canAdd('designation')
+                            ? 'Add Designation'
+                            : null,
+                        onAction: () => showRoleForm(context, controller),
+                      )
+                    : RefreshIndicator(
+                        onRefresh: controller.loadRoles,
+                        child: isWide
+                            ? Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Left: list
+                                  Flexible(
+                                    flex: 2,
+                                    child: designationList(context),
+                                  ),
+                                  // Right: permissions panel
+                                  Flexible(
+                                    flex: 3,
+                                    child: designationPermission(),
+                                  ),
+                                ],
+                              )
+                            : controller.enable.value
+                            ? designationPermission()
+                            : designationList(context),
+                      ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

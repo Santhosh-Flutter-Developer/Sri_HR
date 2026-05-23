@@ -15,9 +15,12 @@ class Login extends GetView<LoginController> {
         statusBarColor: AppColors.sidebarBg,
         statusBarIconBrightness: Brightness.light,
       ),
-      child: Scaffold(
-        backgroundColor: AppColors.bg,
-        body: isWide ? controller.wideLayout() : controller.narrowLayout(),
+      child: SafeArea(
+        top: false,
+        child: Scaffold(
+          backgroundColor: AppColors.bg,
+          body: isWide ? controller.wideLayout() : controller.narrowLayout(),
+        ),
       ),
     );
   }

@@ -423,131 +423,134 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
         faceDetectionViewController?.stopCamera();
         return true;
       },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Face Recognition'),
-          toolbarHeight: 70,
-          centerTitle: false,
-        ),
-        body: Stack(
-          children: <Widget>[
-            FaceDetectionView(faceRecognitionViewState: this),
-            SizedBox(
-              width: double.infinity,
-              height: double.infinity,
-              child: CustomPaint(
-                painter: FacePainter(
-                  faces: _faces,
-                  livenessThreshold: _livenessThreshold,
-                ),
-              ),
-            ),
-            Visibility(
-              visible: _recognized,
-              child: Container(
+      child: SafeArea(
+        top: false,
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('Face Recognition'),
+            toolbarHeight: 70,
+            centerTitle: false,
+          ),
+          body: Stack(
+            children: <Widget>[
+              FaceDetectionView(faceRecognitionViewState: this),
+              SizedBox(
                 width: double.infinity,
                 height: double.infinity,
-                color: Theme.of(context).colorScheme.surface,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 10),
-                    Icon(
-                      Icons.check_circle,
-                      color: AppColors.success,
-                      size: 60.0,
-                    ),
-                    SizedBox(height: 6.0),
-                    Text(
-                      _identifiedName.toString(),
-                      style: TextStyle(
-                        fontFamily: "Sora",
-                        fontSize: 18.0,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    SizedBox(height: 6.0),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.check_circle,
-                          color: AppColors.success,
-                          size: 20.0,
-                        ),
-                        SizedBox(width: 6),
-                        Text(
-                          "Identity Verified",
-                          style: TextStyle(
-                            fontFamily: "Sora",
-                            fontSize: 14.0,
-                            color: AppColors.success,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: <Widget>[
-                        _enrolledFace != null
-                            ? Column(
-                                children: [
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      border: Border.all(
-                                        color: AppColors.success,
-                                      ),
-                                      borderRadius: BorderRadius.circular(8.0),
-                                    ),
-                                    padding: EdgeInsets.all(2),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(8.0),
-                                      child: Image.network(
-                                        _enrolledFace,
-                                        width: 160,
-                                        height: 160,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 5),
-                                  const Text('Enrolled'),
-                                ],
-                              )
-                            : const SizedBox(height: 1),
-                        _identifiedFace != null
-                            ? Column(
-                                children: [
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      border: Border.all(
-                                        color: AppColors.success,
-                                      ),
-                                      borderRadius: BorderRadius.circular(8.0),
-                                    ),
-                                    padding: EdgeInsets.all(2),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(8.0),
-                                      child: Image.memory(
-                                        _identifiedFace,
-                                        width: 160,
-                                        height: 160,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 5),
-                                  const Text('Identified'),
-                                ],
-                              )
-                            : const SizedBox(height: 1),
-                      ],
-                    ),
-                    const SizedBox(height: 30),
-                  ],
+                child: CustomPaint(
+                  painter: FacePainter(
+                    faces: _faces,
+                    livenessThreshold: _livenessThreshold,
+                  ),
                 ),
               ),
-            ),
-          ],
+              Visibility(
+                visible: _recognized,
+                child: Container(
+                  width: double.infinity,
+                  height: double.infinity,
+                  color: Theme.of(context).colorScheme.surface,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 10),
+                      Icon(
+                        Icons.check_circle,
+                        color: AppColors.success,
+                        size: 60.0,
+                      ),
+                      SizedBox(height: 6.0),
+                      Text(
+                        _identifiedName.toString(),
+                        style: TextStyle(
+                          fontFamily: "Sora",
+                          fontSize: 18.0,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(height: 6.0),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            color: AppColors.success,
+                            size: 20.0,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            "Identity Verified",
+                            style: TextStyle(
+                              fontFamily: "Sora",
+                              fontSize: 14.0,
+                              color: AppColors.success,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: <Widget>[
+                          _enrolledFace != null
+                              ? Column(
+                                  children: [
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                          color: AppColors.success,
+                                        ),
+                                        borderRadius: BorderRadius.circular(8.0),
+                                      ),
+                                      padding: EdgeInsets.all(2),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(8.0),
+                                        child: Image.network(
+                                          _enrolledFace,
+                                          width: 160,
+                                          height: 160,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 5),
+                                    const Text('Enrolled'),
+                                  ],
+                                )
+                              : const SizedBox(height: 1),
+                          _identifiedFace != null
+                              ? Column(
+                                  children: [
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                          color: AppColors.success,
+                                        ),
+                                        borderRadius: BorderRadius.circular(8.0),
+                                      ),
+                                      padding: EdgeInsets.all(2),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(8.0),
+                                        child: Image.memory(
+                                          _identifiedFace,
+                                          width: 160,
+                                          height: 160,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 5),
+                                    const Text('Identified'),
+                                  ],
+                                )
+                              : const SizedBox(height: 1),
+                        ],
+                      ),
+                      const SizedBox(height: 30),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

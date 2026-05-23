@@ -21,46 +21,49 @@ class Dashboard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width >= 800;
-    return AppShell(
-      currentModule: 'dashboard',
-      title: 'Dashboard',
-      floatingActionButton:isWide?SizedBox(): AttendanceFAB(),
-      child: Obx(
-        () => controller.isLoading.value
-            ? const LoadingOverlay()
-            : RefreshIndicator(
-                onRefresh: controller.loadStats,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.only(
-                    top: isWide ? 24.0 : 12.0,
-                    left: isWide ? 24.0 : 12.0,
-                    right: isWide ? 24.0 : 12.0,
-                    bottom: 100.0,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(child: GreetingBar()),
-                          IconButton(
-                            onPressed: controller.loadStats,
-                            icon: Icon(Icons.refresh, color: AppColors.primary),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20.0),
-                      SubscriptionAlert(),
-                      StatsGrid(stats: controller.stats.value),
-                      const SizedBox(height: 24),
-                      ChartsRow(ctrl: controller),
-                      const SizedBox(height: 24),
-                      QuickActions(),
-                    ],
+    return SafeArea(
+      top: false,
+      child: AppShell(
+        currentModule: 'dashboard',
+        title: 'Dashboard',
+        floatingActionButton:isWide?SizedBox(): AttendanceFAB(),
+        child: Obx(
+          () => controller.isLoading.value
+              ? const LoadingOverlay()
+              : RefreshIndicator(
+                  onRefresh: controller.loadStats,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.only(
+                      top: isWide ? 24.0 : 12.0,
+                      left: isWide ? 24.0 : 12.0,
+                      right: isWide ? 24.0 : 12.0,
+                      bottom: 100.0,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(child: GreetingBar()),
+                            IconButton(
+                              onPressed: controller.loadStats,
+                              icon: Icon(Icons.refresh, color: AppColors.primary),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20.0),
+                        SubscriptionAlert(),
+                        StatsGrid(stats: controller.stats.value),
+                        const SizedBox(height: 24),
+                        ChartsRow(ctrl: controller),
+                        const SizedBox(height: 24),
+                        QuickActions(),
+                      ],
+                    ),
                   ),
                 ),
-              ),
+        ),
       ),
     );
   }

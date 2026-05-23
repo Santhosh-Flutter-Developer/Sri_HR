@@ -323,12 +323,15 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width >= 800;
     return isWide
-        ? AppShell(
-            currentModule: 'employee',
-            title: 'Employee',
-            child: formWidget(widget.employee),
+        ? SafeArea(
+            top: false,
+            child: AppShell(
+              currentModule: 'employee',
+              title: 'Employee',
+              child: formWidget(widget.employee),
+            ),
           )
-        : formWidget(widget.employee);
+        : SafeArea(top: false, child: formWidget(widget.employee));
   }
 
   Widget formWidget(EmployeeModel? employee) {
