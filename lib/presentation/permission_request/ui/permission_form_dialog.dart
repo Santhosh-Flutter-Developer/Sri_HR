@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/utils/network_time.dart';
+import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/employee/controller/employee_controller.dart';
 import 'package:sri_hr/presentation/helper/helper.dart';
 import 'package:sri_hr/presentation/permission_request/controller/permission_request_controller.dart';
@@ -27,6 +28,7 @@ class PermissionFormDialogState extends State<PermissionFormDialog> {
   bool isLoading = false;
 
   late final EmployeeController empCtrl;
+  final auth = Get.find<AuthController>();
 
   @override
   void initState() {
@@ -34,6 +36,10 @@ class PermissionFormDialogState extends State<PermissionFormDialog> {
     NetworkTime.syncTime();
     empCtrl = Get.find<EmployeeController>();
     if (empCtrl.employees.isEmpty) empCtrl.loadEmployees();
+    if (!auth.isAdmin) {
+      employeeId =
+          auth.employeeId; // or auth.employeeId depending on your auth model
+    }
   }
 
   @override
@@ -233,13 +239,21 @@ class PermissionFormDialogState extends State<PermissionFormDialog> {
                         FormLabel('Employee *'),
                         const SizedBox(height: 6),
                         Obx(() {
-                          final emps = empCtrl.employees;
+                          final allEmps = empCtrl.employees;
+                          // ✅ Non-admin sees only themselves
+                          final emps = auth.isAdmin
+                              ? allEmps
+                              : allEmps.where((e) {
+                                  return e.id == auth.employeeId;
+                                }).toList();
+
                           final ids = emps.map((e) => e.id).toList();
                           final safe = ids.contains(employeeId)
                               ? employeeId
                               : null;
                           return DropdownButtonFormField<String>(
                             value: safe,
+                            initialValue: safe,
                             isExpanded: true,
                             decoration: _deco(
                               Icons.person_rounded,
@@ -254,13 +268,18 @@ class PermissionFormDialogState extends State<PermissionFormDialog> {
                                     value: e.id,
                                     child: Text(
                                       '${e.employeeCode} – ${e.fullName}',
-                                      style: const TextStyle(fontSize: 14),
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        color: AppColors.textPrimary,
+                                      ),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                 )
                                 .toList(),
-                            onChanged: (v) => setState(() => employeeId = v),
+                            onChanged: auth.isAdmin
+                                ? (v) => setState(() => employeeId = v)
+                                : null,
                           );
                         }),
                         const SizedBox(height: 16),

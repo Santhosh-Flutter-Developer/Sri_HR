@@ -23,13 +23,18 @@ class PermissionRequestController extends GetxController {
 
   List<PermissionRequestModel> get filteredPermission {
     if (filterStatus.value == null) return permission;
-    return permission.where((p) => p.status.name == filterStatus.value).toList();
+    return permission
+        .where((p) => p.status.name == filterStatus.value)
+        .toList();
   }
 
   Future<void> load() async {
     try {
       isLoading.value = true;
-      permission.value = await repo.getPermissions(auth.companyId);
+      permission.value = await repo.getPermissions(
+        auth.companyId,
+        employeeId: auth.isAdmin ? null : auth.employeeId,
+      );
     } catch (e) {
       debugPrint('[PermCtrl] load error: $e');
       showError('Failed to load permissions');
