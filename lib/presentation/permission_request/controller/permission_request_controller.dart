@@ -63,9 +63,11 @@ class PermissionRequestController extends GetxController {
       data['company_id'] = auth.companyId;
 
       // Calculate minutes between from and to time
+      late final DateTime from;
+      late final DateTime to;
       try {
-        final from = parseTime(data['from_time'] as String);
-        final to = parseTime(data['to_time'] as String);
+        from = parseTime(data['from_time'] as String);
+        to = parseTime(data['to_time'] as String);
         if (to.isBefore(from) || to.isAtSameMomentAs(from)) {
           throw Exception('To Time must be after From Time');
         }
@@ -73,6 +75,33 @@ class PermissionRequestController extends GetxController {
       } catch (e) {
         if (e is Exception) rethrow;
       }
+
+      // ── Overlap check ──────────────────────────────────────────
+      final requestDate = data['request_date'] as String;
+      final empId = data['employee_id'] as String;
+
+      final conflict = permission.where((p) {
+        // Same employee, same date, not rejected
+        if (p.employeeId != empId) return false;
+        final pDate = p.requestDate.toIso8601String().substring(0, 10);
+        if (pDate != requestDate) return false;
+        if (p.status.name == 'rejected') return false;
+
+        // Check time overlap: existing [pFrom, pTo) vs new [from, to)
+        final pFrom = parseTime(p.fromTime);
+        final pTo = parseTime(p.toTime);
+        // Overlap when: newFrom < pTo AND newTo > pFrom
+        return from.isBefore(pTo) && to.isAfter(pFrom);
+      }).firstOrNull;
+
+      if (conflict != null) {
+        throw Exception(
+          'A permission request already exists for this date '
+          '(${conflict.fromTime} – ${conflict.toTime}). '
+          'Please choose a different time slot.',
+        );
+      }
+      // ───────────────────────────────────────────────────────────
 
       debugPrint('[PermCtrl] creating: $data');
       final perm = await repo.createPermission(data);
