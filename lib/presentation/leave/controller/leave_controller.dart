@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/models/leave_request_model.dart';
+import 'package:sri_hr/data/services/supabase_service.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/helper/helper.dart';
 import 'package:sri_hr/presentation/leave/repository/leave_repository.dart';
@@ -44,10 +45,8 @@ class LeaveController extends GetxController {
   Future<void> create(Map<String, dynamic> data) async {
     isLoading.value = true;
     try {
-      // Always use the current active company
       data['company_id'] = auth.companyId;
 
-      // Validate required fields before sending to DB
       if (data['employee_id'] == null ||
           (data['employee_id'] as String).isEmpty) {
         throw Exception('Please select an employee');
@@ -59,12 +58,34 @@ class LeaveController extends GetxController {
         throw Exception('Please select To Date');
       }
 
-      // ✅ Check for overlapping leave dates
+      // ── NEW: Check if employee has punched on any date in the leave range ──
+      final fromDate = data['from_date'] as String;
+      final toDate = data['to_date'] as String;
+      final empId = data['employee_id'] as String;
+
+      final punchCheck = await SupabaseService.client
+          .from('attendance_logs')
+          .select('date')
+          .eq('company_id', auth.companyId)
+          .eq('employee_id', empId)
+          .gte('date', fromDate)
+          .lte('date', toDate)
+          .limit(1)
+          .maybeSingle();
+
+      if (punchCheck != null) {
+        final punchedDate = punchCheck['date'] as String;
+        throw Exception(
+          'Employee has attendance punched on $punchedDate. Cannot apply leave on a day with existing punch records.',
+        );
+      }
+
+      // ── Existing overlap check ──
       final hasOverlap = await _repo.hasOverlappingLeave(
         companyId: auth.companyId,
-        employeeId: data['employee_id'] as String,
-        fromDate: data['from_date'] as String,
-        toDate: data['to_date'] as String,
+        employeeId: empId,
+        fromDate: fromDate,
+        toDate: toDate,
       );
 
       if (hasOverlap) {
@@ -73,20 +94,12 @@ class LeaveController extends GetxController {
         );
       }
 
-      debugPrint('[LeaveCtrl] creating leave: $data');
       final leave = await _repo.createLeave(data);
-      debugPrint(
-        '[LeaveCtrl] created: ${leave.id}, employee: ${leave.employee?.fullName}',
-      );
-
-      // Insert at top of list
       leaves.insert(0, leave);
       showSuccess('Leave request submitted successfully');
-    } 
-    catch (e) {
+    } catch (e) {
       debugPrint('[LeaveCtrl] create error: $e');
       showError(e.toString().replaceAll('Exception: ', ''));
-      // rethrow; // rethrow so the dialog can catch and not close on error
     } finally {
       isLoading.value = false;
     }

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/models/attendance_log_model.dart';
+import 'package:sri_hr/data/services/supabase_service.dart';
 import 'package:sri_hr/data/utils/network_time.dart';
 import 'package:sri_hr/presentation/attendance/repository/attendance_repository.dart';
 import 'package:sri_hr/presentation/attendance/widgets/filter_sheet.dart';
@@ -163,7 +164,25 @@ class AttendanceController extends GetxController {
       final punchType = data['punch_type'] as String;
       final newPunchTime = DateTime.parse(data['punch_time'] as String);
 
-      // Get all existing punches for this employee on this date only
+      // ── NEW: Check if employee is on approved leave this date ──
+      final leaveCheck = await SupabaseService.client
+          .from('leave_requests')
+          .select('id, from_date, to_date')
+          .eq('company_id', auth.companyId)
+          .eq('employee_id', empId)
+          .eq('status', 'approved')
+          .lte('from_date', dateStr)
+          .gte('to_date', dateStr)
+          .maybeSingle();
+
+      if (leaveCheck != null) {
+        showError(
+          'Cannot add punch on $dateStr — employee has an approved leave on this date',
+        );
+        return;
+      }
+
+      // ... rest of existing validation (sequence check, time check) ...
       final sameDayLogs =
           logs
               .where(
@@ -174,10 +193,6 @@ class AttendanceController extends GetxController {
               .toList()
             ..sort((a, b) => a.punchTime.compareTo(b.punchTime));
 
-      debugPrint('[AdjustPunch] sameDayLogs count: ${sameDayLogs.length}');
-      debugPrint('[AdjustPunch] newPunchTime: $newPunchTime');
-      debugPrint('[AdjustPunch] punchType: $punchType');
-
       final inLogs = sameDayLogs
           .where((l) => l.punchType == PunchType.in_)
           .toList();
@@ -185,11 +200,6 @@ class AttendanceController extends GetxController {
           .where((l) => l.punchType == PunchType.out)
           .toList();
 
-      debugPrint(
-        '[AdjustPunch] inCount: ${inLogs.length}, outCount: ${outLogs.length}',
-      );
-
-      // ── Rule 1: Sequence — must follow IN→OUT→IN→OUT pattern ──
       if (punchType == 'out' && inLogs.length <= outLogs.length) {
         showError('Please add Punch IN before Punch OUT');
         return;
@@ -199,19 +209,10 @@ class AttendanceController extends GetxController {
         return;
       }
 
-      // ── Rule 2: New time must be after last punch of ANY type ──
       if (sameDayLogs.isNotEmpty) {
         final lastPunchTime = sameDayLogs.last.punchTime;
-        debugPrint('[AdjustPunch] lastPunchTime: $lastPunchTime');
-
-        // Compare only HH:mm (ignore seconds/milliseconds)
         final newMinutes = newPunchTime.hour * 60 + newPunchTime.minute;
         final lastMinutes = lastPunchTime.hour * 60 + lastPunchTime.minute;
-
-        debugPrint(
-          '[AdjustPunch] newMinutes: $newMinutes, lastMinutes: $lastMinutes',
-        );
-
         if (newMinutes <= lastMinutes) {
           showError(
             'Time must be after ${AttendanceController.fmtTime(lastPunchTime)}',
@@ -220,13 +221,9 @@ class AttendanceController extends GetxController {
         }
       }
 
-      // ── All good → insert ──
       final log = await repo.adjustPunch(data);
       logs.add(log);
-
-      if (showToast == true) {
-        showSuccess('Punch adjusted successfully');
-      }
+      if (showToast == true) showSuccess('Punch adjusted successfully');
     } catch (e) {
       debugPrint('[AdjustPunch] error: $e');
       showError('Failed: $e');
