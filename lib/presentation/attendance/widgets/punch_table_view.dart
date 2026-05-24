@@ -65,8 +65,8 @@ class PunchTableView extends StatelessWidget {
               ...rows.map((row) {
                 final emp = row['employee'] as dynamic;
                 final date = row['date'] as DateTime;
-                final inLog = row['inLog'] as AttendanceLogModel?;
-                final outLog = row['outLog'] as AttendanceLogModel?;
+                final inLogs = row['inLogs'] as List<AttendanceLogModel>;
+                final outLogs = row['outLogs'] as List<AttendanceLogModel>;
                 final empName = emp?.fullName as String? ?? 'Unknown';
                 final empCode = emp?.employeeCode as String? ?? '';
                 final picUrl = emp?.profilePicture as String?;
@@ -75,6 +75,15 @@ class PunchTableView extends StatelessWidget {
                     : '?';
                 final dateStr =
                     '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+
+                // total: first IN → last OUT
+                final inLog = inLogs.isNotEmpty ? inLogs.first : null;
+                final outLog = outLogs.isNotEmpty ? outLogs.last : null;
+                final totalMins = row['totalMins'] as int? ?? 0;
+                final totalHrsStr = totalMins > 0
+                    ? '${totalMins ~/ 60}h ${totalMins % 60}m'
+                    : '—';
+
                 return Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 14.0,
@@ -89,11 +98,13 @@ class PunchTableView extends StatelessWidget {
                     ),
                   ),
                   child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Employee
                       Expanded(
                         flex: 3,
                         child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             CircleAvatar(
                               radius: 18,
@@ -141,60 +152,108 @@ class PunchTableView extends StatelessWidget {
                           ],
                         ),
                       ),
+                      // Date
                       Expanded(
                         flex: 2,
-                        child: Text(
-                          dateStr,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textSecondary,
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            dateStr,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
                         ),
                       ),
+                      // IN punches — all of them
                       Expanded(
                         flex: 2,
-                        child: PunchCell(
-                          time: fmtTime(inLog),
-                          type: 'IN',
-                          exists: inLog != null,
-                          isManual: inLog?.isManual ?? false,
-                          canDelete:
-                              auth.canDelete('punch_adjustment') &&
-                              inLog != null,
-                          onDelete: inLog != null
-                              ? () => controller.deleteLog(inLog.id)
-                              : () {},
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: inLogs.isEmpty
+                              ? [
+                                  const Text(
+                                    '—',
+                                    style: TextStyle(
+                                      color: AppColors.textMuted,
+                                    ),
+                                  ),
+                                ]
+                              : inLogs
+                                    .map(
+                                      (l) => Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 4,
+                                        ),
+                                        child: PunchCell(
+                                          time: fmtTime(l),
+                                          type: 'IN',
+                                          exists: true,
+                                          isManual: l.isManual,
+                                          canDelete: auth.canDelete(
+                                            'punch_adjustment',
+                                          ),
+                                          onDelete: () =>
+                                              controller.deleteLog(l.id),
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
                         ),
                       ),
+                      // OUT punches — all of them
                       Expanded(
                         flex: 2,
-                        child: PunchCell(
-                          time: fmtTime(outLog),
-                          type: 'OUT',
-                          exists: outLog != null,
-                          isManual: outLog?.isManual ?? false,
-                          canDelete:
-                              auth.canDelete('punch_adjustment') &&
-                              outLog != null,
-                          onDelete: outLog != null
-                              ? () => controller.deleteLog(outLog.id)
-                              : () {},
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: outLogs.isEmpty
+                              ? [
+                                  const Text(
+                                    '—',
+                                    style: TextStyle(
+                                      color: AppColors.textMuted,
+                                    ),
+                                  ),
+                                ]
+                              : outLogs
+                                    .map(
+                                      (l) => Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 4,
+                                        ),
+                                        child: PunchCell(
+                                          time: fmtTime(l),
+                                          type: 'OUT',
+                                          exists: true,
+                                          isManual: l.isManual,
+                                          canDelete: auth.canDelete(
+                                            'punch_adjustment',
+                                          ),
+                                          onDelete: () =>
+                                              controller.deleteLog(l.id),
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
                         ),
                       ),
+                      // Total hrs (first IN → last OUT)
                       Expanded(
                         flex: 2,
                         child: Text(
-                          totalHrs(inLog, outLog),
+                          totalHrsStr,
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: inLog != null && outLog != null
+                            color: totalMins > 0
                                 ? AppColors.success
                                 : AppColors.textMuted,
                           ),
                         ),
                       ),
+                      // Edit button
                       SizedBox(
                         width: 50,
                         child: auth.canEdit('punch_adjustment')

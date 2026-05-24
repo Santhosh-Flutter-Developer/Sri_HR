@@ -101,6 +101,11 @@ class _PunchFormDialogState extends State<PunchFormDialog> {
       snack('Select a time');
       return;
     }
+    if (empId == null) {
+      snack('Select an employee');
+      return;
+    }
+
     setState(() => loading = true);
     try {
       final dt = DateTime(
@@ -113,7 +118,7 @@ class _PunchFormDialogState extends State<PunchFormDialog> {
       await widget.controller.adjustPunch({
         'employee_id': empId,
         'date': date!.toIso8601String().substring(0, 10),
-        'punch_time': dt.toIso8601String(),
+        'punch_time': dt.toIso8601String(), // ← no timezone offset
         'punch_type': punchType,
       });
       if (mounted) Navigator.of(context).pop();

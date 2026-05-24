@@ -67,43 +67,12 @@ class AttendanceRepository {
   /// Upsert logic: if same employee + same date + same punch_type already exists
   /// as a manual entry, UPDATE it instead of inserting a duplicate.
   Future<AttendanceLogModel> adjustPunch(Map<String, dynamic> data) async {
-    final empId = data['employee_id'] as String;
-    final dateStr = data['date'] as String;
-    final punchType = data['punch_type'] as String;
-    final companyId = data['company_id'] as String;
-
-    // Check for existing manual log for same employee+date+punchType
-    final existing = await SupabaseService.client
+    final row = await SupabaseService.client
         .from('attendance_logs')
+        .insert({...data, 'is_manual': true})
         .select('id')
-        .eq('company_id', companyId)
-        .eq('employee_id', empId)
-        .eq('date', dateStr)
-        .eq('punch_type', punchType)
-        .eq('is_manual', true)
-        .maybeSingle();
-
-    String logId;
-    if (existing != null) {
-      // UPDATE existing row
-      logId = existing['id'] as String;
-      await SupabaseService.client
-          .from('attendance_logs')
-          .update({
-            'punch_time': data['punch_time'],
-            'adjusted_by': data['adjusted_by'],
-          })
-          .eq('id', logId);
-    } else {
-      // INSERT new row
-      final row = await SupabaseService.client
-          .from('attendance_logs')
-          .insert({...data, 'is_manual': true})
-          .select('id')
-          .single();
-      logId = row['id'] as String;
-    }
-    return fetchLog(logId);
+        .single();
+    return fetchLog(row['id'] as String);
   }
 
   Future<AttendanceLogModel> fetchLog(String id) async {

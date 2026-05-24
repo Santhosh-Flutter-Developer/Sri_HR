@@ -32,10 +32,13 @@ class AttendTableRow extends StatelessWidget {
     final deptName = emp?.department?.name as String? ?? '';
     final picUrl = emp?.profilePicture as String?;
     final initial = empName.isNotEmpty ? empName[0].toUpperCase() : '?';
+    // Replace totalHrs display:
+    final firstIn = inLogs.isNotEmpty ? inLogs.first : null;
+    final lastOut = outLogs.isNotEmpty ? outLogs.last : null;
     final totalHrs = totalMins > 0
         ? '${totalMins ~/ 60}h ${totalMins % 60}m'
         : '—';
-    final isGood = totalMins >= 480; // 8+ hours
+    final isGood = totalMins >= 480;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(

@@ -105,6 +105,9 @@ class AttendanceController extends GetxController {
       }
     }
     // Calculate totals
+    // Replace totalHrs calculation in groupedByEmployeeDate (attendance_controller.dart)
+    // Calculate totals — pair each IN with next OUT in chronological order
+    // Calculate totals — sequential pairing IN[0]→OUT[0], IN[1]→OUT[1]
     for (final row in map.values) {
       final ins = (row['inLogs'] as List<AttendanceLogModel>)
         ..sort((a, b) => a.punchTime.compareTo(b.punchTime));
@@ -154,25 +157,78 @@ class AttendanceController extends GetxController {
     try {
       data['company_id'] = auth.companyId;
       data['adjusted_by'] = auth.userId;
-      final log = await repo.adjustPunch(data);
-      // Update local list
-      final existIdx = logs.indexWhere(
-        (l) =>
-            l.employeeId == log.employeeId &&
-            l.date.toIso8601String().substring(0, 10) ==
-                log.date.toIso8601String().substring(0, 10) &&
-            l.punchType == log.punchType &&
-            l.isManual,
+
+      final empId = data['employee_id'] as String;
+      final dateStr = data['date'] as String;
+      final punchType = data['punch_type'] as String;
+      final newPunchTime = DateTime.parse(data['punch_time'] as String);
+
+      // Get all existing punches for this employee on this date only
+      final sameDayLogs =
+          logs
+              .where(
+                (l) =>
+                    l.employeeId == empId &&
+                    l.date.toIso8601String().substring(0, 10) == dateStr,
+              )
+              .toList()
+            ..sort((a, b) => a.punchTime.compareTo(b.punchTime));
+
+      debugPrint('[AdjustPunch] sameDayLogs count: ${sameDayLogs.length}');
+      debugPrint('[AdjustPunch] newPunchTime: $newPunchTime');
+      debugPrint('[AdjustPunch] punchType: $punchType');
+
+      final inLogs = sameDayLogs
+          .where((l) => l.punchType == PunchType.in_)
+          .toList();
+      final outLogs = sameDayLogs
+          .where((l) => l.punchType == PunchType.out)
+          .toList();
+
+      debugPrint(
+        '[AdjustPunch] inCount: ${inLogs.length}, outCount: ${outLogs.length}',
       );
-      if (existIdx != -1) {
-        logs[existIdx] = log;
-      } else {
-        logs.add(log);
+
+      // ── Rule 1: Sequence — must follow IN→OUT→IN→OUT pattern ──
+      if (punchType == 'out' && inLogs.length <= outLogs.length) {
+        showError('Please add Punch IN before Punch OUT');
+        return;
       }
+      if (punchType == 'in' && inLogs.length > outLogs.length) {
+        showError('Please add Punch OUT before adding another Punch IN');
+        return;
+      }
+
+      // ── Rule 2: New time must be after last punch of ANY type ──
+      if (sameDayLogs.isNotEmpty) {
+        final lastPunchTime = sameDayLogs.last.punchTime;
+        debugPrint('[AdjustPunch] lastPunchTime: $lastPunchTime');
+
+        // Compare only HH:mm (ignore seconds/milliseconds)
+        final newMinutes = newPunchTime.hour * 60 + newPunchTime.minute;
+        final lastMinutes = lastPunchTime.hour * 60 + lastPunchTime.minute;
+
+        debugPrint(
+          '[AdjustPunch] newMinutes: $newMinutes, lastMinutes: $lastMinutes',
+        );
+
+        if (newMinutes <= lastMinutes) {
+          showError(
+            'Time must be after ${AttendanceController.fmtTime(lastPunchTime)}',
+          );
+          return;
+        }
+      }
+
+      // ── All good → insert ──
+      final log = await repo.adjustPunch(data);
+      logs.add(log);
+
       if (showToast == true) {
         showSuccess('Punch adjusted successfully');
       }
     } catch (e) {
+      debugPrint('[AdjustPunch] error: $e');
       showError('Failed: $e');
     }
   }

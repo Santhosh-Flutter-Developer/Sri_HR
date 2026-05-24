@@ -189,34 +189,34 @@ class GridedView extends StatelessWidget {
                             ),
                           ],
                         ),
-                        const Divider(height: 12),
-                        // IN / OUT
-                        inLogs.isNotEmpty
-                            ? GridTimeRow(
-                                icon: Icons.login_rounded,
-                                color: AppColors.success,
-                                type: 'IN',
-                                time: fmtTime(inLogs.first.punchTime),
-                                isManual: inLogs.first.isManual,
-                              )
-                            : SizedBox(height: 24.0),
-                        outLogs.isNotEmpty
-                            ? GridTimeRow(
-                                icon: Icons.logout_rounded,
-                                color: AppColors.error,
-                                type: 'OUT',
-                                time: fmtTime(outLogs.last.punchTime),
-                                isManual: outLogs.last.isManual,
-                              )
-                            : SizedBox(height: 24),
-                        if (inLogs.isEmpty && outLogs.isEmpty)
-                          const Text(
-                            'No records',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textMuted,
-                            ),
-                          ),
+                       const Divider(height: 12),
+// All IN punches
+...inLogs.map((l) => Padding(
+  padding: const EdgeInsets.only(bottom: 4),
+  child: GridTimeRow(
+    icon: Icons.login_rounded,
+    color: AppColors.success,
+    type: 'IN',
+    time: fmtTime(l.punchTime),
+    isManual: l.isManual,
+  ),
+)),
+// All OUT punches
+...outLogs.map((l) => Padding(
+  padding: const EdgeInsets.only(bottom: 4),
+  child: GridTimeRow(
+    icon: Icons.logout_rounded,
+    color: AppColors.error,
+    type: 'OUT',
+    time: fmtTime(l.punchTime),
+    isManual: l.isManual,
+  ),
+)),
+if (inLogs.isEmpty && outLogs.isEmpty)
+  const Text(
+    'No records',
+    style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+  ),
                       ],
                     ),
                   ),

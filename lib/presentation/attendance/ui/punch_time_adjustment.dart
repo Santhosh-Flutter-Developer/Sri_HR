@@ -16,32 +16,50 @@ class PunchTimeAdjustment extends StatelessWidget {
   PunchTimeAdjustment({super.key});
 
   List<Map<String, dynamic>> buildRows(List<AttendanceLogModel> logs) {
-    final Map<String, Map<String, dynamic>> grouped = {};
-    for (final log in logs) {
-      final key =
-          '${log.employeeId}_${log.date.toIso8601String().substring(0, 10)}';
-      grouped.putIfAbsent(
-        key,
-        () => {
-          'employeeId': log.employeeId,
-          'employee': log.employee,
-          'date': log.date,
-          'inLog': null,
-          'outLog': null,
-        },
-      );
-      if (log.punchType == PunchType.in_) {
-        grouped[key]!['inLog'] = log;
-      } else {
-        grouped[key]!['outLog'] = log;
-      }
-    }
-    final rows = grouped.values.toList();
-    rows.sort(
-      (a, b) => (b['date'] as DateTime).compareTo(a['date'] as DateTime),
+  final Map<String, Map<String, dynamic>> grouped = {};
+  for (final log in logs) {
+    final key =
+        '${log.employeeId}_${log.date.toIso8601String().substring(0, 10)}';
+    grouped.putIfAbsent(
+      key,
+      () => {
+        'employeeId': log.employeeId,
+        'employee': log.employee,
+        'date': log.date,
+        'inLogs': <AttendanceLogModel>[],
+        'outLogs': <AttendanceLogModel>[],
+        'totalMins': 0,
+      },
     );
-    return rows;
+    if (log.punchType == PunchType.in_) {
+      (grouped[key]!['inLogs'] as List<AttendanceLogModel>).add(log);
+    } else {
+      (grouped[key]!['outLogs'] as List<AttendanceLogModel>).add(log);
+    }
   }
+
+  // Sort and calculate totals
+  for (final row in grouped.values) {
+    final ins = (row['inLogs'] as List<AttendanceLogModel>)
+      ..sort((a, b) => a.punchTime.compareTo(b.punchTime));
+    final outs = (row['outLogs'] as List<AttendanceLogModel>)
+      ..sort((a, b) => a.punchTime.compareTo(b.punchTime));
+
+    int totalMins = 0;
+    final pairCount = ins.length < outs.length ? ins.length : outs.length;
+    for (int i = 0; i < pairCount; i++) {
+      final diff = outs[i].punchTime.difference(ins[i].punchTime).inMinutes;
+      if (diff > 0) totalMins += diff;
+    }
+    row['totalMins'] = totalMins;
+  }
+
+  final rows = grouped.values.toList();
+  rows.sort(
+    (a, b) => (b['date'] as DateTime).compareTo(a['date'] as DateTime),
+  );
+  return rows;
+}
 
   final controller = Get.isRegistered<AttendanceController>()
       ? Get.find<AttendanceController>()
@@ -116,7 +134,10 @@ class PunchTimeAdjustment extends StatelessWidget {
             children: [
               // Summary
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
                 color: AppColors.surface,
                 child: Row(
                   children: [
@@ -155,7 +176,8 @@ class PunchTimeAdjustment extends StatelessWidget {
                                 icon: Icons.table_rows_rounded,
                                 tooltip: 'Table',
                                 selected: controller.viewMode.value == 'table',
-                                onTap: () => controller.viewMode.value = 'table',
+                                onTap: () =>
+                                    controller.viewMode.value = 'table',
                               ),
                               ViewToggleBtn(
                                 icon: Icons.grid_view_rounded,
