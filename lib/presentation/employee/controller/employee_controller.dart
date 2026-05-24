@@ -229,6 +229,8 @@ class EmployeeController extends GetxController {
     String? profilePath,
     Uint8List? aadharBytes,
     String? aadharPath,
+    Uint8List? otherBytes, // ✅ ADD
+    String? otherPath, // ✅ ADD
   }) async {
     isLoading.value = true;
     try {
@@ -280,6 +282,17 @@ class EmployeeController extends GetxController {
           'documents',
           fileName,
           aadharBytes,
+        );
+      }
+      if (otherBytes != null && otherBytes.isNotEmpty) {
+        final ext = otherPath?.split('.').last ?? 'pdf';
+        final fileName =
+            'doc2_${selectedCompanyId}_${rawData['employee_code']}'
+            '_${NetworkTime.now().millisecondsSinceEpoch}.$ext';
+        rawData['other_doc_url'] = await SupabaseService.uploadFile(
+          'documents',
+          fileName,
+          otherBytes,
         );
       }
 
@@ -443,6 +456,10 @@ class EmployeeController extends GetxController {
     Map<String, dynamic> rawData, {
     Uint8List? profileBytes,
     String? profilePath,
+    Uint8List? aadharBytes, // ✅ ADD
+    String? aadharPath,
+    Uint8List? otherBytes, // ✅ ADD
+    String? otherPath, // ✅ ADD
   }) async {
     isLoading.value = true;
     try {
@@ -454,6 +471,30 @@ class EmployeeController extends GetxController {
           (rawData['company_id'] as String?)?.isNotEmpty == true
           ? rawData['company_id'] as String
           : auth.companyId;
+
+      if (aadharBytes != null && aadharBytes.isNotEmpty) {
+        final ext = aadharPath?.split('.').last ?? 'pdf';
+        final fileName =
+            'doc_${companyId}_${rawData['employee_code']}'
+            '_${NetworkTime.now().millisecondsSinceEpoch}.$ext';
+        rawData['aadhar_doc_url'] = await SupabaseService.uploadFile(
+          'documents',
+          fileName,
+          aadharBytes,
+        );
+      }
+
+      if (otherBytes != null && otherBytes.isNotEmpty) {
+        final ext = otherPath?.split('.').last ?? 'pdf';
+        final fileName =
+            'doc2_${companyId}_${rawData['employee_code']}'
+            '_${NetworkTime.now().millisecondsSinceEpoch}.$ext';
+        rawData['other_doc_url'] = await SupabaseService.uploadFile(
+          'documents',
+          fileName,
+          otherBytes,
+        );
+      }
 
       // ── Upload profile picture ──────────────────────────
       if (kIsWeb) {
