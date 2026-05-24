@@ -139,10 +139,12 @@ class Designation extends StatelessWidget {
           isSelected:
               controller.selectedRole.value?.id ==
               controller.filteredroles[i].id,
-          onTap: () {
-            controller.enable.value = true;
-            controller.selectRole(controller.filteredroles[i]);
-          },
+          onTap: auth.canEdit('designation')
+              ? () {
+                  controller.enable.value = true;
+                  controller.selectRole(controller.filteredroles[i]);
+                }
+              : () {},
           onEdit: auth.canEdit('designation')
               ? () => showRoleForm(
                   context,
