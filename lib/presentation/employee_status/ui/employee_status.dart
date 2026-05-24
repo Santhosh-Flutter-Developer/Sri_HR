@@ -105,14 +105,14 @@ class EmployeeStatus extends StatelessWidget {
                                         ),
                                         child: EmployeeStatusCard(
                                           item: item,
-                                          onEdit: auth.canEdit('designation')
+                                          onEdit: auth.canEdit('employee_status')
                                               ? () => controller.showDialog(
                                                   context,
                                                   controller,
                                                   item,
                                                 )
                                               : null,
-                                          onDelete: auth.canDelete('designation')
+                                          onDelete: auth.canDelete('employee_status')
                                               ? () => controller.delete(item.id)
                                               : null,
                                         ),
