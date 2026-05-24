@@ -76,6 +76,7 @@ class DepartmentCard extends StatelessWidget {
               ],
             ),
           ),
+          if(auth.canEdit('department')||auth.canDelete('department'))
           PopupMenuButton(
             itemBuilder: (_) => [
               if (auth.canEdit('department'))
