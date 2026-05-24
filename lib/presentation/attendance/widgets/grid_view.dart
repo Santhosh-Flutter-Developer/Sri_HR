@@ -3,7 +3,7 @@ import 'package:responsive_grid/responsive_grid.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/models/attendance_log_model.dart';
 import 'package:sri_hr/presentation/attendance/controller/attendance_controller.dart';
-import 'package:sri_hr/presentation/attendance/widgets/grid_time_row.dart';
+import 'package:sri_hr/presentation/attendance/widgets/time_tag.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 
 class GridedView extends StatelessWidget {
@@ -26,11 +26,6 @@ class GridedView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width >= 800;
-    final crossAxis = MediaQuery.of(context).size.width > 1100
-        ? 4
-        : MediaQuery.of(context).size.width > 700
-        ? 3
-        : 2;
     return ListView(
       children: [
         Padding(
@@ -45,11 +40,14 @@ class GridedView extends StatelessWidget {
               final row = rows[i];
               final emp = row['employee'] as dynamic;
               final date = row['date'] as DateTime;
-              final inLogs = row['inLogs'] as List<AttendanceLogModel>;
-              final outLogs = row['outLogs'] as List<AttendanceLogModel>;
+              final inLogs = (row['inLogs'] as List<AttendanceLogModel>)
+                ..sort((a, b) => a.punchTime.compareTo(b.punchTime));
+              final outLogs = (row['outLogs'] as List<AttendanceLogModel>)
+                ..sort((a, b) => a.punchTime.compareTo(b.punchTime));
               final totalMins = row['totalMins'] as int;
               final empName = emp?.fullName as String? ?? 'Unknown';
               final empCode = emp?.employeeCode as String? ?? '';
+              final deptName = emp?.department?.name as String? ?? '';
               final picUrl = emp?.profilePicture as String?;
               final initial = empName.isNotEmpty
                   ? empName[0].toUpperCase()
@@ -63,6 +61,12 @@ class GridedView extends StatelessWidget {
                   : isGood
                   ? AppColors.success.withOpacity(0.4)
                   : AppColors.warning.withOpacity(0.4);
+              final totalColor = totalMins == 0
+                  ? AppColors.textMuted
+                  : isGood
+                  ? AppColors.success
+                  : AppColors.warning;
+
               return ResponsiveGridCol(
                 xl: 4,
                 lg: 4,
@@ -87,136 +91,193 @@ class GridedView extends StatelessWidget {
                         ),
                       ],
                     ),
-                    padding: const EdgeInsets.all(14),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Employee header
-                        Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 18,
-                              backgroundColor: AppColors.primary.withOpacity(
-                                0.1,
+                        // ── Header ──
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 18,
+                                backgroundColor: AppColors.primary.withOpacity(
+                                  0.1,
+                                ),
+                                backgroundImage: picUrl != null
+                                    ? NetworkImage(picUrl)
+                                    : null,
+                                child: picUrl == null
+                                    ? Text(
+                                        initial,
+                                        style: const TextStyle(
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 14,
+                                        ),
+                                      )
+                                    : null,
                               ),
-                              backgroundImage: picUrl != null
-                                  ? NetworkImage(picUrl)
-                                  : null,
-                              child: picUrl == null
-                                  ? Text(
-                                      initial,
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      empName,
                                       style: const TextStyle(
-                                        color: AppColors.primary,
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13,
+                                        color: AppColors.textPrimary,
                                       ),
-                                    )
-                                  : null,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    empName,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 13,
-                                      color: AppColors.textPrimary,
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
                                     ),
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
-                                  ),
-                                  Text(
-                                    empCode,
-                                    style: const TextStyle(
-                                      fontSize: 10,
-                                      color: AppColors.primary,
-                                      fontWeight: FontWeight.w600,
+                                    Text(
+                                      '$empCode${deptName.isNotEmpty ? ' · $deptName' : ''}',
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        color: AppColors.primary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 7,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color:
-                                    (totalMins > 0
-                                            ? (isGood
-                                                  ? AppColors.success
-                                                  : AppColors.warning)
-                                            : AppColors.border)
-                                        .withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                totalHrs,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                  color: totalMins > 0
-                                      ? (isGood
-                                            ? AppColors.success
-                                            : AppColors.warning)
-                                      : AppColors.textMuted,
+                                  ],
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        // Date
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.calendar_today_rounded,
-                              size: 12,
-                              color: AppColors.textMuted,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              fmtDate(date),
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.textSecondary,
-                                fontWeight: FontWeight.w600,
+                              // Total hours badge
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: totalColor.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  totalHrs,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    color: totalColor,
+                                  ),
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                       const Divider(height: 12),
-// All IN punches
-...inLogs.map((l) => Padding(
-  padding: const EdgeInsets.only(bottom: 4),
-  child: GridTimeRow(
-    icon: Icons.login_rounded,
-    color: AppColors.success,
-    type: 'IN',
-    time: fmtTime(l.punchTime),
-    isManual: l.isManual,
-  ),
-)),
-// All OUT punches
-...outLogs.map((l) => Padding(
-  padding: const EdgeInsets.only(bottom: 4),
-  child: GridTimeRow(
-    icon: Icons.logout_rounded,
-    color: AppColors.error,
-    type: 'OUT',
-    time: fmtTime(l.punchTime),
-    isManual: l.isManual,
-  ),
-)),
-if (inLogs.isEmpty && outLogs.isEmpty)
-  const Text(
-    'No records',
-    style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-  ),
+
+                        // ── Date bar ──
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 6,
+                          ),
+                          color: AppColors.surfaceVariant,
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.calendar_today_rounded,
+                                size: 11,
+                                color: AppColors.textMuted,
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                fmtDate(date),
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // ── Punch table ──
+                        Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            children: [
+                              // Column headers
+                              Row(
+                                children: [
+                                  _colHeader('IN', AppColors.success),
+                                  const SizedBox(width: 8),
+                                  _colHeader('OUT', AppColors.error),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+
+                              // Paired rows
+                              ...List.generate(
+                                [
+                                  inLogs.length,
+                                  outLogs.length,
+                                ].reduce((a, b) => a > b ? a : b),
+                                (idx) {
+                                  final inLog = idx < inLogs.length
+                                      ? inLogs[idx]
+                                      : null;
+                                  final outLog = idx < outLogs.length
+                                      ? outLogs[idx]
+                                      : null;
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 6),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: inLog != null
+                                              ? _punchChip(
+                                                  fmtTime(inLog.punchTime),
+                                                  AppColors.success,
+                                                  inLog.isManual,
+                                                  auth.canDelete(
+                                                    'attendance_report',
+                                                  ),
+                                                  () => controller.deleteLog(
+                                                    inLog.id,
+                                                  ),
+                                                )
+                                              : const SizedBox.shrink(),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: outLog != null
+                                              ? _punchChip(
+                                                  fmtTime(outLog.punchTime),
+                                                  AppColors.error,
+                                                  outLog.isManual,
+                                                  auth.canDelete(
+                                                    'attendance_report',
+                                                  ),
+                                                  () => controller.deleteLog(
+                                                    outLog.id,
+                                                  ),
+                                                )
+                                              : const SizedBox.shrink(),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+
+                              if (inLogs.isEmpty && outLogs.isEmpty)
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 4),
+                                  child: Text(
+                                    'No records',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textMuted,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -227,173 +288,83 @@ if (inLogs.isEmpty && outLogs.isEmpty)
         ),
       ],
     );
-    /*GridView.builder(
-      padding: const EdgeInsets.all(20),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxis,
-        crossAxisSpacing: 14,
-        mainAxisSpacing: 14,
-        childAspectRatio: 1.1,
-      ),
-      itemCount: rows.length,
-      itemBuilder: (_, i) {
-        final row = rows[i];
-        final emp = row['employee'] as dynamic;
-        final date = row['date'] as DateTime;
-        final inLogs = row['inLogs'] as List<AttendanceLogModel>;
-        final outLogs = row['outLogs'] as List<AttendanceLogModel>;
-        final totalMins = row['totalMins'] as int;
-        final empName = emp?.fullName as String? ?? 'Unknown';
-        final empCode = emp?.employeeCode as String? ?? '';
-        final picUrl = emp?.profilePicture as String?;
-        final initial = empName.isNotEmpty ? empName[0].toUpperCase() : '?';
-        final isGood = totalMins >= 480;
-        final totalHrs = totalMins > 0
-            ? '${totalMins ~/ 60}h ${totalMins % 60}m'
-            : '—';
-        final borderColor = totalMins == 0
-            ? AppColors.border
-            : isGood
-            ? AppColors.success.withOpacity(0.4)
-            : AppColors.warning.withOpacity(0.4);
-        return Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: borderColor),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.03),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Employee header
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 18,
-                    backgroundColor: AppColors.primary.withOpacity(0.1),
-                    backgroundImage: picUrl != null
-                        ? NetworkImage(picUrl)
-                        : null,
-                    child: picUrl == null
-                        ? Text(
-                            initial,
-                            style: const TextStyle(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 14,
-                            ),
-                          )
-                        : null,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          empName,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
-                            color: AppColors.textPrimary,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
-                        Text(
-                          empCode,
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color:
-                          (totalMins > 0
-                                  ? (isGood
-                                        ? AppColors.success
-                                        : AppColors.warning)
-                                  : AppColors.border)
-                              .withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      totalHrs,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: totalMins > 0
-                            ? (isGood ? AppColors.success : AppColors.warning)
-                            : AppColors.textMuted,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              // Date
-              Row(
-                children: [
-                  const Icon(
-                    Icons.calendar_today_rounded,
-                    size: 12,
-                    color: AppColors.textMuted,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    fmtDate(date),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-              const Divider(height: 12),
-              // IN / OUT
-              if (inLogs.isNotEmpty)
-                GridTimeRow(
-                  icon: Icons.login_rounded,
-                  color: AppColors.success,
-                  type: 'IN',
-                  time: fmtTime(inLogs.first.punchTime),
-                  isManual: inLogs.first.isManual,
-                ),
-              if (outLogs.isNotEmpty)
-                GridTimeRow(
-                  icon: Icons.logout_rounded,
-                  color: AppColors.error,
-                  type: 'OUT',
-                  time: fmtTime(outLogs.last.punchTime),
-                  isManual: outLogs.last.isManual,
-                ),
-              if (inLogs.isEmpty && outLogs.isEmpty)
-                const Text(
-                  'No records',
-                  style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-                ),
-            ],
-          ),
-        );
-      },
-    );*/
   }
+
+  Widget _colHeader(String label, Color color) => Expanded(
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+      ),
+    ),
+  );
+
+  Widget _punchChip(
+    String time,
+    Color color,
+    bool isManual,
+    bool canDelete,
+    VoidCallback onDelete,
+  ) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+    decoration: BoxDecoration(
+      color: color.withOpacity(0.06),
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: color.withOpacity(0.25)),
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          time,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
+        Row(
+          children: [
+            if (isManual)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  'M',
+                  style: TextStyle(
+                    fontSize: 8,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.warning,
+                  ),
+                ),
+              ),
+            if (canDelete) ...[
+              const SizedBox(width: 4),
+              GestureDetector(
+                onTap: onDelete,
+                child: Icon(
+                  Icons.close_rounded,
+                  size: 12,
+                  color: AppColors.error.withOpacity(0.6),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ],
+    ),
+  );
 }
