@@ -75,6 +75,10 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
   // ── Files ─────────────────────────────────────
   Uint8List? profileBytes;
   String? profilePath;
+
+  // Each entry is one of:
+  //   { 'name': String, 'bytes': Uint8List, 'path': String }   ← newly picked
+  //   { 'name': String, 'url': String }                         ← already saved
   final List<Map<String, dynamic>> documents = [];
 
   // ── Controller refs ───────────────────────────
@@ -140,6 +144,38 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
     outsideOffice = e?.outsideOffice ?? false;
     isActive = e?.isActive ?? true;
     widget.controller.selectedProfile.value = null;
+
+    // ── Load existing documents for edit mode ─────────────
+    // other_doc_url is the single source of truth (JSON [{name,url},...]).
+    // Only fall back to aadhar_doc_url when other_doc_url is absent (legacy).
+    if (e != null) {
+      if (e.otherDocUrl != null && e.otherDocUrl!.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(e.otherDocUrl!) as List<dynamic>;
+          for (final item in decoded) {
+            final m = item as Map<String, dynamic>;
+            documents.add({
+              'name': (m['name'] as String?) ?? 'document',
+              'url': (m['url'] as String?) ?? '',
+            });
+          }
+        } catch (_) {
+          // Legacy: plain URL in other_doc_url (not JSON)
+          final uri = Uri.tryParse(e.otherDocUrl!);
+          final fileName = uri?.pathSegments.isNotEmpty == true
+              ? Uri.decodeFull(uri!.pathSegments.last)
+              : 'document';
+          documents.add({'name': fileName, 'url': e.otherDocUrl!});
+        }
+      } else if (e.aadharDocUrl != null && e.aadharDocUrl!.isNotEmpty) {
+        // Truly legacy record: only aadhar_doc_url, no other_doc_url yet
+        final uri = Uri.tryParse(e.aadharDocUrl!);
+        final fileName = uri?.pathSegments.isNotEmpty == true
+            ? Uri.decodeFull(uri!.pathSegments.last)
+            : 'document';
+        documents.add({'name': fileName, 'url': e.aadharDocUrl!});
+      }
+    }
 
     if (!isEdit) _generateCode();
   }
@@ -247,12 +283,10 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
     setState(() => isLoading = true);
     String? profileUrl = widget.employee?.profilePicture;
     String? profileFaceTemplate = widget.employee?.profileTemplate;
-    Uint8List? aadharBytes;
-    String? aadharPath;
-    if (documents.isNotEmpty) {
-      aadharBytes = documents.first['bytes'] as Uint8List;
-      aadharPath = documents.first['path'] as String;
-    }
+
+    // Separate new (bytes) documents from already-saved (url) documents
+    final newDocs = documents.where((d) => d.containsKey('bytes')).toList();
+    final savedDocs = documents.where((d) => d.containsKey('url')).toList();
 
     if (!isEdit) {
       final reservedCode = await widget.controller.generateCode(companyId);
@@ -305,14 +339,15 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
         data,
         profileBytes: profileBytes,
         profilePath: profilePath,
+        newDocuments: newDocs,
+        savedDocuments: savedDocs,
       );
     } else {
       await widget.controller.createEmployee(
         data,
         profileBytes: profileBytes,
         profilePath: profilePath,
-        aadharBytes: aadharBytes,
-        aadharPath: aadharPath,
+        newDocuments: newDocs,
       );
     }
     setState(() => isLoading = false);
@@ -1673,13 +1708,27 @@ class _StepLoginDocs extends StatelessWidget {
                   children: state.documents.asMap().entries.map((entry) {
                     final i = entry.key;
                     final doc = entry.value;
+                    final bool isSaved = doc.containsKey('url');
+                    final String docName =
+                        doc['name'] as String? ?? 'document';
+                    final String subLabel = isSaved
+                        ? 'Already uploaded'
+                        : state._formatBytes(
+                            (doc['bytes'] as Uint8List).length,
+                          );
                     return Container(
                       margin: const EdgeInsets.only(bottom: 8),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppColors.surfaceVariant,
+                        color: isSaved
+                            ? AppColors.accentGreen.withOpacity(0.05)
+                            : AppColors.surfaceVariant,
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.border),
+                        border: Border.all(
+                          color: isSaved
+                              ? AppColors.accentGreen.withOpacity(0.3)
+                              : AppColors.border,
+                        ),
                       ),
                       child: Row(
                         children: [
@@ -1687,12 +1736,18 @@ class _StepLoginDocs extends StatelessWidget {
                             width: 36,
                             height: 36,
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withOpacity(0.1),
+                              color: isSaved
+                                  ? AppColors.accentGreen.withOpacity(0.12)
+                                  : AppColors.primary.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Icon(
-                              Icons.insert_drive_file_rounded,
-                              color: AppColors.primary,
+                            child: Icon(
+                              isSaved
+                                  ? Icons.cloud_done_rounded
+                                  : Icons.insert_drive_file_rounded,
+                              color: isSaved
+                                  ? AppColors.accentGreen
+                                  : AppColors.primary,
                               size: 18,
                             ),
                           ),
@@ -1702,7 +1757,7 @@ class _StepLoginDocs extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  doc['name'] as String,
+                                  docName,
                                   style: const TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
@@ -1711,13 +1766,12 @@ class _StepLoginDocs extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 Text(
-                                  state._formatBytes(
-                                    (doc['bytes'] as Uint8List).length,
-                                  ),
-
-                                  style: const TextStyle(
+                                  subLabel,
+                                  style: TextStyle(
                                     fontSize: 11,
-                                    color: AppColors.textMuted,
+                                    color: isSaved
+                                        ? AppColors.accentGreen
+                                        : AppColors.textMuted,
                                   ),
                                 ),
                               ],

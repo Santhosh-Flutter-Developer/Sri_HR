@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 import 'dart:typed_data';
@@ -227,8 +228,7 @@ class EmployeeController extends GetxController {
     Map<String, dynamic> rawData, {
     Uint8List? profileBytes,
     String? profilePath,
-    Uint8List? aadharBytes,
-    String? aadharPath,
+    List<Map<String, dynamic>>? newDocuments,
   }) async {
     isLoading.value = true;
     try {
@@ -270,17 +270,32 @@ class EmployeeController extends GetxController {
         }
       }
 
-      // ── Upload aadhar / first document ──────────────────
-      if (aadharBytes != null && aadharBytes.isNotEmpty) {
-        final ext = aadharPath?.split('.').last ?? 'pdf';
-        final fileName =
-            'doc_${selectedCompanyId}_${rawData['employee_code']}'
-            '_${NetworkTime.now().millisecondsSinceEpoch}.$ext';
-        rawData['aadhar_doc_url'] = await SupabaseService.uploadFile(
-          'documents',
-          fileName,
-          aadharBytes,
-        );
+      // ── Upload all documents ─────────────────────────────
+      if (newDocuments != null && newDocuments.isNotEmpty) {
+        final List<Map<String, dynamic>> uploadedDocs = [];
+        for (int idx = 0; idx < newDocuments.length; idx++) {
+          final doc = newDocuments[idx];
+          final docBytes = doc['bytes'] as Uint8List?;
+          if (docBytes == null || docBytes.isEmpty) continue;
+          final docName = doc['name'] as String? ?? 'document_$idx';
+          final ext = docName.contains('.') ? docName.split('.').last : 'pdf';
+          final fileName =
+              'doc_${selectedCompanyId}_${rawData['employee_code']}'
+              '_${NetworkTime.now().millisecondsSinceEpoch}_$idx.$ext';
+          final url = await SupabaseService.uploadFile(
+            'documents',
+            fileName,
+            docBytes,
+            contentType: _mimeType(ext),
+          );
+          // First doc goes to aadhar_doc_url for legacy compatibility
+          if (idx == 0) rawData['aadhar_doc_url'] = url;
+          uploadedDocs.add({'name': docName, 'url': url});
+        }
+        // Store all docs as JSON array in other_doc_url
+        if (uploadedDocs.isNotEmpty) {
+          rawData['other_doc_url'] = jsonEncode(uploadedDocs);
+        }
       }
 
       // ── Sanitise: remove null FK strings and non-columns ─
@@ -341,6 +356,26 @@ class EmployeeController extends GetxController {
       showError('Failed to create employee: $e');
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  /// Returns a basic MIME type string for common document extensions.
+  String _mimeType(String ext) {
+    switch (ext.toLowerCase()) {
+      case 'pdf':
+        return 'application/pdf';
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'doc':
+        return 'application/msword';
+      case 'docx':
+        return 'application/vnd.openxmlformats-officedocument'
+            '.wordprocessingml.document';
+      default:
+        return 'application/octet-stream';
     }
   }
 
@@ -443,6 +478,8 @@ class EmployeeController extends GetxController {
     Map<String, dynamic> rawData, {
     Uint8List? profileBytes,
     String? profilePath,
+    List<Map<String, dynamic>>? newDocuments,
+    List<Map<String, dynamic>>? savedDocuments,
   }) async {
     isLoading.value = true;
     try {
@@ -479,6 +516,46 @@ class EmployeeController extends GetxController {
             bytes,
           );
         }
+      }
+
+      // ── Upload new documents and merge with saved ones ───
+      // Start with already-saved docs (they have 'url' key)
+      final List<Map<String, dynamic>> allDocs = [
+        if (savedDocuments != null)
+          ...savedDocuments.map((d) => {'name': d['name'], 'url': d['url']}),
+      ];
+
+      if (newDocuments != null && newDocuments.isNotEmpty) {
+        for (int idx = 0; idx < newDocuments.length; idx++) {
+          final doc = newDocuments[idx];
+          final docBytes = doc['bytes'] as Uint8List?;
+          if (docBytes == null || docBytes.isEmpty) continue;
+          final docName = doc['name'] as String? ?? 'document_$idx';
+          final ext =
+              docName.contains('.') ? docName.split('.').last : 'pdf';
+          final fileName =
+              'doc_${companyId}_${rawData['employee_code']}'
+              '_${NetworkTime.now().millisecondsSinceEpoch}_$idx.$ext';
+          final url = await SupabaseService.uploadFile(
+            'documents',
+            fileName,
+            docBytes,
+            contentType: _mimeType(ext),
+          );
+          allDocs.add({'name': docName, 'url': url});
+        }
+      }
+
+      // Write back to rawData columns
+      if (allDocs.isNotEmpty) {
+        // First doc → aadhar_doc_url (legacy)
+        rawData['aadhar_doc_url'] = allDocs.first['url'] as String;
+        // All docs → other_doc_url as JSON
+        rawData['other_doc_url'] = jsonEncode(allDocs);
+      } else {
+        // No docs left (user removed all) — clear the fields
+        rawData['aadhar_doc_url'] = null;
+        rawData['other_doc_url'] = null;
       }
 
       // ── Sanitise rawData ────────────────────────────────
