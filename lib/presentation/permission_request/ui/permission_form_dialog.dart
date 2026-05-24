@@ -7,6 +7,7 @@ import 'package:sri_hr/presentation/employee/controller/employee_controller.dart
 import 'package:sri_hr/presentation/helper/helper.dart';
 import 'package:sri_hr/presentation/permission_request/controller/permission_request_controller.dart';
 import 'package:sri_hr/presentation/permission_request/widgets/form_label.dart';
+import 'package:sri_hr/data/models/leave_request_model.dart';
 import 'package:sri_hr/presentation/permission_request/widgets/picker_tile.dart';
 
 class PermissionFormDialog extends StatefulWidget {
@@ -66,6 +67,62 @@ class PermissionFormDialogState extends State<PermissionFormDialog> {
     return '${d.day.toString().padLeft(2, '0')} '
         '${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.month - 1]} '
         '${d.year}';
+  }
+
+  // ── Permission summary helpers ──────────────
+  String _fmtMins(int mins) {
+    if (mins <= 0) return '0m';
+    if (mins < 60) return '${mins}m';
+    final h = mins ~/ 60;
+    final m = mins % 60;
+    return m == 0 ? '${h}h' : '${h}h ${m}m';
+  }
+
+  Widget _permStat({
+    required String label,
+    required int minutes,
+    required Color color,
+    required IconData icon,
+  }) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, size: 16, color: color),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          _fmtMins(minutes),
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: color,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textMuted,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _verticalDivider() {
+    return Container(
+      width: 1,
+      height: 60,
+      color: AppColors.border,
+      margin: const EdgeInsets.symmetric(horizontal: 8),
+    );
   }
 
   Future<void> _pickDate() async {
@@ -409,6 +466,138 @@ class PermissionFormDialogState extends State<PermissionFormDialog> {
                           ),
                         ],
                         const SizedBox(height: 16),
+
+                        // ✅ Permission Usage Summary Card
+                        Obx(() {
+                          // Always read observable first so GetX tracks it
+                          final employees = empCtrl.employees.toList();
+                          if (employeeId == null)
+                            return const SizedBox.shrink();
+                          final empId = employeeId!;
+                          final emp = employees.firstWhereOrNull(
+                            (e) => e.id == empId,
+                          );
+
+                          // Total permission from designation (role)
+                          final totalMins = emp?.role?.permissionMinutes ?? 0;
+
+                          // Taken = sum of approved permission requests for this employee
+                          final takenMins = widget.controller.permission
+                              .where(
+                                (r) =>
+                                    r.employeeId == empId &&
+                                    r.status == LeaveStatus.approved,
+                              )
+                              .fold(0, (sum, r) => sum + (r.minutes ?? 0));
+
+                          final remainingMins = (totalMins - takenMins).clamp(
+                            0,
+                            totalMins,
+                          );
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              FormLabel('Permission Summary'),
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: _permStat(
+                                        label: 'Total',
+                                        minutes: totalMins,
+                                        color: AppColors.info,
+                                        icon: Icons.timer_outlined,
+                                      ),
+                                    ),
+                                    _verticalDivider(),
+                                    Expanded(
+                                      child: _permStat(
+                                        label: 'Used',
+                                        minutes: takenMins,
+                                        color: AppColors.warning,
+                                        icon: Icons.timer_off_rounded,
+                                      ),
+                                    ),
+                                    _verticalDivider(),
+                                    Expanded(
+                                      child: _permStat(
+                                        label: 'Remaining',
+                                        minutes: remainingMins,
+                                        color: remainingMins == 0
+                                            ? AppColors.error
+                                            : AppColors.success,
+                                        icon: Icons.timer_rounded,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+
+                              // Warning: no permission remaining
+                              if (remainingMins == 0 && totalMins > 0)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 6),
+                                  child: Row(
+                                    children: const [
+                                      Icon(
+                                        Icons.warning_amber_rounded,
+                                        size: 14,
+                                        color: AppColors.error,
+                                      ),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        'No permission time remaining!',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.error,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                              // Warning: this request exceeds remaining
+                              if (durationMinutes > 0 &&
+                                  durationMinutes > remainingMins &&
+                                  remainingMins > 0)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 6),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.info_outline_rounded,
+                                        size: 14,
+                                        color: AppColors.warning,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          'Requesting ${_fmtMins(durationMinutes)} but only ${_fmtMins(remainingMins)} remaining.',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppColors.warning,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                              const SizedBox(height: 12),
+                            ],
+                          );
+                        }),
 
                         // Reason
                         FormLabel('Reason (optional)'),
