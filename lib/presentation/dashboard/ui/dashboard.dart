@@ -26,7 +26,7 @@ class Dashboard extends StatelessWidget {
       child: AppShell(
         currentModule: 'dashboard',
         title: 'Dashboard',
-        floatingActionButton:isWide?SizedBox(): AttendanceFAB(),
+        floatingActionButton: isWide ? SizedBox() : AttendanceFAB(),
         child: Obx(
           () => controller.isLoading.value
               ? const LoadingOverlay()
@@ -48,7 +48,10 @@ class Dashboard extends StatelessWidget {
                             Expanded(child: GreetingBar()),
                             IconButton(
                               onPressed: controller.loadStats,
-                              icon: Icon(Icons.refresh, color: AppColors.primary),
+                              icon: Icon(
+                                Icons.refresh,
+                                color: AppColors.primary,
+                              ),
                             ),
                           ],
                         ),
@@ -58,7 +61,11 @@ class Dashboard extends StatelessWidget {
                         const SizedBox(height: 24),
                         ChartsRow(ctrl: controller),
                         const SizedBox(height: 24),
-                        QuickActions(),
+                        if (auth.canView("employee") ||
+                            auth.canView("leave_request") ||
+                            auth.canView("attendance_report") ||
+                            auth.canView("punch_adjustment"))
+                          QuickActions(),
                       ],
                     ),
                   ),
