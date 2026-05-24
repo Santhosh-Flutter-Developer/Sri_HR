@@ -175,27 +175,28 @@ class EmployeeCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                PopupMenuButton(
-                  itemBuilder: (_) => [
-                    if (onEdit != null)
-                      const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                    if (onDelete != null)
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Text(
-                          'Delete',
-                          style: TextStyle(color: AppColors.error),
+                if (onEdit != null || onDelete != null)
+                  PopupMenuButton(
+                    itemBuilder: (_) => [
+                      if (onEdit != null)
+                        const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                      if (onDelete != null)
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Text(
+                            'Delete',
+                            style: TextStyle(color: AppColors.error),
+                          ),
                         ),
-                      ),
-                  ],
-                  onSelected: (v) {
-                    if (v == 'edit') {
-                      onEdit?.call();
-                    } else {
-                      onDelete?.call();
-                    }
-                  },
-                ),
+                    ],
+                    onSelected: (v) {
+                      if (v == 'edit') {
+                        onEdit?.call();
+                      } else {
+                        onDelete?.call();
+                      }
+                    },
+                  ),
               ],
             ),
           ],
