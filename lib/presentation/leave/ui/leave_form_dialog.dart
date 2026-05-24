@@ -419,107 +419,125 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
                         const SizedBox(height: 16),
 
                         // ✅ Casual Leave Summary Card
-                        if (employeeId != null) ...[
-                          const FieldLabel('Casual Leave Summary'),
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.border),
-                            ),
-                            child: Row(
-                              children: [
-                                // Total
-                                Expanded(
-                                  child: _leaveStat(
-                                    label: 'Total',
-                                    value: casualLeaveTotal,
-                                    color: AppColors.primary,
-                                    icon: Icons.event_note_rounded,
-                                  ),
+                        // Wrapped in Obx so it reacts when empCtrl.employees
+                        // finishes loading (fixes zero values on first open)
+                        Obx(() {
+                          // Always read the observable list first so GetX
+                          // can track it — even if we return early below.
+                          final employees = empCtrl.employees.toList();
+                          if (employeeId == null) return const SizedBox.shrink();
+                          final empId = employeeId!;
+                          final emp = employees.firstWhereOrNull((e) => e.id == empId);
+                          final total = emp?.casualLeave ?? 0;
+                          final taken = widget.controller.leaves
+                              .where((l) =>
+                                  l.employeeId == empId &&
+                                  l.status == LeaveStatus.approved)
+                              .fold(0, (sum, l) => sum + l.days);
+                          final remaining = (total - taken).clamp(0, total);
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const FieldLabel('Casual Leave Summary'),
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.border),
                                 ),
-                                _verticalDivider(),
-                                // Taken
-                                Expanded(
-                                  child: _leaveStat(
-                                    label: 'Taken',
-                                    value: casualLeaveTaken,
-                                    color: AppColors.warning,
-                                    icon: Icons.event_busy_rounded,
-                                  ),
-                                ),
-                                _verticalDivider(),
-                                // Remaining
-                                Expanded(
-                                  child: _leaveStat(
-                                    label: 'Remaining',
-                                    value: casualLeaveRemaining,
-                                    color: casualLeaveRemaining == 0
-                                        ? AppColors.error
-                                        : AppColors.success,
-                                    icon: Icons.event_available_rounded,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-
-                          // ✅ Warning if no leaves remaining
-                          if (casualLeaveRemaining == 0)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 6),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.warning_amber_rounded,
-                                    size: 14,
-                                    color: AppColors.error,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  const Text(
-                                    'No casual leaves remaining!',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.error,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                          // ✅ Warning if applying more days than remaining
-                          if (days > 0 &&
-                              days > casualLeaveRemaining &&
-                              casualLeaveRemaining > 0)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 6),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.info_outline_rounded,
-                                    size: 14,
-                                    color: AppColors.warning,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      'Applying $days days but only $casualLeaveRemaining remaining.',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: AppColors.warning,
-                                        fontWeight: FontWeight.w600,
+                                child: Row(
+                                  children: [
+                                    // Total
+                                    Expanded(
+                                      child: _leaveStat(
+                                        label: 'Total',
+                                        value: total,
+                                        color: AppColors.primary,
+                                        icon: Icons.event_note_rounded,
                                       ),
                                     ),
-                                  ),
-                                ],
+                                    _verticalDivider(),
+                                    // Taken
+                                    Expanded(
+                                      child: _leaveStat(
+                                        label: 'Taken',
+                                        value: taken,
+                                        color: AppColors.warning,
+                                        icon: Icons.event_busy_rounded,
+                                      ),
+                                    ),
+                                    _verticalDivider(),
+                                    // Remaining
+                                    Expanded(
+                                      child: _leaveStat(
+                                        label: 'Remaining',
+                                        value: remaining,
+                                        color: remaining == 0
+                                            ? AppColors.error
+                                            : AppColors.success,
+                                        icon: Icons.event_available_rounded,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          const SizedBox(height: 12),
-                        ],
+                              const SizedBox(height: 4),
+
+                              // ✅ Warning if no leaves remaining
+                              if (remaining == 0)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 6),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.warning_amber_rounded,
+                                        size: 14,
+                                        color: AppColors.error,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      const Text(
+                                        'No casual leaves remaining!',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.error,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                              // ✅ Warning if applying more days than remaining
+                              if (days > 0 && days > remaining && remaining > 0)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 6),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.info_outline_rounded,
+                                        size: 14,
+                                        color: AppColors.warning,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          'Applying $days days but only $remaining remaining.',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppColors.warning,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              const SizedBox(height: 12),
+                            ],
+                          );
+                        }),
 
                         // Reason
                         const FieldLabel('Reason (optional)'),
