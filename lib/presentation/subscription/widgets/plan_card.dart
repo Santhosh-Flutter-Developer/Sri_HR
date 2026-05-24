@@ -139,30 +139,31 @@ class PlanCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: isCurrentPlan ? null : () => onSelect(plan),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isPro ? Colors.white : AppColors.primary,
-                  foregroundColor: isPro ? AppColors.primary : Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+            if (auth.canAdd("subscription") || auth.canEdit("subscription"))
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: isCurrentPlan ? null : () => onSelect(plan),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isPro ? Colors.white : AppColors.primary,
+                    foregroundColor: isPro ? AppColors.primary : Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    disabledBackgroundColor: isPro
+                        ? Colors.white.withOpacity(0.3)
+                        : AppColors.border,
                   ),
-                  disabledBackgroundColor: isPro
-                      ? Colors.white.withOpacity(0.3)
-                      : AppColors.border,
-                ),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: isWide ? 8.0 : 0.0),
-                  child: Text(
-                    isCurrentPlan ? 'Current Plan' : 'Get Started',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: isWide ? 8.0 : 0.0),
+                    child: Text(
+                      isCurrentPlan ? 'Current Plan' : 'Get Started',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
                   ),
                 ),
               ),
-            ),
           ],
         ),
       ),
