@@ -49,7 +49,8 @@ class DashboardController extends GetxController {
       stats.value = DashboardStats(
         totalEmployees: totalEmp,
         presentCount: presentCount,
-        absentCount: totalEmp - presentCount - leaveCount,
+        // Absent = employees who are neither present NOR on leave
+        absentCount: (totalEmp - presentCount - leaveCount).clamp(0, totalEmp),
         leaveCount: leaveCount,
         permissionCount: 0,
         attendanceByDate: [],
