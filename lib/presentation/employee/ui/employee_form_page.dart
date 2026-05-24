@@ -141,52 +141,7 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
     isActive = e?.isActive ?? true;
     widget.controller.selectedProfile.value = null;
 
-    // ✅ FIXED: Load BOTH existing documents when editing
-    if (isEdit && e != null) {
-      debugPrint('[EmpForm] aadharDocUrl: ${e.aadharDocUrl}');
-      debugPrint('[EmpForm] otherDocUrl: ${e.otherDocUrl}');
-
-      if (e.aadharDocUrl != null && e.aadharDocUrl!.isNotEmpty) {
-        documents.add({
-          'name': _fileNameFromUrl(e.aadharDocUrl!),
-          'url': e.aadharDocUrl!,
-          'bytes': Uint8List(0),
-          'path': e.aadharDocUrl!,
-          'isExisting': true,
-        });
-      }
-      if (e.otherDocUrl != null && e.otherDocUrl!.isNotEmpty) {
-        documents.add({
-          'name': _fileNameFromUrl(e.otherDocUrl!),
-          'url': e.otherDocUrl!,
-          'bytes': Uint8List(0),
-          'path': e.otherDocUrl!,
-          'isExisting': true,
-        });
-      }
-
-      debugPrint('[EmpForm] documents loaded: ${documents.length}');
-    }
-
     if (!isEdit) _generateCode();
-  }
-
-  String _fileNameFromUrl(String url) {
-    try {
-      final segment = Uri.parse(url).pathSegments.lastOrNull ?? 'document';
-      final ext = segment.contains('.') ? '.${segment.split('.').last}' : '';
-      // segment looks like: doc_ORG3_EMP001_1234567890.pdf
-      // Extract original name from segment if possible
-      final parts = segment.split('_');
-      if (parts.length >= 4) {
-        // doc2_companyId_empCode_timestamp.ext → show as "Document 2{ext}"
-        final isSecond = segment.startsWith('doc2');
-        return isSecond ? 'Document 2$ext' : 'Document 1$ext';
-      }
-      return 'Document$ext';
-    } catch (_) {
-      return 'Document';
-    }
   }
 
   @override
@@ -290,56 +245,13 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
   Future<void> _submit() async {
     final controller = Get.find<EmployeeController>();
     setState(() => isLoading = true);
-
+    String? profileUrl = widget.employee?.profilePicture;
+    String? profileFaceTemplate = widget.employee?.profileTemplate;
     Uint8List? aadharBytes;
     String? aadharPath;
-    Uint8List? otherBytes;
-    String? otherPath;
-
-    // ✅ Only pick NEW documents (not existing/already-uploaded ones)
-    final newDocs = documents
-        .where(
-          (d) =>
-              d['isExisting'] != true &&
-              d['bytes'] != null &&
-              (d['bytes'] as Uint8List).isNotEmpty,
-        )
-        .toList();
-
-    debugPrint(
-      '[EmpForm] Total docs: ${documents.length}, New docs: ${newDocs.length}',
-    );
-
-    if (newDocs.isNotEmpty) {
-      aadharBytes = newDocs[0]['bytes'] as Uint8List;
-      aadharPath = newDocs[0]['path'] as String?;
-    }
-    if (newDocs.length > 1) {
-      otherBytes = newDocs[1]['bytes'] as Uint8List;
-      otherPath = newDocs[1]['path'] as String?;
-    }
-
-    // ✅ If only 1 slot is occupied by existing, new doc goes to other_doc_url
-    // Count existing slots to know which field to use
-    final existingAadhar = documents.any(
-      (d) =>
-          d['isExisting'] == true &&
-          (d['url'] as String?)?.contains('doc_') == true &&
-          !(d['url'] as String).contains('doc2_'),
-    );
-
-    final existingOther = documents.any(
-      (d) =>
-          d['isExisting'] == true &&
-          (d['url'] as String?)?.contains('doc2_') == true,
-    );
-
-    // If aadhar already exists and a new doc is added, it should go to other_doc_url
-    if (existingAadhar && newDocs.length == 1) {
-      otherBytes = newDocs[0]['bytes'] as Uint8List;
-      otherPath = newDocs[0]['path'] as String?;
-      aadharBytes = null; // don't re-upload aadhar
-      aadharPath = null;
+    if (documents.isNotEmpty) {
+      aadharBytes = documents.first['bytes'] as Uint8List;
+      aadharPath = documents.first['path'] as String;
     }
 
     if (!isEdit) {
@@ -379,6 +291,7 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
     if (controller.faceTemplate != null) {
       Uint8List template = controller.faceTemplate;
       String base64Template = base64Encode(template);
+
       data['face_template'] = widget.employee != null
           ? controller.selectedProfile.value != null
                 ? base64Template
@@ -392,10 +305,6 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
         data,
         profileBytes: profileBytes,
         profilePath: profilePath,
-        aadharBytes: aadharBytes,
-        aadharPath: aadharPath,
-        otherBytes: otherBytes,
-        otherPath: otherPath,
       );
     } else {
       await widget.controller.createEmployee(
@@ -404,8 +313,6 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
         profilePath: profilePath,
         aadharBytes: aadharBytes,
         aadharPath: aadharPath,
-        otherBytes: otherBytes,
-        otherPath: otherPath,
       );
     }
     setState(() => isLoading = false);
@@ -1804,12 +1711,10 @@ class _StepLoginDocs extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 Text(
-                                  // ✅ FIX: check isExisting flag
-                                  doc['isExisting'] == true
-                                      ? '✓ Already uploaded'
-                                      : state._formatBytes(
-                                          (doc['bytes'] as Uint8List).length,
-                                        ),
+                                  state._formatBytes(
+                                    (doc['bytes'] as Uint8List).length,
+                                  ),
+
                                   style: const TextStyle(
                                     fontSize: 11,
                                     color: AppColors.textMuted,
