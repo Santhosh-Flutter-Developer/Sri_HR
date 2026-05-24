@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sri_hr/data/models/permission_request_model.dart';
+import 'package:sri_hr/data/services/supabase_service.dart';
 import 'package:sri_hr/data/utils/network_time.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/helper/helper.dart';
@@ -76,7 +77,7 @@ class PermissionRequestController extends GetxController {
         if (e is Exception) rethrow;
       }
 
-      // ── Overlap check ──────────────────────────────────────────
+      // ── Overlap check (existing permission requests) ──────────
       final requestDate = data['request_date'] as String;
       final empId = data['employee_id'] as String;
 
@@ -96,10 +97,66 @@ class PermissionRequestController extends GetxController {
 
       if (conflict != null) {
         throw Exception(
-          'A permission request already exists for this date '
+          'A permission request already exists for this time slot '
           '(${conflict.fromTime} – ${conflict.toTime}). '
-          'Please choose a different time slot.',
+          'Please choose a different time.',
         );
+      }
+
+      // ── Leave check: block if employee is on approved/pending leave ─
+      final leaveConflict = await SupabaseService.client
+          .from('leave_requests')
+          .select('from_date, to_date, status')
+          .eq('company_id', auth.companyId)
+          .eq('employee_id', empId)
+          .lte('from_date', requestDate)
+          .gte('to_date', requestDate)
+          .neq('status', 'rejected')
+          .limit(1)
+          .maybeSingle();
+
+      if (leaveConflict != null) {
+        final leaveStatus = leaveConflict['status'] as String;
+        final fromDt = leaveConflict['from_date'] as String;
+        final toDt = leaveConflict['to_date'] as String;
+        final statusLabel = leaveStatus == 'approved' ? 'Approved' : 'Pending';
+        throw Exception(
+          '$statusLabel leave exists for $requestDate '
+          '($fromDt to $toDt). Cannot apply permission on a leave day.',
+        );
+      }
+
+      // ── Punch check: block if punched time overlaps with permission slot ─
+      final punchRows = await SupabaseService.client
+          .from('attendance_logs')
+          .select('punch_time, punch_type')
+          .eq('company_id', auth.companyId)
+          .eq('employee_id', empId)
+          .eq('date', requestDate);
+
+      if (punchRows.isNotEmpty) {
+        // Check if any punch time falls inside the requested permission window
+        final fromMins = from.hour * 60 + from.minute;
+        final toMins = to.hour * 60 + to.minute;
+
+        for (final row in punchRows) {
+          final punchTimeStr = row['punch_time'] as String? ?? '';
+          final punchDt = DateTime.tryParse(punchTimeStr);
+          if (punchDt == null) continue;
+          final punchMins = punchDt.hour * 60 + punchDt.minute;
+          if (punchMins >= fromMins && punchMins <= toMins) {
+            final pType = (row['punch_type'] as String?) ?? 'punch';
+            final punchLabel = pType == 'in' ? 'Punch In' : 'Punch Out';
+            final punchDisplay =
+                '${punchDt.hour.toString().padLeft(2, '0')}:${punchDt.minute.toString().padLeft(2, '0')}';
+            throw Exception(
+              '$punchLabel recorded at $punchDisplay on $requestDate '
+              'overlaps with the requested permission time '
+              '(${data['from_time']} – ${data['to_time']}). '
+              'Cannot apply permission on an already punched time slot.',
+            );
+          }
+        }
       }
       // ───────────────────────────────────────────────────────────
 
