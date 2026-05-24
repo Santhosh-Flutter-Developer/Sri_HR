@@ -116,13 +116,20 @@ class AttendanceRepository {
 
   Future<int> getPresentCount(String companyId, DateTime date) async {
     final dateStr = date.toIso8601String().substring(0, 10);
+
+    // Get distinct employee_ids who punched IN today
     final res = await SupabaseService.client
         .from('attendance_logs')
         .select('employee_id')
         .eq('company_id', companyId)
         .eq('date', dateStr)
-        .eq('punch_type', 'in')
-        .count();
-    return res.count;
+        .eq('punch_type', 'in');
+
+    // Count unique employees only
+    final distinctIds = (res as List)
+        .map((r) => r['employee_id'] as String)
+        .toSet();
+
+    return distinctIds.length;
   }
 }
