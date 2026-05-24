@@ -198,13 +198,15 @@ class AuthController extends GetxController {
 
     // Load permissions
     if (user.roleId != null) {
+      // Always load role-based permissions — even for admin users.
+      // The permission matrix in the designation screen controls what's accessible.
       final perms = await authRepo.getRolePermissions(user.roleId!);
       permissions.value = {
         for (final p in perms.map((r) => RolePermissionModel.fromJson(r)))
           p.module: p,
       };
     } else if (user.isAdmin) {
-      // Admin gets all permissions
+      // Admin with NO role assigned gets full access to everything
       for (final module in AppConstants.modules) {
         permissions[module] = RolePermissionModel(
           id: '',
@@ -248,25 +250,21 @@ class AuthController extends GetxController {
   // ── Permission helpers ───────────────────────
   bool canView(String module) {
     if (!isSubscriptionActive.value && module != 'subscription') return false;
-    if (isAdmin) return true;
     return permissions[module]?.canView ?? false;
   }
 
   bool canAdd(String module) {
     if (!isSubscriptionActive.value) return false;
-    if (isAdmin) return true;
     return permissions[module]?.canAdd ?? false;
   }
 
   bool canEdit(String module) {
     if (!isSubscriptionActive.value) return false;
-    if (isAdmin) return true;
     return permissions[module]?.canEdit ?? false;
   }
 
   bool canDelete(String module) {
     if (!isSubscriptionActive.value) return false;
-    if (isAdmin) return true;
     return permissions[module]?.canDelete ?? false;
   }
 
