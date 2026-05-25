@@ -46,10 +46,29 @@ class EmployeeStatusController extends GetxController {
     }
   }
 
+  /// Returns true if [name] already exists in this company (case-insensitive).
+  /// Pass [excludeId] to ignore the current record when editing.
+  bool isDuplicateName(String name, {String? excludeId}) {
+    final normalized = name.trim().toLowerCase();
+    return statuses.any(
+      (s) =>
+          s.name.trim().toLowerCase() == normalized &&
+          (excludeId == null || s.id != excludeId),
+    );
+  }
+
   Future<void> create(String name) async {
+    final trimmed = name.trim();
+    if (isDuplicateName(trimmed)) {
+      showError(
+        '"$trimmed" already exists. Please use a unique status name.',
+        title: 'Duplicate Status',
+      );
+      return;
+    }
     try {
       statuses.add(
-        await repo.create({'company_id': auth.companyId, 'name': name}),
+        await repo.create({'company_id': auth.companyId, 'name': trimmed}),
       );
       showSuccess('Status created');
     } catch (e) {
@@ -58,8 +77,16 @@ class EmployeeStatusController extends GetxController {
   }
 
   Future<void> updateEmployeeStatus(String id, String name) async {
+    final trimmed = name.trim();
+    if (isDuplicateName(trimmed, excludeId: id)) {
+      showError(
+        '"$trimmed" already exists. Please use a unique status name.',
+        title: 'Duplicate Status',
+      );
+      return;
+    }
     try {
-      final s = await repo.update(id, {'name': name});
+      final s = await repo.update(id, {'name': trimmed});
       final idx = statuses.indexWhere((x) => x.id == id);
       if (idx != -1) statuses[idx] = s;
       showSuccess('Status updated');
