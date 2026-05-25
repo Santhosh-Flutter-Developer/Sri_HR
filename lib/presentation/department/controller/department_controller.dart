@@ -46,7 +46,47 @@ class DepartmentController extends GetxController {
     }
   }
 
+  /// Returns true if [code] already exists in this company (case-insensitive).
+  /// Pass [excludeId] to ignore the current record when editing.
+  bool isDuplicateCode(String code, {String? excludeId}) {
+    final normalized = code.trim().toUpperCase();
+    return departments.any(
+      (d) =>
+          d.code.trim().toUpperCase() == normalized &&
+          (excludeId == null || d.id != excludeId),
+    );
+  }
+
+  /// Returns true if [name] already exists in this company (case-insensitive).
+  /// Pass [excludeId] to ignore the current record when editing.
+  bool isDuplicateName(String name, {String? excludeId}) {
+    final normalized = name.trim().toLowerCase();
+    return departments.any(
+      (d) =>
+          d.name.trim().toLowerCase() == normalized &&
+          (excludeId == null || d.id != excludeId),
+    );
+  }
+
   Future<void> create(Map<String, dynamic> data) async {
+    final code = (data['code'] as String? ?? '').trim().toUpperCase();
+    final name = (data['name'] as String? ?? '').trim();
+
+    if (isDuplicateCode(code)) {
+      showError(
+        'Department code "$code" already exists. Please use a unique code.',
+        title: 'Duplicate Code',
+      );
+      return;
+    }
+    if (isDuplicateName(name)) {
+      showError(
+        'Department "$name" already exists. Please use a unique name.',
+        title: 'Duplicate Name',
+      );
+      return;
+    }
+
     try {
       data['company_id'] = auth.companyId;
       departments.add(await repo.createDepartment(data));
@@ -57,6 +97,24 @@ class DepartmentController extends GetxController {
   }
 
   Future<void> updateDepartment(String id, Map<String, dynamic> data) async {
+    final code = (data['code'] as String? ?? '').trim().toUpperCase();
+    final name = (data['name'] as String? ?? '').trim();
+
+    if (isDuplicateCode(code, excludeId: id)) {
+      showError(
+        'Department code "$code" already exists. Please use a unique code.',
+        title: 'Duplicate Code',
+      );
+      return;
+    }
+    if (isDuplicateName(name, excludeId: id)) {
+      showError(
+        'Department "$name" already exists. Please use a unique name.',
+        title: 'Duplicate Name',
+      );
+      return;
+    }
+
     try {
       final d = await repo.updateDepartment(id, data);
       final idx = departments.indexWhere((x) => x.id == id);
@@ -72,6 +130,9 @@ class DepartmentController extends GetxController {
       await repo.deleteDepartment(id);
       departments.removeWhere((x) => x.id == id);
       showSuccess('Department deleted');
+      Future.delayed(Duration(seconds: 2), () {
+        loadDepartments();
+      });
     } on PostgrestException catch (e) {
       String message = 'Something went wrong';
 
@@ -81,7 +142,7 @@ class DepartmentController extends GetxController {
       } else {
         message = e.message;
       }
-      showError(message,title: "Delete Failed");
+      showError(message, title: "Delete Failed");
     }
   }
 

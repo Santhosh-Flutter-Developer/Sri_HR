@@ -22,8 +22,36 @@ class _DepartmentFormState extends State<DepartmentForm> {
   final TextEditingController codeCtrl = TextEditingController();
   final TextEditingController nameCtrl = TextEditingController();
 
-  bool mobileLogin = true;
+  bool get isEdit => widget.dept != null;
+  String? get _editId => isEdit ? widget.dept.id as String? : null;
+
+  String? _validateCode(String? v) {
+    if (v == null || v.trim().isEmpty) return 'Department Code is required';
+    final trimmed = v.trim();
+    if (trimmed.length < 2) return 'Code must be at least 2 characters';
+    if (trimmed.length > 10) return 'Code must not exceed 10 characters';
+    if (!RegExp(r'^[a-zA-Z0-9\-_]+$').hasMatch(trimmed)) {
+      return 'Only letters, numbers, hyphens and underscores allowed';
+    }
+    if (widget.controller.isDuplicateCode(trimmed, excludeId: _editId)) {
+      return '"${trimmed.toUpperCase()}" already exists. Please use a unique code.';
+    }
+    return null;
+  }
+
+  String? _validateName(String? v) {
+    if (v == null || v.trim().isEmpty) return 'Department Name is required';
+    final trimmed = v.trim();
+    if (trimmed.length < 2) return 'Name must be at least 2 characters';
+    if (trimmed.length > 50) return 'Name must not exceed 50 characters';
+    if (widget.controller.isDuplicateName(trimmed, excludeId: _editId)) {
+      return '"$trimmed" already exists. Please use a unique name.';
+    }
+    return null;
+  }
+
   bool outsideAtt = false;
+  bool mobileLogin = false;
 
   @override
   void initState() {
@@ -43,12 +71,7 @@ class _DepartmentFormState extends State<DepartmentForm> {
       "type": "text",
       "keyboardType": TextInputType.text,
       "prefixIcon": Icons.tag,
-      "validator": (v) {
-        if (v.isEmpty) {
-          return "Department Code is required";
-        }
-        return null;
-      },
+      "validator": (v) => _validateCode(v as String?),
     },
     {
       "label": "Department Name",
@@ -56,12 +79,7 @@ class _DepartmentFormState extends State<DepartmentForm> {
       "type": "text",
       "keyboardType": TextInputType.text,
       "prefixIcon": Icons.account_tree_outlined,
-      "validator": (v) {
-        if (v.isEmpty) {
-          return "Department Name is required";
-        }
-        return null;
-      },
+      "validator": (v) => _validateName(v as String?),
       "topPadding": 16.0,
     },
     {
@@ -183,7 +201,9 @@ class _DepartmentFormState extends State<DepartmentForm> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: SriButton(
-                                label: widget.dept == null ? "Create" : "Update",
+                                label: widget.dept == null
+                                    ? "Create"
+                                    : "Update",
                                 onPressed: () async {
                                   if (!formKey.currentState!.validate()) {
                                     return;
@@ -204,7 +224,7 @@ class _DepartmentFormState extends State<DepartmentForm> {
                                       data,
                                     );
                                   }
-      
+
                                   Get.back();
                                   Future.delayed(Duration(seconds: 2), () {
                                     widget.controller.loadDepartments();
