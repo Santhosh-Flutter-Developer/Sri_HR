@@ -18,6 +18,24 @@ class Dashboard extends StatelessWidget {
       ? Get.find<DashboardController>()
       : Get.put(DashboardController());
 
+  String _fmtDate(DateTime d) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${d.day.toString().padLeft(2, '0')} ${months[d.month - 1]} ${d.year}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width >= 800;
@@ -43,19 +61,35 @@ class Dashboard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // ── Greeting + refresh ──────────────────────────
                         Row(
                           children: [
                             Expanded(child: GreetingBar()),
                             IconButton(
                               onPressed: controller.loadStats,
-                              icon: Icon(
+                              icon: const Icon(
                                 Icons.refresh,
                                 color: AppColors.primary,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 20.0),
+                        const SizedBox(height: 12.0),
+
+                        // ── Date filter strip ───────────────────────────
+                        Obx(
+                          () => _DateFilterStrip(
+                            date: controller.selectedDate.value,
+                            isCustomDate: controller.isCustomDate.value,
+                            formattedDate: _fmtDate(
+                              controller.selectedDate.value,
+                            ),
+                            onTap: () => controller.pickDate(context),
+                            onReset: controller.resetToToday,
+                          ),
+                        ),
+
+                        const SizedBox(height: 16.0),
                         SubscriptionAlert(),
                         StatsGrid(stats: controller.stats.value),
                         const SizedBox(height: 24),
@@ -71,6 +105,151 @@ class Dashboard extends StatelessWidget {
                   ),
                 ),
         ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// DATE FILTER STRIP
+// ─────────────────────────────────────────────────────────
+class _DateFilterStrip extends StatelessWidget {
+  final DateTime date;
+  final bool isCustomDate;
+  final String formattedDate;
+  final VoidCallback onTap;
+  final VoidCallback onReset;
+
+  const _DateFilterStrip({
+    required this.date,
+    required this.isCustomDate,
+    required this.formattedDate,
+    required this.onTap,
+    required this.onReset,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isCustomDate
+            ? AppColors.primary.withOpacity(0.06)
+            : AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isCustomDate
+              ? AppColors.primary.withOpacity(0.3)
+              : AppColors.border,
+        ),
+      ),
+      child: Row(
+        children: [
+          // ── Tappable date selector ──────────────────────
+          Expanded(
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: const BorderRadius.horizontal(
+                left: Radius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 11,
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                      child: const Icon(
+                        Icons.calendar_today_rounded,
+                        size: 16,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isCustomDate ? 'Filtered Date' : 'Today',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: isCustomDate
+                                ? AppColors.primary
+                                : AppColors.textMuted,
+                          ),
+                        ),
+                        Text(
+                          formattedDate,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: isCustomDate
+                                ? AppColors.primary
+                                : AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    Icon(
+                      Icons.expand_more_rounded,
+                      size: 20,
+                      color: isCustomDate
+                          ? AppColors.primary
+                          : AppColors.textMuted,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // ── Reset button (only visible when custom date selected) ──
+          if (isCustomDate) ...[
+            Container(
+              width: 1,
+              height: 36,
+              color: AppColors.primary.withOpacity(0.2),
+            ),
+            InkWell(
+              onTap: onReset,
+              borderRadius: const BorderRadius.horizontal(
+                right: Radius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 11,
+                ),
+                child: Row(
+                  children: const [
+                    Icon(
+                      Icons.today_rounded,
+                      size: 16,
+                      color: AppColors.primary,
+                    ),
+                    SizedBox(width: 6),
+                    Text(
+                      'Today',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
