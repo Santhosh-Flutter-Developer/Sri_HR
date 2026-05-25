@@ -23,7 +23,8 @@ class _RoleFormState extends State<RoleForm> {
 
   // ── Validators ────────────────────────────────────────────────────
 
-  /// Role name: 2–50 chars, letters/spaces/hyphens only, no leading/trailing spaces.
+  /// Role name: 2–50 chars, letters/spaces/hyphens only, no leading/trailing spaces,
+  /// and must be unique within this company (case-insensitive).
   String? _validateName(String? v) {
     if (v == null || v.trim().isEmpty) return 'Role Name is required';
     final trimmed = v.trim();
@@ -31,6 +32,11 @@ class _RoleFormState extends State<RoleForm> {
     if (trimmed.length > 50) return 'Role Name must not exceed 50 characters';
     if (!RegExp(r"^[a-zA-Z\s\-]+$").hasMatch(trimmed)) {
       return 'Only letters, spaces, and hyphens allowed';
+    }
+    // ── Duplicate check (case-insensitive, company-scoped) ──
+    final excludeId = isEdit ? widget.role.id as String? : null;
+    if (widget.controller.isDuplicateName(trimmed, excludeId: excludeId)) {
+      return '"$trimmed" already exists. Please use a unique designation name.';
     }
     return null;
   }

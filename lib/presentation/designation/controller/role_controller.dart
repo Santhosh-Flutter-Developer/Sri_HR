@@ -65,7 +65,26 @@ class RoleController extends GetxController {
     }).toList();
   }
 
+  /// Returns true if the given [name] already exists in this company.
+  /// For edit mode, pass [excludeId] to skip the current role itself.
+  bool isDuplicateName(String name, {String? excludeId}) {
+    final normalized = name.trim().toLowerCase();
+    return roles.any(
+      (r) =>
+          r.name.trim().toLowerCase() == normalized &&
+          (excludeId == null || r.id != excludeId),
+    );
+  }
+
   Future<void> createRole(Map<String, dynamic> data) async {
+    final name = (data['name'] as String? ?? '').trim();
+    if (isDuplicateName(name)) {
+      showError(
+        '"$name" already exists in this company. Please use a unique designation name.',
+        title: 'Duplicate Designation',
+      );
+      return;
+    }
     isLoading.value = true;
     try {
       data['company_id'] = auth.companyId;
@@ -80,6 +99,14 @@ class RoleController extends GetxController {
   }
 
   Future<void> updateRole(String id, Map<String, dynamic> data) async {
+    final name = (data['name'] as String? ?? '').trim();
+    if (isDuplicateName(name, excludeId: id)) {
+      showError(
+        '"$name" already exists in this company. Please use a unique designation name.',
+        title: 'Duplicate Designation',
+      );
+      return;
+    }
     isLoading.value = true;
     try {
       final role = await repo.updateRole(id, data);
