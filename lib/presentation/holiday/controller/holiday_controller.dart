@@ -44,20 +44,29 @@ class HolidayController extends GetxController {
       filteredholidays.value = holidays;
     } else {
       filteredholidays.value = holidays.where((item) {
-        final name = item.reason.toString().toLowerCase();
-        return name.contains(query.toString().toLowerCase());
+        return item.reason.toLowerCase().contains(query.toLowerCase());
       }).toList();
     }
+  }
+
+  /// Returns true if a holiday on the same [date] already exists.
+  /// Pass [excludeId] to skip the current record when editing.
+  bool isDateTaken(String date, {String? excludeId}) {
+    final normalized = date.trim();
+    return holidays.any(
+      (h) =>
+          h.date.toIso8601String().substring(0, 10) == normalized &&
+          (excludeId == null || h.id != excludeId),
+    );
   }
 
   Future<void> create(Map<String, dynamic> data) async {
     try {
       data['company_id'] = auth.companyId;
-      holidays.add(await repo.createHoliday(data));
+      final newHoliday = await repo.createHoliday(data);
+      holidays.add(newHoliday);
+      filteredholidays.value = List.from(holidays);
       showSuccess('Holiday added');
-      Future.delayed(Duration(seconds: 2), () {
-        loadHolidays();
-      });
     } catch (e) {
       showError('$e');
     }
@@ -68,10 +77,8 @@ class HolidayController extends GetxController {
       final h = await repo.updateHoliday(id, data);
       final idx = holidays.indexWhere((x) => x.id == id);
       if (idx != -1) holidays[idx] = h;
+      filteredholidays.value = List.from(holidays);
       showSuccess('Holiday updated');
-      Future.delayed(Duration(seconds: 2), () {
-        loadHolidays();
-      });
     } catch (e) {
       showError('$e');
     }
@@ -81,10 +88,8 @@ class HolidayController extends GetxController {
     try {
       await repo.deleteHoliday(id);
       holidays.removeWhere((x) => x.id == id);
+      filteredholidays.value = List.from(holidays);
       showSuccess('Holiday deleted');
-      Future.delayed(Duration(seconds: 2), () {
-        loadHolidays();
-      });
     } catch (e) {
       showError('$e');
     }
@@ -102,7 +107,7 @@ class HolidayController extends GetxController {
   }) {
     Get.dialog(
       Dialog(
-        insetPadding: EdgeInsets.all(4.0),
+        insetPadding: const EdgeInsets.all(4.0),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: HolidayForm(controller: controller, item: holiday),
       ),
