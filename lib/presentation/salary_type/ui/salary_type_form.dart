@@ -19,6 +19,20 @@ class _SalaryTypeFormState extends State<SalaryTypeForm> {
   final formKey = GlobalKey<FormState>();
   final nameCtrl = TextEditingController();
 
+  bool get isEdit => widget.item != null;
+  String? get _editId => isEdit ? widget.item.id as String? : null;
+
+  String? _validateName(String? v) {
+    if (v == null || v.trim().isEmpty) return 'Salary Type is required';
+    final trimmed = v.trim();
+    if (trimmed.length < 2) return 'Name must be at least 2 characters';
+    if (trimmed.length > 50) return 'Name must not exceed 50 characters';
+    if (widget.controller.isDuplicateName(trimmed, excludeId: _editId)) {
+      return '"$trimmed" already exists. Please use a unique salary type name.';
+    }
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -32,12 +46,7 @@ class _SalaryTypeFormState extends State<SalaryTypeForm> {
       "type": "text",
       "keyboardType": TextInputType.text,
       "topPadding": 20.0,
-      "validator": (v) {
-        if (v.isEmpty) {
-          return "Salary Type is required";
-        }
-        return null;
-      },
+      "validator": (v) => _validateName(v as String?),
     },
   ];
   @override

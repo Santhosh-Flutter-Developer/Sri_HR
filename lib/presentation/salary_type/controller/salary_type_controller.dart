@@ -46,67 +46,78 @@ class SalaryTypeController extends GetxController {
     }
   }
 
-  Future<bool> create(String name) async {
-  final isDuplicate = salaryTypes.any(
-    (s) => s.name.trim().toLowerCase() == name.trim().toLowerCase(),
-  );
-  if (isDuplicate) {
-    showError('Salary type "$name" already exists.', title: "Duplicate");
-    return false;
-  }
-
-  try {
-    salaryTypes.add(
-      await repo.create({'company_id': auth.companyId, 'name': name}),
+  /// Returns true if [name] already exists in this company (case-insensitive).
+  /// Pass [excludeId] to ignore the current record when editing.
+  bool isDuplicateName(String name, {String? excludeId}) {
+    final normalized = name.trim().toLowerCase();
+    return salaryTypes.any(
+      (s) =>
+          s.name.trim().toLowerCase() == normalized &&
+          (excludeId == null || s.id != excludeId),
     );
-    filteredSalaryTypes.value = salaryTypes;
-    showSuccess('Salary type created');
-    return true;
-  } on PostgrestException catch (e) {
-    if (e.code == '23505') {
-      showError('Salary type "$name" already exists.', title: "Duplicate");
-    } else {
-      showError(e.message, title: "Error");
-    }
-    return false;
-  } catch (e) {
-    showError('$e');
-    return false;
-  }
-}
-
-Future<bool> updateSalaryType(String id, String name) async {
-  final isDuplicate = salaryTypes.any(
-    (s) =>
-        s.id != id &&
-        s.name.trim().toLowerCase() == name.trim().toLowerCase(),
-  );
-  if (isDuplicate) {
-    showError('Salary type "$name" already exists.', title: "Duplicate");
-    return false;
   }
 
-  try {
-    final s = await repo.update(id, {'name': name});
-    final idx = salaryTypes.indexWhere((x) => x.id == id);
-    if (idx != -1) {
-      salaryTypes[idx] = s;
-      filteredSalaryTypes.value = List.from(salaryTypes);
-    }
-    showSuccess('Salary type updated');
-    return true;
-  } on PostgrestException catch (e) {
-    if (e.code == '23505') {
+  Future<bool> create(String name) async {
+    final isDuplicate = salaryTypes.any(
+      (s) => s.name.trim().toLowerCase() == name.trim().toLowerCase(),
+    );
+    if (isDuplicate) {
       showError('Salary type "$name" already exists.', title: "Duplicate");
-    } else {
-      showError(e.message, title: "Error");
+      return false;
     }
-    return false;
-  } catch (e) {
-    showError('$e');
-    return false;
+
+    try {
+      salaryTypes.add(
+        await repo.create({'company_id': auth.companyId, 'name': name}),
+      );
+      filteredSalaryTypes.value = salaryTypes;
+      showSuccess('Salary type created');
+      return true;
+    } on PostgrestException catch (e) {
+      if (e.code == '23505') {
+        showError('Salary type "$name" already exists.', title: "Duplicate");
+      } else {
+        showError(e.message, title: "Error");
+      }
+      return false;
+    } catch (e) {
+      showError('$e');
+      return false;
+    }
   }
-}
+
+  Future<bool> updateSalaryType(String id, String name) async {
+    final isDuplicate = salaryTypes.any(
+      (s) =>
+          s.id != id &&
+          s.name.trim().toLowerCase() == name.trim().toLowerCase(),
+    );
+    if (isDuplicate) {
+      showError('Salary type "$name" already exists.', title: "Duplicate");
+      return false;
+    }
+
+    try {
+      final s = await repo.update(id, {'name': name});
+      final idx = salaryTypes.indexWhere((x) => x.id == id);
+      if (idx != -1) {
+        salaryTypes[idx] = s;
+        filteredSalaryTypes.value = List.from(salaryTypes);
+      }
+      showSuccess('Salary type updated');
+      return true;
+    } on PostgrestException catch (e) {
+      if (e.code == '23505') {
+        showError('Salary type "$name" already exists.', title: "Duplicate");
+      } else {
+        showError(e.message, title: "Error");
+      }
+      return false;
+    } catch (e) {
+      showError('$e');
+      return false;
+    }
+  }
 
   Future<void> delete(String id) async {
     try {
