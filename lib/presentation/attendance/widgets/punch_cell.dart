@@ -58,6 +58,16 @@ class PunchCell extends StatelessWidget {
                     color: AppColors.warning,
                   ),
                 ),
+              ] else ...[
+                const SizedBox(width: 3),
+                const Text(
+                  'F',
+                  style: TextStyle(
+                    fontSize: 8,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary,
+                  ),
+                ),
               ],
             ],
           ),

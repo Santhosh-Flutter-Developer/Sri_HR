@@ -394,14 +394,18 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
 
   Future<void> _savePunch(String punchType) async {
     try {
-      await attendanceController.adjustPunch({
-        'employee_id': employee!.id,
-        'date': NetworkTime.now().toIso8601String().substring(0, 10),
-        'punch_time': NetworkTime.now().toIso8601String(),
-        'punch_type': punchType,
-        'latitude': currentPosition?.latitude,
-        'longitude': currentPosition?.longitude,
-      }, showToast: false);
+      await attendanceController.adjustPunch(
+        {
+          'employee_id': employee!.id,
+          'date': NetworkTime.now().toIso8601String().substring(0, 10),
+          'punch_time': NetworkTime.now().toIso8601String(),
+          'punch_type': punchType,
+          'latitude': currentPosition?.latitude,
+          'longitude': currentPosition?.longitude,
+        },
+        showToast: false,
+        isManual: false,
+      );
 
       final label = punchType == 'in' ? 'Punch IN' : 'Punch OUT';
       Get.snackbar(
@@ -906,14 +910,20 @@ class _PunchSelectorSheetState extends State<_PunchSelectorSheet> {
                                                     : AppColors.error,
                                               ),
                                             ),
-                                            if (log.isManual)
-                                              const Text(
-                                                'Manual adjustment',
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  color: AppColors.textMuted,
-                                                ),
+                                            Text(
+                                              log.isManual
+                                                  ? 'Manual adjustment'
+                                                  : 'Face attendance',
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                color: log.isManual
+                                                    ? AppColors.textMuted
+                                                    : AppColors.primary,
+                                                fontWeight: log.isManual
+                                                    ? FontWeight.normal
+                                                    : FontWeight.w600,
                                               ),
+                                            ),
                                           ],
                                         ),
                                       ),

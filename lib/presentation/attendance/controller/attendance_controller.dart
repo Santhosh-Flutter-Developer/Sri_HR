@@ -154,6 +154,7 @@ class AttendanceController extends GetxController {
   Future<void> adjustPunch(
     Map<String, dynamic> data, {
     bool showToast = true,
+    bool isManual = true,
   }) async {
     try {
       data['company_id'] = auth.companyId;
@@ -221,7 +222,7 @@ class AttendanceController extends GetxController {
         }
       }
 
-      final log = await repo.adjustPunch(data);
+      final log = await repo.adjustPunch(data, isManual: isManual);
       logs.add(log);
       if (showToast == true) showSuccess('Punch adjusted successfully');
     } catch (e) {

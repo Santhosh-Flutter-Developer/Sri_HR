@@ -66,10 +66,13 @@ class AttendanceRepository {
 
   /// Upsert logic: if same employee + same date + same punch_type already exists
   /// as a manual entry, UPDATE it instead of inserting a duplicate.
-  Future<AttendanceLogModel> adjustPunch(Map<String, dynamic> data) async {
+  Future<AttendanceLogModel> adjustPunch(
+    Map<String, dynamic> data, {
+    bool isManual = true,
+  }) async {
     final row = await SupabaseService.client
         .from('attendance_logs')
-        .insert({...data, 'is_manual': true})
+        .insert({...data, 'is_manual': isManual})
         .select('id')
         .single();
     return fetchLog(row['id'] as String);

@@ -45,6 +45,15 @@ class MiniPunchTag extends StatelessWidget {
           const Text(
             'Manual',
             style: TextStyle(fontSize: 8, color: AppColors.warning),
+          )
+        else
+          const Text(
+            'Face',
+            style: TextStyle(
+              fontSize: 8,
+              color: AppColors.primary,
+              fontWeight: FontWeight.w700,
+            ),
           ),
       ],
     ),
