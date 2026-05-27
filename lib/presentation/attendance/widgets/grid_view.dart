@@ -235,7 +235,8 @@ class GridedView extends StatelessWidget {
                                                   auth.canDelete(
                                                     'attendance_report',
                                                   ),
-                                                  () => controller.deleteLog(
+                                                  () => controller.confirmDelete(
+                                                    context,
                                                     inLog.id,
                                                   ),
                                                 )
@@ -251,7 +252,8 @@ class GridedView extends StatelessWidget {
                                                   auth.canDelete(
                                                     'attendance_report',
                                                   ),
-                                                  () => controller.deleteLog(
+                                                  () => controller.confirmDelete(
+                                                    context,
                                                     outLog.id,
                                                   ),
                                                 )

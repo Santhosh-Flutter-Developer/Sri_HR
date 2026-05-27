@@ -76,28 +76,28 @@ class DepartmentCard extends StatelessWidget {
               ],
             ),
           ),
-          if(auth.canEdit('department')||auth.canDelete('department'))
-          PopupMenuButton(
-            itemBuilder: (_) => [
-              if (auth.canEdit('department'))
-                const PopupMenuItem(value: 'edit', child: Text('Edit')),
-              if (auth.canDelete('department'))
-                const PopupMenuItem(
-                  value: 'delete',
-                  child: Text(
-                    'Delete',
-                    style: TextStyle(color: AppColors.error),
+          if (auth.canEdit('department') || auth.canDelete('department'))
+            PopupMenuButton(
+              itemBuilder: (_) => [
+                if (auth.canEdit('department'))
+                  const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                if (auth.canDelete('department'))
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Text(
+                      'Delete',
+                      style: TextStyle(color: AppColors.error),
+                    ),
                   ),
-                ),
-            ],
-            onSelected: (v) {
-              if (v == 'edit') {
-                controller.showForm(context, controller, dept: item);
-              } else {
-                controller.delete(item.id);
-              }
-            },
-          ),
+              ],
+              onSelected: (v) {
+                if (v == 'edit') {
+                  controller.showForm(context, controller, dept: item);
+                } else {
+                  controller.confirmDelete(context, item.id);
+                }
+              },
+            ),
         ],
       ),
     );

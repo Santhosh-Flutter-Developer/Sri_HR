@@ -31,13 +31,13 @@ class EmployeeStatus extends StatelessWidget {
                 ? SriButton(
                     label: "Add Employee Status",
                     onPressed: () =>
-                        controller.showDialog(context, controller, null),
+                        controller.showDialogg(context, controller, null),
                     color: AppColors.accentGreen,
                     icon: Icons.add,
                   )
                 : IconButton(
                     onPressed: () =>
-                        controller.showDialog(context, controller, null),
+                        controller.showDialogg(context, controller, null),
                     icon: Icon(Icons.add),
                   ),
         ],
@@ -77,7 +77,7 @@ class EmployeeStatus extends StatelessWidget {
                               : null,
                           color: AppColors.accentGreen,
                           onAction: () =>
-                              controller.showDialog(context, controller, null),
+                              controller.showDialogg(context, controller, null),
                         )
                       : ListView(
                           children: [
@@ -105,15 +105,20 @@ class EmployeeStatus extends StatelessWidget {
                                         ),
                                         child: EmployeeStatusCard(
                                           item: item,
-                                          onEdit: auth.canEdit('employee_status')
-                                              ? () => controller.showDialog(
+                                          onEdit:
+                                              auth.canEdit('employee_status')
+                                              ? () => controller.showDialogg(
                                                   context,
                                                   controller,
                                                   item,
                                                 )
                                               : null,
-                                          onDelete: auth.canDelete('employee_status')
-                                              ? () => controller.delete(item.id)
+                                          onDelete:
+                                              auth.canDelete('employee_status')
+                                              ? () => controller.confirmDelete(
+                                                  context,
+                                                  item.id,
+                                                )
                                               : null,
                                         ),
                                       ),

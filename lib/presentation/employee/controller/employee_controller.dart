@@ -179,7 +179,7 @@ class EmployeeController extends GetxController {
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Delete Employee'),
-        content: const Text('Are you sure? This action cannot be undone.'),
+        content: const Text('Are you sure you want to delete this record?'),
         actions: [
           TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
           ElevatedButton(

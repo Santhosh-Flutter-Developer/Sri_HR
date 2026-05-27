@@ -2,6 +2,7 @@ import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/models/salary_type_model.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/helper/helper.dart';
@@ -119,6 +120,28 @@ class SalaryTypeController extends GetxController {
     }
   }
 
+  void confirmDelete(BuildContext context, String id) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Delete Salary Type'),
+        content: const Text('Are you sure you want to delete this record?'),
+        actions: [
+          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              Get.back();
+              delete(id);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> delete(String id) async {
     try {
       await repo.delete(id);
@@ -140,7 +163,7 @@ class SalaryTypeController extends GetxController {
     }
   }
 
-  void showDialog(
+  void showDialogg(
     BuildContext context,
     SalaryTypeController controller,
     dynamic item,

@@ -134,7 +134,8 @@ class PermissionRequest extends StatelessWidget {
                                     onReject: () => controller.reject(
                                       controller.filteredPermission[i].id,
                                     ),
-                                    onDelete: () => controller.delete(
+                                    onDelete: () => controller.confirmDelete(
+                                      context,
                                       controller.filteredPermission[i].id,
                                     ),
                                   ),

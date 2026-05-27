@@ -117,7 +117,10 @@ class Holiday extends StatelessWidget {
                                                 )
                                               : null,
                                           onDelete: auth.canDelete('holiday')
-                                              ? () => controller.delete(h.id)
+                                              ? () => controller.confirmDelete(
+                                                  context,
+                                                  h.id,
+                                                )
                                               : null,
                                         ),
                                       ),

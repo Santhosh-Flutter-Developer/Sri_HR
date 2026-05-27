@@ -196,7 +196,9 @@ class PunchTableView extends StatelessWidget {
                                             'punch_adjustment',
                                           ),
                                           onDelete: () =>
-                                              controller.deleteLog(l.id),
+                                              controller.confirmDelete(
+                                                context,
+                                                l.id),
                                         ),
                                       ),
                                     )
@@ -232,7 +234,9 @@ class PunchTableView extends StatelessWidget {
                                             'punch_adjustment',
                                           ),
                                           onDelete: () =>
-                                              controller.deleteLog(l.id),
+                                              controller.confirmDelete(
+                                                context,
+                                                l.id),
                                         ),
                                       ),
                                     )

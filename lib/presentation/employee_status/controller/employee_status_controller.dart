@@ -2,6 +2,7 @@ import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/models/employee_status_model.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/employee_status/repository/employee_status_repository.dart';
@@ -95,6 +96,28 @@ class EmployeeStatusController extends GetxController {
     }
   }
 
+  void confirmDelete(BuildContext context, String id) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Delete Employee Status'),
+        content: const Text('Are you sure you want to delete this record?'),
+        actions: [
+          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              Get.back();
+              delete(id);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> delete(String id) async {
     try {
       await repo.delete(id);
@@ -103,7 +126,7 @@ class EmployeeStatusController extends GetxController {
       Future.delayed(Duration(seconds: 2), () {
         load();
       });
-    }  on PostgrestException catch (e) {
+    } on PostgrestException catch (e) {
       String message = 'Something went wrong';
 
       if (e.code == '23503') {
@@ -112,11 +135,11 @@ class EmployeeStatusController extends GetxController {
       } else {
         message = e.message;
       }
-      showError(message,title: "Delete Failed");
+      showError(message, title: "Delete Failed");
     }
   }
 
-  void showDialog(
+  void showDialogg(
     BuildContext context,
     EmployeeStatusController controller,
     dynamic item,

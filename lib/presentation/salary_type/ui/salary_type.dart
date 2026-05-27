@@ -34,11 +34,11 @@ class SalaryType extends StatelessWidget {
                     icon: Icons.add,
                     color: AppColors.accentOrange,
                     onPressed: () =>
-                        controller.showDialog(context, controller, null),
+                        controller.showDialogg(context, controller, null),
                   )
                 : IconButton(
                     onPressed: () =>
-                        controller.showDialog(context, controller, null),
+                        controller.showDialogg(context, controller, null),
                     icon: Icon(Icons.add),
                   ),
         ],
@@ -78,7 +78,7 @@ class SalaryType extends StatelessWidget {
                               : null,
                           color: AppColors.accentOrange,
                           onAction: () =>
-                              controller.showDialog(context, controller, null),
+                              controller.showDialogg(context, controller, null),
                         )
                       : ListView(
                           children: [
@@ -108,14 +108,18 @@ class SalaryType extends StatelessWidget {
                                         child: SalaryTypeCard(
                                           item: item,
                                           onEdit: auth.canEdit('salary_type')
-                                              ? () => controller.showDialog(
+                                              ? () => controller.showDialogg(
                                                   context,
                                                   controller,
                                                   item,
                                                 )
                                               : null,
-                                          onDelete: auth.canDelete('salary_type')
-                                              ? () => controller.delete(item.id)
+                                          onDelete:
+                                              auth.canDelete('salary_type')
+                                              ? () => controller.confirmDelete(
+                                                  context,
+                                                  item.id,
+                                                )
                                               : null,
                                         ),
                                       ),

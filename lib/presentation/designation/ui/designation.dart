@@ -205,9 +205,7 @@ class Designation extends StatelessWidget {
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Delete Designation'),
-        content: const Text(
-          'Are you sure? Employees with this designation may be affected.',
-        ),
+        content: const Text('Are you sure you want to delete this record?'),
         actions: [
           TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
           ElevatedButton(

@@ -247,7 +247,8 @@ class PunchGridView extends StatelessWidget {
                                                   auth.canDelete(
                                                     'punch_adjustment',
                                                   ),
-                                                  () => controller.deleteLog(
+                                                  () => controller.confirmDelete(
+                                                    context,
                                                     inLog.id,
                                                   ),
                                                 )
@@ -263,7 +264,8 @@ class PunchGridView extends StatelessWidget {
                                                   auth.canDelete(
                                                     'punch_adjustment',
                                                   ),
-                                                  () => controller.deleteLog(
+                                                  () => controller.confirmDelete(
+                                                    context,
                                                     outLog.id,
                                                   ),
                                                 )
