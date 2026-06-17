@@ -46,6 +46,7 @@ class TableView extends StatelessWidget {
                     Expanded(flex: 2, child: TH('IN')),
                     Expanded(flex: 2, child: TH('OUT')),
                     Expanded(flex: 2, child: TH('Hours')),
+                    Expanded(flex: 2, child: TH('Status')),
                     SizedBox(width: 36, child: TH('', center: true)),
                   ],
                 ),
@@ -55,7 +56,7 @@ class TableView extends StatelessWidget {
                 (row) => AttendTableRow(
                   row: row,
                   canDelete: auth.canDelete('attendance_report'),
-                  onDeleteLog: (id) => controller.confirmDelete(context, id),
+                  onDeleteLog: (id) => controller.confirmDelete(context,id),
                 ),
               ),
               // Table footer border

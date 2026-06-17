@@ -44,6 +44,7 @@ class GridedView extends StatelessWidget {
               final outLogs = (row['outLogs'] as List<AttendanceLogModel>)
                 ..sort((a, b) => a.punchTime.compareTo(b.punchTime));
               final totalMins = row['totalMins'] as int;
+              final isAbsent = row['isAbsent'] as bool? ?? false;
               final empName = emp?.fullName as String? ?? 'Unknown';
               final empCode = emp?.employeeCode as String? ?? '';
               final deptName = emp?.department?.name as String? ?? '';
@@ -55,7 +56,9 @@ class GridedView extends StatelessWidget {
               final totalHrs = totalMins > 0
                   ? '${totalMins ~/ 60}h ${totalMins % 60}m'
                   : '—';
-              final borderColor = totalMins == 0
+              final borderColor = isAbsent
+                  ? AppColors.error.withOpacity(0.35)
+                  : totalMins == 0
                   ? AppColors.border
                   : isGood
                   ? AppColors.success.withOpacity(0.4)
@@ -190,6 +193,46 @@ class GridedView extends StatelessWidget {
                                   color: AppColors.textSecondary,
                                 ),
                               ),
+                              const Spacer(),
+                              // Status badge
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isAbsent
+                                      ? AppColors.error.withOpacity(0.1)
+                                      : AppColors.success.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 5,
+                                      height: 5,
+                                      decoration: BoxDecoration(
+                                        color: isAbsent
+                                            ? AppColors.error
+                                            : AppColors.success,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      isAbsent ? 'Absent' : 'Present',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: isAbsent
+                                            ? AppColors.error
+                                            : AppColors.success,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -235,10 +278,11 @@ class GridedView extends StatelessWidget {
                                                   auth.canDelete(
                                                     'attendance_report',
                                                   ),
-                                                  () => controller.confirmDelete(
-                                                    context,
-                                                    inLog.id,
-                                                  ),
+                                                  () =>
+                                                      controller.confirmDelete(
+                                                        context,
+                                                        inLog.id,
+                                                      ),
                                                 )
                                               : const SizedBox.shrink(),
                                         ),
@@ -252,10 +296,11 @@ class GridedView extends StatelessWidget {
                                                   auth.canDelete(
                                                     'attendance_report',
                                                   ),
-                                                  () => controller.confirmDelete(
-                                                    context,
-                                                    outLog.id,
-                                                  ),
+                                                  () =>
+                                                      controller.confirmDelete(
+                                                        context,
+                                                        outLog.id,
+                                                      ),
                                                 )
                                               : const SizedBox.shrink(),
                                         ),

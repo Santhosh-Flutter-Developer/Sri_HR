@@ -2,6 +2,7 @@ import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:sri_hr/core/handler/exception_handler.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/utils/network_time.dart';
 import 'package:sri_hr/presentation/attendance/controller/attendance_controller.dart';
@@ -9,7 +10,7 @@ import 'package:sri_hr/presentation/attendance/widgets/picker_box.dart';
 import 'package:sri_hr/presentation/attendance/widgets/punch_type_btn.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/employee/controller/employee_controller.dart';
-import 'package:sri_hr/presentation/helper/helper.dart';
+import 'package:sri_hr/data/helper/helper.dart';
 
 class PunchFormDialog extends StatefulWidget {
   final AttendanceController controller;
@@ -123,7 +124,7 @@ class _PunchFormDialogState extends State<PunchFormDialog> {
       });
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
-      snack('Error: $e');
+      snack(handleException(e));
     } finally {
       if (mounted) setState(() => loading = false);
     }

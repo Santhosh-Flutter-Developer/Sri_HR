@@ -21,11 +21,6 @@ dependencies:
   flutter_svg: ^2.0.9
   cached_network_image: ^3.3.1
   shimmer: ^3.0.0
-  lottie: ^3.1.0
-
-  # Navigation & Responsive
-  go_router: ^17.2.2
-  responsive_builder: ^0.7.0
 
   # Forms & Validation
   flutter_form_builder: ^10.3.0+2
@@ -44,6 +39,7 @@ dependencies:
 
   # Location
   geolocator: ^14.0.2
+  flutter_tts: ^4.0.2
 
   # Payment
   # razorpay_flutter: ^1.3.6
@@ -64,9 +60,6 @@ dependencies:
 
   # Other
   flutter_dotenv: ^6.0.1
-  country_state_city_picker: ^2.0.0
-  font_awesome_flutter: ^11.0.0
-  dropdown_search: ^7.0.0
   responsive_grid: ^2.4.4
   http: ^1.2.0
   ntp: ^2.0.0
@@ -75,6 +68,11 @@ dependencies:
     path: ./facesdk_plugin
   flutter_exif_rotation: ^0.5.1
   path_provider: ^2.1.3
+
+  pdf: ^3.11.1
+  excel: ^4.0.6
+  open_file: ^3.3.2
+  share_plus: ^10.1.4
 
 dev_dependencies:
   flutter_test:

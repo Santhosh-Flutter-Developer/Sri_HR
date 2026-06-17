@@ -58,6 +58,7 @@ class PunchTableView extends StatelessWidget {
                     Expanded(flex: 2, child: TH('IN Time')),
                     Expanded(flex: 2, child: TH('OUT Time')),
                     Expanded(flex: 2, child: TH('Total Hrs')),
+                    Expanded(flex: 2, child: TH('Status')),
                     SizedBox(width: 50, child: TH('Edit', center: true)),
                   ],
                 ),
@@ -80,6 +81,7 @@ class PunchTableView extends StatelessWidget {
                 final inLog = inLogs.isNotEmpty ? inLogs.first : null;
                 final outLog = outLogs.isNotEmpty ? outLogs.last : null;
                 final totalMins = row['totalMins'] as int? ?? 0;
+                final isAbsent = row['isAbsent'] as bool? ?? false;
                 final totalHrsStr = totalMins > 0
                     ? '${totalMins ~/ 60}h ${totalMins % 60}m'
                     : '—';
@@ -90,11 +92,18 @@ class PunchTableView extends StatelessWidget {
                     vertical: 10.0,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    border: const Border(
-                      left: BorderSide(color: AppColors.border),
-                      right: BorderSide(color: AppColors.border),
-                      bottom: BorderSide(color: AppColors.border),
+                    color: isAbsent
+                        ? AppColors.error.withOpacity(0.03)
+                        : AppColors.surface,
+                    border: Border(
+                      left: BorderSide(
+                        color: isAbsent
+                            ? AppColors.error.withOpacity(0.3)
+                            : AppColors.border,
+                        width: isAbsent ? 3 : 1,
+                      ),
+                      right: const BorderSide(color: AppColors.border),
+                      bottom: const BorderSide(color: AppColors.border),
                     ),
                   ),
                   child: Row(
@@ -196,9 +205,7 @@ class PunchTableView extends StatelessWidget {
                                             'punch_adjustment',
                                           ),
                                           onDelete: () =>
-                                              controller.confirmDelete(
-                                                context,
-                                                l.id),
+                                              controller.deleteLog(l.id),
                                         ),
                                       ),
                                     )
@@ -234,9 +241,7 @@ class PunchTableView extends StatelessWidget {
                                             'punch_adjustment',
                                           ),
                                           onDelete: () =>
-                                              controller.confirmDelete(
-                                                context,
-                                                l.id),
+                                              controller.deleteLog(l.id),
                                         ),
                                       ),
                                     )
@@ -254,6 +259,46 @@ class PunchTableView extends StatelessWidget {
                             color: totalMins > 0
                                 ? AppColors.success
                                 : AppColors.textMuted,
+                          ),
+                        ),
+                      ),
+                      // Status
+                      Expanded(
+                        flex: 2,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: isAbsent
+                                ? AppColors.error.withOpacity(0.1)
+                                : AppColors.success.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: isAbsent
+                                      ? AppColors.error
+                                      : AppColors.success,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                isAbsent ? 'Absent' : 'Present',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: isAbsent
+                                      ? AppColors.error
+                                      : AppColors.success,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),

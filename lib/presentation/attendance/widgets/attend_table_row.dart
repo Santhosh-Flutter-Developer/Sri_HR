@@ -38,15 +38,16 @@ class AttendTableRow extends StatelessWidget {
     final totalHrs = totalMins > 0
         ? '${totalMins ~/ 60}h ${totalMins % 60}m'
         : '—';
+    final isAbsent = row['isAbsent'] as bool? ?? false;
     final isGood = totalMins >= 480;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        border: const Border(
-          left: BorderSide(color: AppColors.border),
-          right: BorderSide(color: AppColors.border),
-          bottom: BorderSide(color: AppColors.border),
+        border: Border(
+          left: BorderSide(color: AppColors.border, width: 1),
+          right: const BorderSide(color: AppColors.border),
+          bottom: const BorderSide(color: AppColors.border),
         ),
       ),
       child: Row(
@@ -153,25 +154,74 @@ class AttendTableRow extends StatelessWidget {
           // Total hours
           Expanded(
             flex: 2,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: totalMins > 0
-                    ? (isGood ? AppColors.success : AppColors.warning)
-                          .withOpacity(0.08)
-                    : AppColors.border.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                totalHrs,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: totalMins > 0
-                      ? (isGood ? AppColors.success : AppColors.warning)
-                      : AppColors.textMuted,
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: totalMins > 0
+                        ? (isGood ? AppColors.success : AppColors.warning)
+                              .withOpacity(0.08)
+                        : AppColors.border.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    totalHrs,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: totalMins > 0
+                          ? (isGood ? AppColors.success : AppColors.warning)
+                          : AppColors.textMuted,
+                    ),
+                  ),
                 ),
-              ),
+              ],
+            ),
+          ),
+          // Status
+          Expanded(
+            flex: 2,
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isAbsent
+                        ? AppColors.error.withOpacity(0.1)
+                        : AppColors.success.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: isAbsent ? AppColors.error : AppColors.success,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        isAbsent ? 'Absent' : 'Present',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: isAbsent ? AppColors.error : AppColors.success,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(width: 36),

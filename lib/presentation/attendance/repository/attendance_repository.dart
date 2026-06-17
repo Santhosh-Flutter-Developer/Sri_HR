@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sri_hr/data/models/attendance_log_model.dart';
+import 'package:sri_hr/data/models/employee_model.dart';
 import 'package:sri_hr/data/services/supabase_service.dart';
 import 'package:sri_hr/data/utils/network_time.dart';
 
@@ -34,7 +35,9 @@ class AttendanceRepository {
     if (toDate != null) {
       query = query.lte('date', toDate.toIso8601String().substring(0, 10));
     }
-    if (employeeId != null) query = query.eq('employee_id', employeeId);
+    if (employeeId != null && employeeId.isNotEmpty) {
+      query = query.eq('employee_id', employeeId);
+    }
 
     final rows = await query.order('punch_time');
     final result = <AttendanceLogModel>[];
@@ -116,6 +119,22 @@ class AttendanceRepository {
 
   Future<void> deleteLog(String id) =>
       SupabaseService.delete('attendance_logs', id);
+
+  Future<List<EmployeeModel>> getActiveEmployees(
+    String companyId, {
+    String? departmentId,
+  }) async {
+    var query = SupabaseService.client
+        .from('employees')
+        .select('*, departments(*), roles(*)')
+        .eq('company_id', companyId)
+        .eq('is_active', true);
+    if (departmentId != null && departmentId.isNotEmpty) {
+      query = query.eq('department_id', departmentId);
+    }
+    final rows = await query.order('full_name');
+    return rows.map<EmployeeModel>((r) => EmployeeModel.fromJson(r)).toList();
+  }
 
   Future<int> getPresentCount(String companyId, DateTime date) async {
     final dateStr = date.toIso8601String().substring(0, 10);

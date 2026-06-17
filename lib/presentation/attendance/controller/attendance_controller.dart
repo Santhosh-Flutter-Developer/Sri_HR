@@ -3,53 +3,130 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:sri_hr/core/handler/exception_handler.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/models/attendance_log_model.dart';
+import 'package:sri_hr/data/models/employee_model.dart';
+import 'package:sri_hr/data/services/attendance_export_service.dart';
 import 'package:sri_hr/data/services/supabase_service.dart';
 import 'package:sri_hr/data/utils/network_time.dart';
 import 'package:sri_hr/presentation/attendance/repository/attendance_repository.dart';
+import 'package:sri_hr/presentation/attendance/widgets/export_format_dialog.dart';
 import 'package:sri_hr/presentation/attendance/widgets/filter_sheet.dart';
 import 'package:sri_hr/presentation/attendance/widgets/punch_form_dialog.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
-import 'package:sri_hr/presentation/helper/helper.dart';
+import 'package:sri_hr/data/helper/helper.dart';
+import 'package:sri_hr/data/services/connectivity_service.dart';
 
 AuthController get auth => Get.find<AuthController>();
 
 class AttendanceController extends GetxController {
   final repo = AttendanceRepository();
   final logs = <AttendanceLogModel>[].obs;
+  final allEmployees = <EmployeeModel>[].obs;
   final isLoading = false.obs;
   // Filters
   final fromDate = Rxn<DateTime>();
   final toDate = Rxn<DateTime>();
+  final RxBool showErr = true.obs;
   final filterEmployeeId = RxnString();
   final filterDepartmentId = RxnString();
+ final activePreset = RxnString();
+  // 'present' | 'absent' | null
+  final statusFilter = RxnString();
+
+  void toggleStatusFilter(String status) {
+    statusFilter.value = statusFilter.value == status ? null : status;
+    currentPage.value = 0;
+  }
 
   // View mode: 'table' or 'grid'
   final viewMode = 'table'.obs;
 
+  // Pagination
+  final pageSize = 10.obs;
+  final currentPage = 0.obs;
+  final pageSizeOptions = [10, 20, 50, 100];
+
   @override
-  void onInit() {
-    super.onInit();
-    NetworkTime.syncTime();
-    final now = NetworkTime.now();
-    fromDate.value = DateTime(now.year, now.month, 1);
-    toDate.value = now;
-    loadLogs();
+void onInit() {
+  super.onInit();
+  _registerReload();
+  NetworkTime.syncTime();
+
+  final args = Get.arguments;
+  DateTime initialDate = NetworkTime.now();
+  String? initialStatus;
+  bool fromDashboard = false;
+
+  if (args is Map) {
+    final argDate = args['date'];
+    if (argDate is DateTime) {
+      initialDate = argDate;
+      fromDashboard = true;
+    }
+    final argStatus = args['statusFilter'];
+    if (argStatus is String) {
+      initialStatus = argStatus;
+    }
+  }
+
+  fromDate.value = initialDate;
+  toDate.value = initialDate;
+  final now = NetworkTime.now();
+  final isToday = initialDate.year == now.year &&
+      initialDate.month == now.month &&
+      initialDate.day == now.day;
+  activePreset.value = (!fromDashboard || isToday) ? 'today' : null;
+  statusFilter.value = initialStatus;
+
+  loadLogs();
+}
+
+  void _registerReload() {
+    try {
+      Get.find<ConnectivityService>().register(loadLogs);
+    } catch (_) {}
   }
 
   Future<void> loadLogs() async {
+     if (auth.companyId.isEmpty) {
+      logs.value = [];
+      allEmployees.value = [];
+      return;
+    }
     isLoading.value = true;
+    currentPage.value = 0;
     try {
-      logs.value = await repo.getAttendanceLogs(
-        auth.companyId,
-        fromDate: fromDate.value,
-        toDate: toDate.value,
-        employeeId: !auth.isAdmin ? auth.employeeId : filterEmployeeId.value,
-      );
+      final results = await Future.wait([
+        repo.getAttendanceLogs(
+          auth.companyId,
+          fromDate: fromDate.value,
+          toDate: toDate.value,
+          employeeId: !auth.isAdmin ? auth.employeeId : filterEmployeeId.value,
+        ),
+        if (auth.isAdmin)
+          repo.getActiveEmployees(
+            auth.companyId,
+            departmentId: filterDepartmentId.value,
+          )
+        else if (auth.employeeId != null)
+          repo.getActiveEmployees(
+            auth.companyId,
+          ),
+      ]);
+      logs.value = results[0] as List<AttendanceLogModel>;
+      if (auth.isAdmin) {
+        allEmployees.value = results[1] as List<EmployeeModel>;
+      } else if (auth.employeeId != null && results.length > 1) {
+        // Store just own record so absent-row injection has employee object
+        final all = results[1] as List<EmployeeModel>;
+        allEmployees.value =
+            all.where((e) => e.id == auth.employeeId).toList();
+      }
     } catch (e) {
       debugPrint('[AttendCtrl] load error: $e');
-      showError('Failed to load attendance: $e');
+      showError(handleException(e));
     } finally {
       isLoading.value = false;
     }
@@ -60,6 +137,7 @@ class AttendanceController extends GetxController {
     DateTime? to,
     String? employeeId,
     String? departmentId,
+    String? preset,
   }) {
     if (from != null) fromDate.value = from;
     if (to != null) toDate.value = to;
@@ -69,22 +147,28 @@ class AttendanceController extends GetxController {
     if (departmentId != null) {
       filterDepartmentId.value = departmentId == '' ? null : departmentId;
     }
+    activePreset.value = preset;
+    currentPage.value = 0;
     loadLogs();
   }
 
   void clearFilters() {
     final now = NetworkTime.now();
-    fromDate.value = DateTime(now.year, now.month, 1);
+    fromDate.value = now;
     toDate.value = now;
     filterEmployeeId.value = null;
     filterDepartmentId.value = null;
+    activePreset.value = 'today';
+    currentPage.value = 0;
     loadLogs();
   }
 
-  /// Group logs by employee+date → { empId_date: { employee, date, inLogs, outLogs } }
-  /// Supports multiple IN/OUT per day
+  /// Group logs by employee+date — includes absent employees too.
+  /// All active employees appear for every date in the range.
   List<Map<String, dynamic>> get groupedByEmployeeDate {
     final Map<String, Map<String, dynamic>> map = {};
+
+    // Step 1: add rows for employees who punched in/out
     for (final log in logs) {
       final dateStr = log.date.toIso8601String().substring(0, 10);
       final key = '${log.employeeId}_$dateStr';
@@ -97,6 +181,7 @@ class AttendanceController extends GetxController {
           'inLogs': <AttendanceLogModel>[],
           'outLogs': <AttendanceLogModel>[],
           'totalMins': 0,
+          'isAbsent': false,
         },
       );
       if (log.punchType == PunchType.in_) {
@@ -105,10 +190,8 @@ class AttendanceController extends GetxController {
         (map[key]!['outLogs'] as List).add(log);
       }
     }
-    // Calculate totals
-    // Replace totalHrs calculation in groupedByEmployeeDate (attendance_controller.dart)
-    // Calculate totals — pair each IN with next OUT in chronological order
-    // Calculate totals — sequential pairing IN[0]→OUT[0], IN[1]→OUT[1]
+
+    // Step 2: calculate totals
     for (final row in map.values) {
       final ins = (row['inLogs'] as List<AttendanceLogModel>)
         ..sort((a, b) => a.punchTime.compareTo(b.punchTime));
@@ -121,7 +204,67 @@ class AttendanceController extends GetxController {
       }
       row['totalMins'] = totalMins;
     }
-    // Sort by date desc, then employee name
+
+    // Step 3: inject absent rows
+    final from = fromDate.value;
+    final to   = toDate.value;
+    if (from != null && to != null) {
+      final presentKeys = map.keys.toSet();
+      DateTime cursor = DateTime(from.year, from.month, from.day);
+      final end = DateTime(to.year, to.month, to.day);
+
+      if (auth.isAdmin && allEmployees.isNotEmpty) {
+        // Admin: inject for every active employee on every date
+        while (!cursor.isAfter(end)) {
+          final dateStr  = cursor.toIso8601String().substring(0, 10);
+          final dateCopy = cursor;
+          for (final emp in allEmployees) {
+            if (filterEmployeeId.value != null &&
+                filterEmployeeId.value!.isNotEmpty &&
+                emp.id != filterEmployeeId.value) {
+              continue;
+            }
+            final key = '${emp.id}_$dateStr';
+            if (!presentKeys.contains(key)) {
+              map[key] = {
+                'employeeId': emp.id,
+                'employee':   emp,
+                'date':       dateCopy,
+                'inLogs':     <AttendanceLogModel>[],
+                'outLogs':    <AttendanceLogModel>[],
+                'totalMins':  0,
+                'isAbsent':   true,
+              };
+            }
+          }
+          cursor = cursor.add(const Duration(days: 1));
+        }
+      } else if (!auth.isAdmin && auth.employeeId != null) {
+        // Regular user: inject absent rows for every date they didn't punch
+        final existingEmp = allEmployees.isNotEmpty
+            ? allEmployees.first
+            : (map.values.isNotEmpty ? map.values.first['employee'] : null);
+        while (!cursor.isAfter(end)) {
+          final dateStr  = cursor.toIso8601String().substring(0, 10);
+          final dateCopy = cursor;
+          final key = '${auth.employeeId}_$dateStr';
+          if (!presentKeys.contains(key)) {
+            map[key] = {
+              'employeeId': auth.employeeId,
+              'employee':   existingEmp,
+              'date':       dateCopy,
+              'inLogs':     <AttendanceLogModel>[],
+              'outLogs':    <AttendanceLogModel>[],
+              'totalMins':  0,
+              'isAbsent':   true,
+            };
+          }
+          cursor = cursor.add(const Duration(days: 1));
+        }
+      }
+    }
+
+    // Step 4: sort by date desc, then employee name
     final list = map.values.toList();
     list.sort((a, b) {
       final dateCmp = (b['date'] as DateTime).compareTo(a['date'] as DateTime);
@@ -131,6 +274,61 @@ class AttendanceController extends GetxController {
       return aName.compareTo(bName);
     });
     return list;
+  }
+
+  /// True when from and to are the same calendar day
+  bool get isSingleDay {
+    final f = fromDate.value;
+    final t = toDate.value;
+    if (f == null || t == null) return false;
+    return f.year == t.year && f.month == t.month && f.day == t.day;
+  }
+
+  /// Unique employees who have at least one IN punch
+  int get presentCount {
+    return logs
+        .where((l) => l.punchType == PunchType.in_)
+        .map((l) => l.employeeId)
+        .toSet()
+        .length;
+  }
+
+  /// Active employees minus present (admin only)
+  int get absentCount {
+    if (!auth.isAdmin) return 0;
+    return (allEmployees.length - presentCount).clamp(0, allEmployees.length);
+  }
+
+  /// Rows after applying the present/absent status filter
+  List<Map<String, dynamic>> get filteredRows {
+    final rows = groupedByEmployeeDate;
+    if (!isSingleDay || statusFilter.value == null) return rows;
+    final wantAbsent = statusFilter.value == 'absent';
+    return rows.where((r) => (r['isAbsent'] as bool) == wantAbsent).toList();
+  }
+
+  /// Current page slice
+  List<Map<String, dynamic>> get pagedRows {
+    final all = filteredRows;
+    final start = currentPage.value * pageSize.value;
+    if (start >= all.length) return [];
+    final end = (start + pageSize.value).clamp(0, all.length);
+    return all.sublist(start, end);
+  }
+
+  int get totalPages {
+    final total = filteredRows.length;
+    if (total == 0) return 1;
+    return (total / pageSize.value).ceil();
+  }
+
+  void goToPage(int page) {
+    currentPage.value = page.clamp(0, totalPages - 1);
+  }
+
+  void setPageSize(int size) {
+    pageSize.value = size;
+    currentPage.value = 0;
   }
 
   Future<void> loadLogsRange(DateTime from, DateTime to) async {
@@ -157,9 +355,15 @@ class AttendanceController extends GetxController {
     bool isManual = true,
   }) async {
     try {
-      data['company_id'] = auth.companyId;
-      data['adjusted_by'] = auth.userId;
-
+      if (auth.companyId.isNotEmpty) {
+        data['company_id'] = auth.companyId;
+      }
+      if (auth.userId.isNotEmpty) {
+        data['adjusted_by'] = auth.userId;
+      } else {
+        data.remove('adjusted_by');
+      }
+      final companyId = data['company_id'] as String;
       final empId = data['employee_id'] as String;
       final dateStr = data['date'] as String;
       final punchType = data['punch_type'] as String;
@@ -169,7 +373,7 @@ class AttendanceController extends GetxController {
       final leaveCheck = await SupabaseService.client
           .from('leave_requests')
           .select('id, from_date, to_date')
-          .eq('company_id', auth.companyId)
+          .eq('company_id', companyId)
           .eq('employee_id', empId)
           .eq('status', 'approved')
           .lte('from_date', dateStr)
@@ -180,12 +384,19 @@ class AttendanceController extends GetxController {
         showError(
           'Cannot add punch on $dateStr — employee has an approved leave on this date',
         );
+        showErr.value = false;
         return;
       }
 
+      final freshLogs = await repo.getAttendanceLogs(
+        companyId,
+        date: newPunchTime,
+        employeeId: empId,
+      );
+
       // ... rest of existing validation (sequence check, time check) ...
       final sameDayLogs =
-          logs
+          freshLogs
               .where(
                 (l) =>
                     l.employeeId == empId &&
@@ -201,13 +412,24 @@ class AttendanceController extends GetxController {
           .where((l) => l.punchType == PunchType.out)
           .toList();
 
-      if (punchType == 'out' && inLogs.length <= outLogs.length) {
-        showError('Please add Punch IN before Punch OUT');
-        return;
+      // ✅ Check actual last punch type, not counts
+      final lastLog = sameDayLogs.isNotEmpty ? sameDayLogs.last : null;
+      if (punchType == 'out') {
+        // Can only punch out if last punch was "in"
+        if (lastLog == null || lastLog.punchType != PunchType.in_) {
+          showError('Punch IN must be recorded before Punch OUT. Please add an IN record first.');
+          showErr.value = false;
+          return;
+        }
       }
-      if (punchType == 'in' && inLogs.length > outLogs.length) {
-        showError('Please add Punch OUT before adding another Punch IN');
-        return;
+
+      if (punchType == 'in') {
+        // Can only punch in if no punch yet, or last punch was "out"
+        if (lastLog != null && lastLog.punchType == PunchType.in_) {
+          showError('Please record a Punch OUT before adding another Punch IN.');
+          showErr.value = false;
+          return;
+        }
       }
 
       if (sameDayLogs.isNotEmpty) {
@@ -218,38 +440,56 @@ class AttendanceController extends GetxController {
           showError(
             'Time must be after ${AttendanceController.fmtTime(lastPunchTime)}',
           );
+          showErr.value = false;
           return;
         }
       }
-
+      showErr.value = true;
       final log = await repo.adjustPunch(data, isManual: isManual);
       logs.add(log);
       if (showToast == true) showSuccess('Punch adjusted successfully');
     } catch (e) {
       debugPrint('[AdjustPunch] error: $e');
-      showError('Failed: $e');
+      showError(handleException(e));
     }
   }
 
+  String fmtDate(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+
   void confirmDelete(BuildContext context, String id) {
+    // log(
+    //   "ABuddy:${a?.employee?.fullName}-(${fmtDate(a!.date)}-${fmtTime(a.punchTime)})",
+    // );
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Delete Attendance Log'),
-        content: const Text('Are you sure you want to delete this record?'),
-        actions: [
-          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () {
-              Get.back();
-              deleteLog(id);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Delete'),
+      builder: (_) {
+        var rec = logs.firstWhereOrNull((l) => l.id == id);
+        return AlertDialog(
+          insetPadding: EdgeInsets.all(10),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
-        ],
-      ),
+          title: const Text('Delete Report'),
+          content: Text(
+            'Are you sure you want to delete this record ${rec?.employee?.fullName} - (${fmtDate(rec!.date)} - ${fmtTime(rec.punchTime)})?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Get.back(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Get.back();
+                deleteLog(id);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+              child: const Text('Yes'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -259,20 +499,57 @@ class AttendanceController extends GetxController {
       logs.removeWhere((l) => l.id == id);
       showSuccess('Log deleted');
     } catch (e) {
-      showError('Failed: $e');
+      showError(handleException(e));
     }
   }
 
   String formatDate(DateTime d) => '${d.day}/${d.month}/${d.year}';
 
-  void showExportMenu(BuildContext context) {
-    Get.snackbar(
-      'Export',
-      'Export functionality – connect your preferred export library',
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: AppColors.info,
-      colorText: Colors.white,
+  Future<void> showExportMenu(BuildContext context) async {
+    final rows = groupedByEmployeeDate;
+    if (rows.isEmpty) {
+      showWarning('No attendance data to export for the selected period.');
+      return;
+    }
+
+    final format = await showDialog<ExportFormat>(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => const ExportFormatDialog(),
     );
+
+    if (format == null || !context.mounted) return;
+
+    final companyName = 'Attendance Report';
+    final from = fromDate.value ?? DateTime.now();
+    final to = toDate.value ?? DateTime.now();
+
+    try {
+      if (format == ExportFormat.pdf) {
+        showSuccess('Generating PDF…');
+        await AttendanceExportService.exportPDF(
+          context: context,
+          rows: rows,
+          fromDate: from,
+          toDate: to,
+          companyName: companyName,
+        );
+      } else {
+        showSuccess('Generating Excel…');
+        await AttendanceExportService.exportExcel(
+          context: context,
+          rows: rows,
+          fromDate: from,
+          toDate: to,
+          companyName: companyName,
+        );
+      }
+    } catch (e) {
+      debugPrint('[Export] error: $e');
+      if (context.mounted) {
+        showError(handleException(e));
+      }
+    }
   }
 
   void showForm(
@@ -300,13 +577,7 @@ class AttendanceController extends GetxController {
   void exportCSV(BuildContext context, AttendanceController controller) {
     final rows = controller.groupedByEmployeeDate;
     if (rows.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No data to export'),
-          backgroundColor: AppColors.warning,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      showWarning('No attendance data to export for the selected period.');
       return;
     }
     final buf = StringBuffer();
@@ -342,28 +613,9 @@ class AttendanceController extends GetxController {
       final blob = base64.encode(bytes);
       debugPrint('[Export] CSV data prepared (${bytes.length} bytes)');
       // Show preview snackbar
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Exported ${rows.length} records. CSV ready.'),
-          backgroundColor: AppColors.success,
-          behavior: SnackBarBehavior.floating,
-          action: SnackBarAction(
-            label: 'Copy',
-            textColor: Colors.white,
-            onPressed: () {
-              /* clipboard copy */
-            },
-          ),
-        ),
-      );
+      showSuccess('Exported \${rows.length} records. CSV ready.');
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Exported ${rows.length} records'),
-          backgroundColor: AppColors.success,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      showSuccess('Exported \${rows.length} records');
     }
     debugPrint('[Export] CSV:\n$buf');
   }

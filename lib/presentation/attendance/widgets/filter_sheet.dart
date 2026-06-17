@@ -5,6 +5,7 @@ import 'package:sri_hr/data/utils/network_time.dart';
 import 'package:sri_hr/presentation/attendance/controller/attendance_controller.dart';
 import 'package:sri_hr/presentation/attendance/widgets/date_tap_box.dart';
 import 'package:sri_hr/presentation/attendance/widgets/quick_btn.dart';
+import 'package:sri_hr/presentation/attendance/widgets/searchable_employee_dropdown.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/employee/controller/employee_controller.dart';
 
@@ -19,6 +20,7 @@ class FilterSheetState extends State<FilterSheet> {
   late DateTime? from;
   late DateTime? to;
   String? empId;
+  String? selectedPreset; // tracks which quick-select chip is active
   final auth = Get.find<AuthController>();
 
   late final EmployeeController empCtrl;
@@ -33,6 +35,8 @@ class FilterSheetState extends State<FilterSheet> {
         ? auth.employeeId
         : widget.controller.filterEmployeeId.value;
     empCtrl = Get.find<EmployeeController>();
+    // Read persisted preset directly from controller — no guesswork
+    selectedPreset = widget.controller.activePreset.value;
   }
 
   String fmtDate(DateTime? d) {
@@ -53,12 +57,18 @@ class FilterSheetState extends State<FilterSheet> {
         child: child!,
       ),
     );
-    if (d != null && mounted) setState(() => isFrom ? from = d : to = d);
+    if (d != null && mounted) {
+      setState(() {
+        isFrom ? from = d : to = d;
+        selectedPreset = null; // manual pick clears the quick-select highlight
+      });
+    }
   }
 
   void quickSelect(String preset) {
     final now = NetworkTime.now();
     setState(() {
+      selectedPreset = preset;
       switch (preset) {
         case 'today':
           from = now;
@@ -129,10 +139,26 @@ class FilterSheetState extends State<FilterSheet> {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  QuickBtn('Today', () => quickSelect('today')),
-                  QuickBtn('This Week', () => quickSelect('week')),
-                  QuickBtn('This Month', () => quickSelect('month')),
-                  QuickBtn('Last Month', () => quickSelect('last_month')),
+                  QuickBtn(
+                    'Today',
+                    () => quickSelect('today'),
+                    isSelected: selectedPreset == 'today',
+                  ),
+                  QuickBtn(
+                    'This Week',
+                    () => quickSelect('week'),
+                    isSelected: selectedPreset == 'week',
+                  ),
+                  QuickBtn(
+                    'This Month',
+                    () => quickSelect('month'),
+                    isSelected: selectedPreset == 'month',
+                  ),
+                  QuickBtn(
+                    'Last Month',
+                    () => quickSelect('last_month'),
+                    isSelected: selectedPreset == 'last_month',
+                  ),
                 ],
               ),
             ),
@@ -166,9 +192,24 @@ class FilterSheetState extends State<FilterSheet> {
               ],
             ),
             const SizedBox(height: 14),
+            Obx(() {
+              final allEmps = empCtrl.employees;
+              final emps = auth.isAdmin
+                  ? allEmps
+                  : allEmps.where((e) => e.id == auth.employeeId).toList();
+              final ids = emps.map((e) => e.id).toList();
+              final safe = ids.contains(empId) ? empId : null;
+
+              return SearchableEmployeeDropdown(
+                employees: emps,
+                value: safe,
+                isAdmin: auth.isAdmin,
+                onChanged: (v) => setState(() => empId = v),
+              );
+            }),
 
             // Employee filter
-            Obx(() {
+            /*Obx(() {
               final allEmps = empCtrl.employees;
               // ✅ Non-admin sees only themselves
               final emps = auth.isAdmin
@@ -224,7 +265,7 @@ class FilterSheetState extends State<FilterSheet> {
                     ? (v) => setState(() => empId = v)
                     : null,
               );
-            }),
+            }),*/
             const SizedBox(height: 20),
 
             // Apply / Reset
@@ -234,6 +275,7 @@ class FilterSheetState extends State<FilterSheet> {
                   child: OutlinedButton(
                     onPressed: () {
                       widget.controller.clearFilters();
+                      setState(() => selectedPreset = null);
                       Navigator.pop(context);
                     },
                     style: OutlinedButton.styleFrom(
@@ -253,6 +295,7 @@ class FilterSheetState extends State<FilterSheet> {
                         from: from,
                         to: to,
                         employeeId: empId ?? '',
+                        preset: selectedPreset, // persist the chosen chip
                       );
                       Navigator.pop(context);
                     },
