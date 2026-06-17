@@ -18,6 +18,9 @@ class CompanyModel {
   final int radius;
   final bool isActive;
   final DateTime createdAt;
+  final bool withoutLoginEnabled;
+  final String notificationLanguage; // 'en' or 'ta'
+  final String? kioskUsername;
 
   CompanyModel({
     required this.id,
@@ -38,6 +41,9 @@ class CompanyModel {
     this.radius = 100,
     this.isActive = true,
     required this.createdAt,
+    this.withoutLoginEnabled = false,
+    this.notificationLanguage = 'en',
+    this.kioskUsername,
   });
 
   factory CompanyModel.fromJson(Map<String, dynamic> json) => CompanyModel(
@@ -59,6 +65,9 @@ class CompanyModel {
     radius: json['radius'] ?? 100,
     isActive: json['is_active'] ?? true,
     createdAt: DateTime.parse(json['created_at']),
+    withoutLoginEnabled: json['without_login_enabled'] ?? false,
+    notificationLanguage: json['notification_language'] ?? 'en',
+    kioskUsername: json['kiosk_username'],
   );
 
   Map<String, dynamic> toJson() => {
@@ -78,6 +87,9 @@ class CompanyModel {
     'longitude': longitude,
     'radius': radius,
     'is_active': isActive,
+    'without_login_enabled': withoutLoginEnabled,
+    'notification_language': notificationLanguage,
+    'kiosk_username': kioskUsername,
   };
 
   CompanyModel copyWith({
@@ -97,6 +109,9 @@ class CompanyModel {
     double? longitude,
     int? radius,
     bool? isActive,
+    bool? withoutLoginEnabled,
+    String? notificationLanguage,
+    String? kioskUsername,
   }) => CompanyModel(
     id: id,
     createdAt: createdAt,
@@ -116,5 +131,8 @@ class CompanyModel {
     longitude: longitude ?? this.longitude,
     radius: radius ?? this.radius,
     isActive: isActive ?? this.isActive,
+    withoutLoginEnabled: withoutLoginEnabled ?? this.withoutLoginEnabled,
+    notificationLanguage: notificationLanguage ?? this.notificationLanguage,
+    kioskUsername: kioskUsername ?? this.kioskUsername,
   );
 }

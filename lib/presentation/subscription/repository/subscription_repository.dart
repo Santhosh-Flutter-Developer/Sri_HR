@@ -12,6 +12,36 @@ class SubscriptionRepository {
     return row != null ? SubscriptionModel.fromJson(row) : null;
   }
 
+  Future<SubscriptionModel?> getActiveSubscriptionByOrg(String orgId) async {
+    final companies = await SupabaseService.client
+        .from('companies')
+        .select('id')
+        .eq('org_id', orgId)
+        .eq('is_active', true);
+
+    if ((companies as List).isEmpty) return null;
+
+    final companyIds = companies.map((c) => c['id'] as String).toList();
+    final row = await SupabaseService.client
+        .from('subscriptions')
+        .select()
+        .inFilter('company_id', companyIds)
+        .order('created_at', ascending: false)
+        .limit(1)
+        .maybeSingle();
+
+    return row != null ? SubscriptionModel.fromJson(row) : null;
+  }
+
+  Future<String?> getOrgId(String companyId) async {
+    final row = await SupabaseService.client
+        .from('companies')
+        .select('org_id')
+        .eq('id', companyId)
+        .maybeSingle();
+    return row?['org_id'] as String?;
+  }
+
   Future<List<Map<String, dynamic>>> getPlans() async {
     return (await SupabaseService.client
             .from('subscription_plans')

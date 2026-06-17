@@ -2,6 +2,7 @@ class AppRoutes {
   static const String routeSplash = '/';
   static const String routeLogin = '/login';
   static const String routeSignup = '/signup';
+  static const String routeForgotPassword = '/forgot-password';
   static const String routeDashboard = '/dashboard';
   static const String routeDesignation = '/designation';
   static const String routeCompany = '/company';
@@ -17,4 +18,7 @@ class AppRoutes {
   static const String routeSubscription = '/subscription';
   static const String routeFaceCapture = '/face-capture';
   static const String routeFaceRecognition = '/face-recognition';
+  static const String routeFaceDetection = '/face-detection';
+  static const String routeKioskAttendance = '/kiosk-attendance';
+
 }

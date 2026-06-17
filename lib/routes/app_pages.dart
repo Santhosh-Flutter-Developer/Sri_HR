@@ -2,6 +2,8 @@ import 'package:get/get.dart';
 import 'package:sri_hr/presentation/attendance/binding/attendance_binding.dart';
 import 'package:sri_hr/presentation/attendance/ui/attendance.dart';
 import 'package:sri_hr/presentation/attendance/ui/punch_time_adjustment.dart';
+import 'package:sri_hr/presentation/auth/forgot_password/controller/forgot_password_controller.dart';
+import 'package:sri_hr/presentation/auth/forgot_password/ui/forgot_password.dart';
 import 'package:sri_hr/presentation/auth/login/controller/login_controller.dart';
 import 'package:sri_hr/presentation/auth/login/ui/login.dart';
 import 'package:sri_hr/presentation/auth/middleware/auth_middleware.dart';
@@ -20,11 +22,13 @@ import 'package:sri_hr/presentation/employee/ui/employee.dart';
 import 'package:sri_hr/presentation/employee_status/binding/employee_status_binding.dart';
 import 'package:sri_hr/presentation/employee_status/ui/employee_status.dart';
 import 'package:sri_hr/presentation/face_capture/face_capture.dart';
+import 'package:sri_hr/presentation/face_capture/face_detection.dart';
 import 'package:sri_hr/presentation/face_capture/face_recognition.dart';
 import 'package:sri_hr/presentation/holiday/binding/holiday_binding.dart';
 import 'package:sri_hr/presentation/holiday/ui/holiday.dart';
 import 'package:sri_hr/presentation/leave/binding/leave_binding.dart';
 import 'package:sri_hr/presentation/leave/ui/leave.dart';
+import 'package:sri_hr/presentation/mark_attendance/mark_attendance.dart';
 import 'package:sri_hr/presentation/permission_request/binding/permission_binding.dart';
 import 'package:sri_hr/presentation/permission_request/ui/permission_request.dart';
 import 'package:sri_hr/presentation/salary_type/binding/salary_type_binding.dart';
@@ -127,6 +131,22 @@ class AppPages {
     GetPage(
       name: AppRoutes.routeFaceRecognition,
       page: () => FaceRecognitionView(),
+    ),
+    GetPage(
+      name: AppRoutes.routeKioskAttendance,
+      page: () => const MarkAttendance(),
+    ),
+    GetPage(
+      name: AppRoutes.routeFaceDetection,
+      page: () => FaceDetection(
+      ),
+    ),
+    GetPage(
+      name: AppRoutes.routeForgotPassword,
+      page: () => const ForgotPassword(),
+      binding: BindingsBuilder(() {
+        Get.lazyPut(() => ForgotPasswordController());
+      }),
     ),
   ];
 }

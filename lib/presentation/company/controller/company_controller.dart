@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:sri_hr/core/handler/exception_handler.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/models/company_model.dart';
 import 'package:sri_hr/data/models/role_permission_model.dart';
@@ -16,12 +17,13 @@ import 'package:sri_hr/presentation/department/controller/department_controller.
 import 'package:sri_hr/presentation/designation/controller/role_controller.dart';
 import 'package:sri_hr/presentation/employee/controller/employee_controller.dart';
 import 'package:sri_hr/presentation/employee_status/controller/employee_status_controller.dart';
-import 'package:sri_hr/presentation/helper/helper.dart';
+import 'package:sri_hr/data/helper/helper.dart';
 import 'package:sri_hr/presentation/holiday/controller/holiday_controller.dart';
 import 'package:sri_hr/presentation/leave/controller/leave_controller.dart';
 import 'package:sri_hr/presentation/permission_request/controller/permission_request_controller.dart';
 import 'package:sri_hr/presentation/salary_type/controller/salary_type_controller.dart';
 import 'package:sri_hr/widgets/sri_button.dart';
+import 'package:sri_hr/data/services/connectivity_service.dart';
 
 AuthController get auth => Get.find<AuthController>();
 
@@ -40,6 +42,7 @@ class CompanyController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    _registerReload();
 
     ever(auth.currentUser, (u) {
       if (u != null && companies.isEmpty) {
@@ -51,6 +54,12 @@ class CompanyController extends GetxController {
     }
   }
 
+
+  void _registerReload() {
+    try {
+      Get.find<ConnectivityService>().register(loadAllCompanies);
+    } catch (_) {}
+  }
   Future<void> loadAllCompanies() async {
     isLoading.value = true;
     errorMessage.value = '';
@@ -113,7 +122,7 @@ class CompanyController extends GetxController {
       }
     } catch (e) {
       errorMessage.value = e.toString();
-      showError('Failed to load companies: $e');
+      showError(handleException(e));
     } finally {
       isLoading.value = false;
     }
@@ -191,12 +200,12 @@ class CompanyController extends GetxController {
     isLoading.value = true;
     try {
       final oid = orgId ?? await getOrgId();
-      if (oid == null) throw Exception('Organization not found');
+      if (oid == null) throw Exception('Organisation record not found. Please contact support.');
       await client.rpc(
         'add_company_branch',
         params: {
           'p_org_id': oid,
-          'p_company_name': data['name'],
+          'p_company_name': data['name']??null,
           'p_branch_code': data['branch_code'],
           'p_gstin': data['gstin'],
           'p_phone': data['phone'],
@@ -211,7 +220,7 @@ class CompanyController extends GetxController {
       await loadAllCompanies();
       showSuccess('Branch "${data['name']}" added successfully');
     } catch (e) {
-      showError('Failed to add branch: $e');
+      showError(handleException(e));
     } finally {
       isLoading.value = false;
     }
@@ -246,9 +255,9 @@ class CompanyController extends GetxController {
       activeCompany.value = updated;
       final idx = companies.indexWhere((c) => c.id == cid);
       if (idx != -1) companies[idx] = updated;
-      showSuccess('Company updated');
+     
     } catch (e) {
-      showError('Failed to update: $e');
+      showError(handleException(e));
     } finally {
       isLoading.value = false;
     }
@@ -257,7 +266,7 @@ class CompanyController extends GetxController {
   // ── Delete a branch ──────────────────────────────────────
   Future<void> deleteBranch(String companyId) async {
     if (companies.length <= 1) {
-      showError('Cannot delete the only company');
+      showError('You cannot delete the only branch. Add another branch first, then delete this one.');
       return;
     }
     try {
@@ -268,7 +277,7 @@ class CompanyController extends GetxController {
       }
       showSuccess('Branch deleted');
     } catch (e) {
-      showError('Failed to delete: $e');
+      showError(handleException(e));
     }
   }
 
@@ -303,9 +312,203 @@ class CompanyController extends GetxController {
       final comp = await repo.getCompany(id);
       return comp;
     } catch (e) {
-      showError("Failed to load employee: $e");
+      showError(handleException(e));
     }
     return null;
+  }
+
+  // ── Duplicate field checks (used by Add & Edit forms) ────
+
+  Future<bool> isBranchNameExists(
+    String name, {
+    String? excludeCompanyId,
+  }) async {
+    try {
+      final oid = orgId ?? await getOrgId();
+      if (oid == null) return false;
+      return await repo.isBranchNameExists(
+        name,
+        oid,
+        excludeCompanyId: excludeCompanyId,
+      );
+    } catch (e) {
+      debugPrint('[CompanyCtrl] isBranchNameExists ERROR: $e');
+      return false;
+    }
+  }
+
+  Future<bool> isBranchCodeExists(
+    String branchCode, {
+    String? excludeCompanyId,
+  }) async {
+    try {
+      final oid = orgId ?? await getOrgId();
+      if (oid == null) return false;
+      return await repo.isBranchCodeExists(
+        branchCode,
+        oid,
+        excludeCompanyId: excludeCompanyId,
+      );
+    } catch (e) {
+      debugPrint('[CompanyCtrl] isBranchCodeExists ERROR: $e');
+      return false;
+    }
+  }
+
+  /// Global: GSTIN must be unique across ALL companies.
+  Future<bool> isGstinExists(
+    String gstin, {
+    String? excludeCompanyId,
+  }) async {
+    try {
+      return await repo.isGstinExists(
+        gstin,
+        excludeCompanyId: excludeCompanyId,
+      );
+    } catch (e) {
+      debugPrint('[CompanyCtrl] isGstinExists ERROR: $e');
+      return false;
+    }
+  }
+
+  Future<bool> isBranchPhoneExists(
+    String phone, {
+    String? excludeCompanyId,
+  }) async {
+    try {
+      final oid = orgId ?? await getOrgId();
+      if (oid == null) return false;
+      return await repo.isBranchPhoneExists(
+        phone,
+        oid,
+        excludeCompanyId: excludeCompanyId,
+      );
+    } catch (e) {
+      debugPrint('[CompanyCtrl] isBranchPhoneExists ERROR: $e');
+      return false;
+    }
+  }
+
+  Future<bool> isBranchEmailExists(
+    String email, {
+    String? excludeCompanyId,
+  }) async {
+    try {
+      final oid = orgId ?? await getOrgId();
+      if (oid == null) return false;
+      return await repo.isBranchEmailExists(
+        email,
+        oid,
+        excludeCompanyId: excludeCompanyId,
+      );
+    } catch (e) {
+      debugPrint('[CompanyCtrl] isBranchEmailExists ERROR: $e');
+      return false;
+    }
+  }
+
+  /// Global: phone must be unique across ALL companies + ALL employees.
+  Future<bool> isPhoneGloballyExists(
+    String phone, {
+    String? excludeCompanyId,
+  }) async {
+    try {
+      return await repo.isPhoneGloballyExists(
+        phone,
+        excludeCompanyId: excludeCompanyId,
+      );
+    } catch (e) {
+      debugPrint('[CompanyCtrl] isPhoneGloballyExists ERROR: $e');
+      return false;
+    }
+  }
+
+  /// Global: email must be unique across ALL companies + ALL employees.
+  Future<bool> isEmailGloballyExists(
+    String email, {
+    String? excludeCompanyId,
+  }) async {
+    try {
+      return await repo.isEmailGloballyExists(
+        email,
+        excludeCompanyId: excludeCompanyId,
+      );
+    } catch (e) {
+      debugPrint('[CompanyCtrl] isEmailGloballyExists ERROR: $e');
+      return false;
+    }
+  }
+
+  // ── Kiosk / Without-Login ────────────────────────────────
+
+  /// Save kiosk settings (without_login toggle, language, username + password).
+  /// If [withoutLogin] is false, clears kiosk credentials from DB via RPC.
+  /// If [withoutLogin] is true:
+  ///   - First time (no existing kiosk_username): calls set_kiosk_credentials
+  ///   - Updating (existing kiosk_username): calls update_kiosk_settings
+  ///     (password is optional — blank = keep existing)
+  Future<void> saveKioskSettings({
+    required String companyId,
+    required bool withoutLogin,
+    required String language,
+    String? kioskUsername,
+    String? kioskPassword,
+    bool isFirstTime = true, // true = set_kiosk_credentials, false = update_kiosk_settings
+  }) async {
+    isLoading.value = true;
+    try {
+      if (!withoutLogin) {
+        // Disable: clear credentials via RPC
+        await client.rpc('disable_kiosk', params: {
+          'p_company_id': companyId,
+          'p_language': language,
+        });
+      } else if (isFirstTime) {
+        // First-time enable: password is required
+        await client.rpc('set_kiosk_credentials', params: {
+          'p_company_id': companyId,
+          'p_username': kioskUsername,
+          'p_password': kioskPassword,
+          'p_language': language,
+        });
+      } else {
+        // Update existing kiosk: password optional
+        await client.rpc('update_kiosk_settings', params: {
+          'p_company_id': companyId,
+          'p_username': kioskUsername,
+          'p_language': language,
+          'p_password': kioskPassword, // null = keep existing
+        });
+      }
+      await loadAllCompanies();
+       showSuccess('Company updated Successfully');
+    } catch (e) {
+      // Show meaningful error from RPC (e.g. username already taken)
+      final msg = e.toString().replaceAll('Exception: ', '');
+      showError(msg);
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// Returns true if username is free globally
+  /// (not in users.username AND not in another company's kiosk_username).
+  Future<bool> isKioskUsernameAvailable(
+    String username,
+    String currentCompanyId,
+  ) async {
+    try {
+      final result = await client.rpc(
+        'check_kiosk_username_available',
+        params: {
+          'p_username': username,
+          'p_company_id': currentCompanyId,
+        },
+      );
+      return result == true;
+    } catch (e) {
+      return false;
+    }
   }
 
   void confirmSwitch(
@@ -359,6 +562,7 @@ class CompanyController extends GetxController {
           TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
           SriButton(
             label: "Delete",
+            color: AppColors.error,
             onPressed: () {
               Get.back();
               controller.deleteBranch(c.id);

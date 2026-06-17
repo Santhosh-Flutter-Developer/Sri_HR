@@ -61,6 +61,12 @@ class LoginController extends GetxController {
       "xs": 12,
     },
     {
+      "label": "Forgot Password?",
+      "type": "forgot_password",
+      "topPadding": 16.0,
+      "onPressed": () => Get.toNamed(AppRoutes.routeForgotPassword),
+    },
+    {
       "label": "Sign In",
       "onPressed": submit,
       "type": "button",

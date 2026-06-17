@@ -104,18 +104,18 @@ class BranchTile extends StatelessWidget {
                   ],
                 ),
               ),
-              if (onDelete != null)
-                GestureDetector(
-                  onTap: onDelete,
-                  child: const Padding(
-                    padding: EdgeInsets.all(4.0),
-                    child: Icon(
-                      Icons.delete_outline_rounded,
-                      size: 16.0,
-                      color: AppColors.error,
-                    ),
-                  ),
-                ),
+              // if (onDelete != null)
+              //   GestureDetector(
+              //     onTap: onDelete,
+              //     child: const Padding(
+              //       padding: EdgeInsets.all(4.0),
+              //       child: Icon(
+              //         Icons.delete_outline_rounded,
+              //         size: 16.0,
+              //         color: AppColors.error,
+              //       ),
+              //     ),
+              //   ),
             ],
           ),
         ),

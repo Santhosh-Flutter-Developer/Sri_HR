@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -10,6 +11,8 @@ import 'package:sri_hr/presentation/company/controller/company_controller.dart';
 import 'package:sri_hr/presentation/company/widgets/sri_detail_card.dart';
 import 'package:sri_hr/widgets/sri_button.dart';
 import 'package:sri_hr/widgets/sri_textfield.dart';
+
+// ── Duplicate-check mixin helpers (reused inline) ────────────────────────────
 
 class CompanyDetail extends StatefulWidget {
   final CompanyModel company;
@@ -45,10 +48,78 @@ class _CompanyDetailState extends State<CompanyDetail> {
   Uint8List? logoBytes;
   String? logoPath;
 
+  // ── Kiosk / Without-Login settings ──────────────────────
+  late bool kioskEnabled; // Without Login: true/false
+  late String notifLang; // 'en' or 'ta'
+  final kioskUsernameCtrl = TextEditingController();
+  final kioskPasswordCtrl = TextEditingController();
+  bool kioskPasswordVisible = false;
+
+  // Live username uniqueness check
+  Timer? _usernameDebounce;
+  bool isCheckingUsername = false;
+  bool usernameVerified = false;
+  String? usernameError;
+
+  // Live password validation
+  String? passwordError;
+
+  // ── Duplicate-check state for branch fields ──────────────
+  Timer? _nameDebounce;
+  Timer? _codeDebounce;
+  Timer? _gstinDebounce;
+  Timer? _phoneDebounce;
+  Timer? _emailDebounce;
+
+  bool isCheckingName = false;
+  bool isCheckingCode = false;
+  bool isCheckingGstin = false;
+  bool isCheckingPhone = false;
+  bool isCheckingEmail = false;
+
+  String? nameError;
+  String? codeError;
+  String? gstinError;
+  String? phoneError;
+  String? editEmailError;
+
+  bool get _anyFieldChecking =>
+      isCheckingName ||
+      isCheckingCode ||
+      isCheckingGstin ||
+      isCheckingPhone ||
+      isCheckingEmail;
+
+  bool get _hasFieldErrors =>
+      nameError != null ||
+      codeError != null ||
+      gstinError != null ||
+      phoneError != null ||
+      editEmailError != null;
+
   @override
   void initState() {
     super.initState();
     init(widget.company);
+    kioskEnabled = widget.company.withoutLoginEnabled;
+    notifLang = widget.company.notificationLanguage;
+    // Preserve exact case as stored
+    kioskUsernameCtrl.text = widget.company.kioskUsername ?? '';
+    // Existing saved username is already valid
+    usernameVerified = widget.company.kioskUsername != null;
+  }
+
+  @override
+  void dispose() {
+    _usernameDebounce?.cancel();
+    _nameDebounce?.cancel();
+    _codeDebounce?.cancel();
+    _gstinDebounce?.cancel();
+    _phoneDebounce?.cancel();
+    _emailDebounce?.cancel();
+    kioskUsernameCtrl.dispose();
+    kioskPasswordCtrl.dispose();
+    super.dispose();
   }
 
   void init(CompanyModel c) {
@@ -65,6 +136,252 @@ class _CompanyDetailState extends State<CompanyDetail> {
     lat = TextEditingController(text: '${c.latitude ?? ''}');
     lon = TextEditingController(text: '${c.longitude ?? ''}');
     radius = TextEditingController(text: '${c.radius}');
+  }
+
+  bool get isUsernameChanged {
+    final originalUsername = widget.company.kioskUsername ?? '';
+    final currentUsername = kioskUsernameCtrl.text.trim();
+
+    return widget.company.kioskUsername != null &&
+        currentUsername != originalUsername;
+  }
+
+  // ── Duplicate-check handlers for branch fields ──────────
+
+  void onNameChanged(String value) {
+    _nameDebounce?.cancel();
+    if (value.trim().isEmpty ||
+        value.trim().toLowerCase() == widget.company.name.toLowerCase()) {
+      setState(() {
+        nameError = null;
+        isCheckingName = false;
+      });
+      return;
+    }
+    setState(() {
+      isCheckingName = true;
+      nameError = null;
+    });
+    _nameDebounce = Timer(const Duration(milliseconds: 600), () async {
+      final exists = await widget.controller.isBranchNameExists(
+        value.trim(),
+        excludeCompanyId: widget.company.id,
+      );
+      if (!mounted) return;
+      setState(() {
+        isCheckingName = false;
+        nameError = exists ? 'Branch name already exists' : null;
+      });
+    });
+  }
+
+  void onCodeChanged(String value) {
+    _codeDebounce?.cancel();
+    if (value.trim().isEmpty ||
+        value.trim().toLowerCase() ==
+            (widget.company.branchCode ?? '').toLowerCase()) {
+      setState(() {
+        codeError = null;
+        isCheckingCode = false;
+      });
+      return;
+    }
+    setState(() {
+      isCheckingCode = true;
+      codeError = null;
+    });
+    _codeDebounce = Timer(const Duration(milliseconds: 600), () async {
+      final exists = await widget.controller.isBranchCodeExists(
+        value.trim(),
+        excludeCompanyId: widget.company.id,
+      );
+      if (!mounted) return;
+      setState(() {
+        isCheckingCode = false;
+        codeError = exists ? 'Branch code already exists' : null;
+      });
+    });
+  }
+
+  void onGstinChanged(String value) {
+    _gstinDebounce?.cancel();
+    if (value.trim().isEmpty ||
+        value.trim().toLowerCase() ==
+            (widget.company.gstin ?? '').toLowerCase()) {
+      setState(() {
+        gstinError = null;
+        isCheckingGstin = false;
+      });
+      return;
+    }
+    setState(() {
+      isCheckingGstin = true;
+      gstinError = null;
+    });
+    _gstinDebounce = Timer(const Duration(milliseconds: 600), () async {
+      final exists = await widget.controller.isGstinExists(
+        value.trim(),
+        excludeCompanyId: widget.company.id,
+      );
+      if (!mounted) return;
+      setState(() {
+        isCheckingGstin = false;
+        gstinError = exists ? 'GSTIN already registered' : null;
+      });
+    });
+  }
+
+  static bool _isValidPhone(String v) =>
+      RegExp(r'^[0-9]{10}$').hasMatch(v.trim());
+
+  static bool _isValidEmail(String v) =>
+      RegExp(r'^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}$').hasMatch(v.trim());
+
+  void onPhoneChanged(String value) {
+    _phoneDebounce?.cancel();
+    if (value.trim().isEmpty ||
+        value.trim() == (widget.company.phone ?? '')) {
+      setState(() {
+        phoneError = null;
+        isCheckingPhone = false;
+      });
+      return;
+    }
+    // Format check first — no API call needed
+    if (!_isValidPhone(value)) {
+      setState(() {
+        phoneError = 'Phone number must be 10 digits';
+        isCheckingPhone = false;
+      });
+      return;
+    }
+    setState(() {
+      isCheckingPhone = true;
+      phoneError = null;
+    });
+    _phoneDebounce = Timer(const Duration(milliseconds: 600), () async {
+      final exists = await widget.controller.isPhoneGloballyExists(
+        value.trim(),
+        excludeCompanyId: widget.company.id,
+      );
+      if (!mounted) return;
+      setState(() {
+        isCheckingPhone = false;
+        phoneError = exists ? 'Phone number already registered' : null;
+      });
+    });
+  }
+
+  void onEditEmailChanged(String value) {
+    _emailDebounce?.cancel();
+    if (value.trim().isEmpty ||
+        value.trim().toLowerCase() ==
+            (widget.company.email ?? '').toLowerCase()) {
+      setState(() {
+        editEmailError = null;
+        isCheckingEmail = false;
+      });
+      return;
+    }
+    // Format check first — no API call needed
+    if (!_isValidEmail(value)) {
+      setState(() {
+        editEmailError = 'Enter a valid email address';
+        isCheckingEmail = false;
+      });
+      return;
+    }
+    setState(() {
+      isCheckingEmail = true;
+      editEmailError = null;
+    });
+    _emailDebounce = Timer(const Duration(milliseconds: 600), () async {
+      final exists = await widget.controller.isEmailGloballyExists(
+        value.trim(),
+        excludeCompanyId: widget.company.id,
+      );
+      if (!mounted) return;
+      setState(() {
+        isCheckingEmail = false;
+        editEmailError = exists ? 'Email already registered' : null;
+      });
+    });
+  }
+
+  // ── Live username check (debounced 600ms) ────────────────
+  void onUsernameChanged(String value) {
+    _usernameDebounce?.cancel();
+
+    setState(() {
+      usernameVerified = false;
+    });
+
+    if (value.isEmpty) {
+      setState(() {
+        usernameError = null;
+        isCheckingUsername = false;
+      });
+      return;
+    }
+
+    if (value.contains(' ')) {
+      setState(() {
+        usernameError = 'Username cannot contain spaces';
+        isCheckingUsername = false;
+      });
+      return;
+    }
+
+    // Username unchanged
+    if (value.trim() == (widget.company.kioskUsername ?? '')) {
+      setState(() {
+        usernameError = null;
+        isCheckingUsername = false;
+        usernameVerified = true;
+      });
+      return;
+    }
+
+    setState(() {
+      isCheckingUsername = true;
+      usernameError = null;
+    });
+
+    _usernameDebounce = Timer(const Duration(milliseconds: 600), () async {
+      final available = await widget.controller.isKioskUsernameAvailable(
+        value.trim(),
+        widget.company.id,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        isCheckingUsername = false;
+
+        if (available) {
+          usernameError = null;
+          usernameVerified = true;
+        } else {
+          usernameError = 'This username is already taken';
+          usernameVerified = false;
+        }
+      });
+    });
+  }
+
+  // ── Live password validation ──────────────────────────────
+  void onPasswordChanged(String value) {
+    final hasExisting = widget.company.kioskUsername != null;
+    setState(() {
+      if (value.isEmpty && hasExisting) {
+        // Blank = keep existing password → valid
+        passwordError = null;
+      } else if (value.isNotEmpty && value.length < 6) {
+        passwordError = 'Password must be at least 6 characters';
+      } else {
+        passwordError = null;
+      }
+    });
   }
 
   @override
@@ -86,11 +403,11 @@ class _CompanyDetailState extends State<CompanyDetail> {
                     widget.controller.enable.refresh();
                   },
                   child: const Icon(Icons.arrow_back_ios_rounded),
-                  // padding: EdgeInsets.zero,
                 ),
               const SizedBox(height: 20.0),
               headerCard(),
               const SizedBox(height: 20.0),
+              // ── Basic Information ────────────────────────
               SriDetailCard(
                 title: 'Basic Information',
                 icon: Icons.info_outline_rounded,
@@ -108,13 +425,25 @@ class _CompanyDetailState extends State<CompanyDetail> {
                             top: 20.0,
                             right: isWide ? 8.0 : 0.0,
                           ),
-                          child: SriTextField(
-                            controller: name,
-                            label: 'Company Name *',
-                            readOnly: !editing,
-                            prefixIcon: Icons.business_rounded,
-                            validator: (v) =>
-                                v?.isEmpty == true ? 'Required' : null,
+                          child: _dupField(
+                            child: SriTextField(
+                              controller: name,
+                              label: 'Company Name *',
+                              readOnly: !editing,
+                              prefixIcon: Icons.business_rounded,
+                              onChanged: editing ? onNameChanged : null,
+                              suffixIconWidget: editing
+                                  ? _dupStatusIcon(isCheckingName, nameError, name)
+                                  : null,
+                              validator: (v) {
+                                if (v?.isEmpty == true) return 'Company Name is Required';
+                                if (isCheckingName) return 'Checking...';
+                                return nameError;
+                              },
+                            ),
+                            errorText: nameError,
+                            checking: isCheckingName,
+                            ctrl: name,
                           ),
                         ),
                       ),
@@ -129,11 +458,25 @@ class _CompanyDetailState extends State<CompanyDetail> {
                             top: 20.0,
                             left: isWide ? 8.0 : 0.0,
                           ),
-                          child: SriTextField(
-                            controller: branchCode,
-                            label: 'Branch Code',
-                            readOnly: !editing,
-                            prefixIcon: Icons.tag_rounded,
+                          child: _dupField(
+                            child: SriTextField(
+                              controller: branchCode,
+                              label: 'Branch Code *',
+                              readOnly: !editing,
+                              prefixIcon: Icons.tag_rounded,
+                              onChanged: editing ? onCodeChanged : null,
+                              suffixIconWidget: editing
+                                  ? _dupStatusIcon(isCheckingCode, codeError, branchCode)
+                                  : null,
+                              validator: (v) {
+                                if (v?.isEmpty == true) return 'Branch Code is Required';
+                                if (isCheckingCode) return 'Checking...';
+                                return codeError;
+                              },
+                            ),
+                            errorText: codeError,
+                            checking: isCheckingCode,
+                            ctrl: branchCode,
                           ),
                         ),
                       ),
@@ -148,12 +491,23 @@ class _CompanyDetailState extends State<CompanyDetail> {
                             top: 20.0,
                             right: isWide ? 8.0 : 0.0,
                           ),
-                          child: SriTextField(
-                            controller: phone,
-                            label: 'Phone',
-                            readOnly: !editing,
-                            keyboardType: TextInputType.phone,
-                            prefixIcon: Icons.phone_rounded,
+                          child: _dupField(
+                            child: SriTextField(
+                              controller: phone,
+                              label: 'Phone',
+                              readOnly: !editing,
+                              keyboardType: TextInputType.phone,
+                              prefixIcon: Icons.phone_rounded,
+                              onChanged: editing ? onPhoneChanged : null,
+                              suffixIconWidget: editing
+                                  ? _dupStatusIcon(isCheckingPhone, phoneError, phone)
+                                  : null,
+                              validator: (_) =>
+                                  isCheckingPhone ? 'Checking...' : phoneError,
+                            ),
+                            errorText: phoneError,
+                            checking: isCheckingPhone,
+                            ctrl: phone,
                           ),
                         ),
                       ),
@@ -168,12 +522,23 @@ class _CompanyDetailState extends State<CompanyDetail> {
                             top: 20.0,
                             left: isWide ? 8.0 : 0.0,
                           ),
-                          child: SriTextField(
-                            controller: email,
-                            label: 'Email',
-                            readOnly: !editing,
-                            keyboardType: TextInputType.emailAddress,
-                            prefixIcon: Icons.email_outlined,
+                          child: _dupField(
+                            child: SriTextField(
+                              controller: email,
+                              label: 'Email',
+                              readOnly: !editing,
+                              keyboardType: TextInputType.emailAddress,
+                              prefixIcon: Icons.email_outlined,
+                              onChanged: editing ? onEditEmailChanged : null,
+                              suffixIconWidget: editing
+                                  ? _dupStatusIcon(isCheckingEmail, editEmailError, email)
+                                  : null,
+                              validator: (_) =>
+                                  isCheckingEmail ? 'Checking...' : editEmailError,
+                            ),
+                            errorText: editEmailError,
+                            checking: isCheckingEmail,
+                            ctrl: email,
                           ),
                         ),
                       ),
@@ -188,11 +553,22 @@ class _CompanyDetailState extends State<CompanyDetail> {
                             top: 20.0,
                             right: isWide ? 8.0 : 0.0,
                           ),
-                          child: SriTextField(
-                            controller: gstin,
-                            label: 'GSTIN',
-                            readOnly: !editing,
-                            prefixIcon: Icons.numbers_rounded,
+                          child: _dupField(
+                            child: SriTextField(
+                              controller: gstin,
+                              label: 'GSTIN',
+                              readOnly: !editing,
+                              prefixIcon: Icons.numbers_rounded,
+                              onChanged: editing ? onGstinChanged : null,
+                              suffixIconWidget: editing
+                                  ? _dupStatusIcon(isCheckingGstin, gstinError, gstin)
+                                  : null,
+                              validator: (_) =>
+                                  isCheckingGstin ? 'Checking...' : gstinError,
+                            ),
+                            errorText: gstinError,
+                            checking: isCheckingGstin,
+                            ctrl: gstin,
                           ),
                         ),
                       ),
@@ -382,6 +758,9 @@ class _CompanyDetailState extends State<CompanyDetail> {
                   ),
                 ],
               ),
+              const SizedBox(height: 16),
+              // ── Configure Attendance Access Without Login ─
+              _attendanceAccessCard(isWide),
               // ── Save / Cancel ────────────────────────────
               if (editing) ...[
                 const SizedBox(height: 20),
@@ -391,7 +770,28 @@ class _CompanyDetailState extends State<CompanyDetail> {
                       child: SriButton(
                         onPressed: () => setState(() {
                           editing = false;
-                          init(widget.company); // reset
+                          init(widget.company);
+                          // Reset kiosk fields to saved values
+                          kioskEnabled = widget.company.withoutLoginEnabled;
+                          notifLang = widget.company.notificationLanguage;
+                          kioskUsernameCtrl.text =
+                              widget.company.kioskUsername ?? '';
+                          kioskPasswordCtrl.clear();
+                          usernameError = null;
+                          passwordError = null;
+                          usernameVerified =
+                              widget.company.kioskUsername != null;
+                          // Reset duplicate check state
+                          nameError = null;
+                          codeError = null;
+                          gstinError = null;
+                          phoneError = null;
+                          editEmailError = null;
+                          isCheckingName = false;
+                          isCheckingCode = false;
+                          isCheckingGstin = false;
+                          isCheckingPhone = false;
+                          isCheckingEmail = false;
                         }),
                         isOutlined: true,
                         label: 'Cancel',
@@ -401,7 +801,10 @@ class _CompanyDetailState extends State<CompanyDetail> {
                     Expanded(
                       child: Obx(
                         () => SriButton(
-                          onPressed: widget.controller.isLoading.value
+                          onPressed: (widget.controller.isLoading.value ||
+                                  isCheckingUsername ||
+                                  _anyFieldChecking ||
+                                  _hasFieldErrors)
                               ? null
                               : save,
                           isLoading: widget.controller.isLoading.value,
@@ -420,30 +823,552 @@ class _CompanyDetailState extends State<CompanyDetail> {
     );
   }
 
+  // ── Main save (company + kiosk together) ─────────────────
   void save() {
     if (!formKey.currentState!.validate()) return;
+
+    // Guard: duplicate checks still in progress
+    if (_anyFieldChecking) {
+      Get.snackbar(
+        'Please Wait',
+        'Checking for duplicates...',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange.shade600,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    // Guard: duplicate field errors present
+    if (_hasFieldErrors) {
+      Get.snackbar(
+        'Validation Error',
+        'Some fields already exist in the system. Please correct the highlighted fields before saving.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.shade600,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    if (kioskEnabled && isCheckingUsername) {
+      Get.snackbar(
+        'Please Wait',
+        'Checking username availability...',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange.shade600,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    if (kioskEnabled &&
+        kioskUsernameCtrl.text.trim().isNotEmpty &&
+        !usernameVerified) {
+      Get.snackbar(
+        'Validation Error',
+        'Please check the username availability before saving.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.shade600,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    // Block if username has error
+    if (kioskEnabled && usernameError != null) {
+      Get.snackbar(
+        'Validation Error',
+        'Please fix the kiosk username error before saving.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.shade600,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    // Block if password has error
+    if (kioskEnabled && passwordError != null) {
+      Get.snackbar(
+        'Validation Error',
+        passwordError!,
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.shade600,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    // Kiosk username required when enabling for first time
+    final username = kioskUsernameCtrl.text.trim();
+    final password = kioskPasswordCtrl.text.trim();
+    final hasExisting = widget.company.kioskUsername != null;
+
+    if (kioskEnabled && username.isEmpty) {
+      Get.snackbar(
+        'Validation Error',
+        'Please enter a kiosk username.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.shade600,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    if (kioskEnabled &&
+        ((!hasExisting) || isUsernameChanged) &&
+        password.isEmpty) {
+      Get.snackbar(
+        'Validation Error',
+        isUsernameChanged
+            ? 'A new password is required when changing the kiosk username.'
+            : 'Please set a password for the kiosk account.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.shade600,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    // 1. Save basic company fields
     widget.controller.updateCompany(
       {
-        'name': name.text.trim(),
-        'branch_code': branchCode.text.trim(),
-        'phone': phone.text.trim(),
-        'email': email.text.trim(),
-        'gstin': gstin.text.trim(),
-        'address': address.text.trim(),
-        'country': country.text.trim(),
-        'state': state.text.trim(),
-        'city': city.text.trim(),
-        'pincode': pincode.text.trim(),
-        'latitude': double.tryParse(lat.text),
-        'longitude': double.tryParse(lon.text),
-        'radius': int.tryParse(radius.text) ?? 100,
+        'name': name.text.trim().isEmpty? null: name.text.trim(),
+        'branch_code':branchCode.text.trim().isEmpty?null: branchCode.text.trim(),
+        'phone':phone.text.trim().isEmpty?null: phone.text.trim(),
+        'email':email.text.trim().isEmpty?null: email.text.trim(),
+        'gstin':  gstin.text.trim().isEmpty ? null : gstin.text.trim(),
+        'address': address.text.trim().isEmpty ? null : address.text.trim(),
+        'country': country.text.trim().isEmpty ? null : country.text.trim(),
+        'state': state.text.trim().isEmpty ? null : state.text.trim(),
+        'city': city.text.trim().isEmpty ? null : city.text.trim(),
+        'pincode': pincode.text.trim().isEmpty ? null : pincode.text.trim(),
+        'latitude': lat.text.trim().isEmpty ? null : double.tryParse(lat.text),
+        'longitude': lon.text.trim().isEmpty ? null : double.tryParse(lon.text),
+        'radius': radius.text.trim().isEmpty ? null : int.tryParse(radius.text) ?? 100,
       },
       logoBytes: logoBytes,
       logoPath: logoPath,
     );
+
+    // 2. Save kiosk settings
+    widget.controller.saveKioskSettings(
+      companyId: widget.company.id,
+      withoutLogin: kioskEnabled,
+      language: notifLang,
+      kioskUsername: kioskEnabled && kioskUsernameCtrl.text.trim().isNotEmpty
+          ? kioskUsernameCtrl.text
+          : null, // preserve exact case
+      kioskPassword: kioskEnabled && password.isNotEmpty ? password : null,
+      isFirstTime: !hasExisting,
+    );
+
     setState(() => editing = false);
   }
 
+  // ── Duplicate-check helpers ──────────────────────────────
+
+  Widget? _dupStatusIcon(
+    bool checking,
+    String? error,
+    TextEditingController ctrl,
+  ) {
+    if (checking) {
+      return const SizedBox(
+        width: 16,
+        height: 16,
+        child: Padding(
+          padding: EdgeInsets.all(12.0),
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+    if (ctrl.text.isNotEmpty) {
+      if (error != null) {
+        return const Icon(Icons.cancel_rounded, color: Colors.red, size: 18);
+      }
+      return const Icon(
+        Icons.check_circle_rounded,
+        color: AppColors.accentGreen,
+        size: 18,
+      );
+    }
+    return null;
+  }
+
+  Widget _dupField({
+    required Widget child,
+    required String? errorText,
+    required bool checking,
+    required TextEditingController ctrl,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        child,
+        if (errorText != null && !checking && editing) ...[
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(left: 12),
+            child: Text(
+              errorText,
+              style: const TextStyle(color: Colors.red, fontSize: 11),
+            ),
+          ),
+        ] else if (!checking && errorText == null && ctrl.text.isNotEmpty && editing) ...[
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(left: 12),
+            child: const Text(
+              'Available ✓',
+              style: TextStyle(
+                color: AppColors.accentGreen,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  // ── Attendance Access card ───────────────────────────────
+  Widget _attendanceAccessCard(bool isWide) {
+    return SriDetailCard(
+      title: 'Access Without Login',
+      icon: Icons.no_accounts_rounded,
+      children: [
+        const SizedBox(height: 4),
+
+        // ── Without Login radio buttons ──────────────────
+        _sectionLabel(
+          'Without Login',
+          'Allow attendance marking without Supabase login',
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            _radioOption(
+              label: 'Enable',
+              value: true,
+              groupValue: kioskEnabled,
+              onChanged: (v) {
+                if (editing) {
+                  setState(() {
+                    kioskEnabled = v!;
+                    if (!kioskEnabled) {
+                      kioskUsernameCtrl.clear();
+                      kioskPasswordCtrl.clear();
+                      usernameError = null;
+                      passwordError = null;
+                    }
+                  });
+                }
+              },
+            ),
+            const SizedBox(width: 24),
+            _radioOption(
+              label: 'Disable',
+              value: false,
+              groupValue: kioskEnabled,
+              onChanged: (v) {
+                if (editing) {
+                  setState(() {
+                    kioskEnabled = v!;
+                    kioskUsernameCtrl.clear();
+                    kioskPasswordCtrl.clear();
+                    usernameError = null;
+                    passwordError = null;
+                  });
+                }
+              },
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 20),
+        const Divider(height: 1, color: AppColors.border),
+        const SizedBox(height: 20),
+
+        // ── Notification Language radio buttons ──────────
+        _sectionLabel(
+          'Notification Language',
+          'Language used for attendance notifications',
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            _radioOption<String>(
+              label: 'English',
+              value: 'en',
+              groupValue: notifLang,
+              onChanged: (v) {
+                if (editing) {
+                  setState(() => notifLang = v!);
+                }
+              },
+            ),
+            const SizedBox(width: 24),
+            _radioOption<String>(
+              label: 'Tamil (தமிழ்)',
+              value: 'ta',
+              groupValue: notifLang,
+              onChanged: (v) {
+                if (editing) {
+                  setState(() => notifLang = v!);
+                }
+              },
+            ),
+          ],
+        ),
+
+        // ── Kiosk credentials (only when enabled) ────────
+        if (kioskEnabled) ...[
+          const SizedBox(height: 20),
+          const Divider(height: 1, color: AppColors.border),
+          const SizedBox(height: 16),
+          _sectionLabel(
+            'User Credentials',
+            'Users log in with these credentials to access the attendance kiosk.',
+          ),
+          const SizedBox(height: 14),
+          ResponsiveGridRow(
+            children: [
+              // Username field
+              ResponsiveGridCol(
+                xl: 6,
+                lg: 6,
+                md: 6,
+                xs: 12,
+                sm: 12,
+                child: Padding(
+                  padding: EdgeInsets.only(top: 0, right: isWide ? 8.0 : 0.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SriTextField(
+                        controller: kioskUsernameCtrl,
+                        label: 'Username *',
+                        readOnly: !editing,
+                        prefixIcon: Icons.person_outline_rounded,
+                        onChanged: onUsernameChanged,
+                        // Preserve exact case — no transformation
+                        suffixIconWidget: isCheckingUsername
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: Padding(
+                                  padding: EdgeInsets.all(12.0),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              )
+                            : usernameVerified &&
+                                  kioskUsernameCtrl.text.isNotEmpty &&
+                                  editing
+                            ? const Icon(
+                                Icons.check_circle_rounded,
+                                color: AppColors.accentGreen,
+                                size: 18,
+                              )
+                            : null,
+                        validator: (v) {
+                          if (kioskEnabled && (v == null || v.trim().isEmpty)) {
+                            return 'Username is required';
+                          }
+                          if (v != null && v.contains(' ')) {
+                            return 'Username cannot contain spaces';
+                          }
+                          if (usernameError != null) return usernameError;
+                          return null;
+                        },
+                      ),
+                      if (usernameError != null && editing) ...[
+                        const SizedBox(height: 4),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 12),
+                          child: Text(
+                            usernameError!,
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (usernameVerified &&
+                          !isCheckingUsername &&
+                          kioskUsernameCtrl.text.isNotEmpty &&
+                          editing) ...[
+                        const SizedBox(height: 4),
+                        const Padding(
+                          padding: EdgeInsets.only(left: 12),
+                          child: Text(
+                            'Username is available ✓',
+                            style: TextStyle(
+                              color: AppColors.accentGreen,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              // Password field
+              ResponsiveGridCol(
+                xl: 6,
+                lg: 6,
+                md: 6,
+                xs: 12,
+                sm: 12,
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    top: isWide ? 0.0 : 12,
+                    left: isWide ? 8.0 : 0.0,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SriTextField(
+                        controller: kioskPasswordCtrl,
+                        label:
+                            (widget.company.kioskUsername != null &&
+                                !isUsernameChanged)
+                            ? 'New Password (leave blank to keep)'
+                            : 'Password *',
+                        readOnly: !editing,
+                        obscureText: !kioskPasswordVisible,
+                        prefixIcon: Icons.lock_outline_rounded,
+                        onChanged: onPasswordChanged,
+                        suffixIcon: kioskPasswordVisible
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                        onSuffixTap: () => setState(
+                          () => kioskPasswordVisible = !kioskPasswordVisible,
+                        ),
+                        validator: (v) {
+                          final hasExisting =
+                              widget.company.kioskUsername != null;
+
+                          if (kioskEnabled &&
+                              ((!hasExisting) || isUsernameChanged) &&
+                              (v == null || v.isEmpty)) {
+                            return isUsernameChanged
+                                ? 'Password is required when changing username'
+                                : 'Password is required';
+                          }
+
+                          if (v != null && v.isNotEmpty && v.length < 6) {
+                            return 'Minimum 6 characters';
+                          }
+
+                          if (passwordError != null) {
+                            return passwordError;
+                          }
+
+                          return null;
+                        },
+                      ),
+                      if (passwordError != null) ...[
+                        const SizedBox(height: 4),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 12),
+                          child: Text(
+                            passwordError!,
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                      ] else if (kioskPasswordCtrl.text.isNotEmpty &&
+                          kioskPasswordCtrl.text.length >= 6) ...[
+                        const SizedBox(height: 4),
+                        const Padding(
+                          padding: EdgeInsets.only(left: 12),
+                          child: Text(
+                            'Password looks good ✓',
+                            style: TextStyle(
+                              color: AppColors.accentGreen,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
+  // ── Helper: section label + subtitle ────────────────────
+  Widget _sectionLabel(String title, String subtitle) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          subtitle,
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+        ),
+      ],
+    );
+  }
+
+  // ── Helper: styled radio option ──────────────────────────
+  Widget _radioOption<T>({
+    required String label,
+    required T value,
+    required T groupValue,
+    required ValueChanged<T?> onChanged,
+  }) {
+    final selected = value == groupValue;
+    return GestureDetector(
+      onTap: () => onChanged(value),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Radio<T>(
+            value: value,
+            groupValue: groupValue,
+            onChanged: onChanged,
+            activeColor: AppColors.primary,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+              color: selected ? AppColors.primary : AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Header card ─────────────────────────────────────────
   Widget headerCard() {
     final c = widget.company;
     return Container(
@@ -562,10 +1487,8 @@ class _CompanyDetailState extends State<CompanyDetail> {
       source: ImageSource.gallery,
       maxWidth: 400,
     );
-
     if (img != null) {
       final bytes = await img.readAsBytes();
-
       setState(() {
         logoBytes = bytes;
         logoPath = img.path;

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:sri_hr/core/constants/app_constants.dart';
+import 'package:sri_hr/core/handler/exception_handler.dart';
 import 'package:sri_hr/data/models/role_model.dart';
 import 'package:sri_hr/data/models/role_permission_model.dart';
 import 'package:sri_hr/data/models/subscription_model.dart';
@@ -11,7 +12,6 @@ import 'package:sri_hr/presentation/auth/repository/auth_repository.dart';
 import 'package:sri_hr/presentation/employee/repository/employee_repository.dart';
 import 'package:sri_hr/presentation/subscription/repository/subscription_repository.dart';
 import 'package:sri_hr/routes/app_routes.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthController extends GetxController {
   final authRepo = AuthRepository();
@@ -29,6 +29,9 @@ class AuthController extends GetxController {
   // Reactive company ID — updates when branch is switched
   // All controllers must use this instead of currentUser.value?.companyId
   final activeCompanyId = ''.obs;
+  final RxString kioskCompId = "".obs;
+
+  final activeOrgId = ''.obs;
 
   // Computed
   String get companyId => activeCompanyId.value.isNotEmpty
@@ -53,6 +56,12 @@ class AuthController extends GetxController {
     if (savedUser != null) {
       currentUser.value = UserModel.fromJson(savedUser);
       await _loadPermissionsAndSubscription();
+      return;
+    }
+    final kioskId = box.read('kiosk_company_id');
+    if (kioskId != null && kioskId.isNotEmpty) {
+      kioskCompId.value = kioskId;
+      await authRepo.signInKioskSession(); // re-establish session
     }
   }
 
@@ -60,6 +69,27 @@ class AuthController extends GetxController {
   Future<void> login(String emailOrUsername, String password) async {
     isLoading.value = true;
     try {
+      if (!emailOrUsername.contains('@')) {
+        final kioskCompanyId = await authRepo.checkKioskLogin(
+          emailOrUsername.trim(),
+          password.trim(),
+        );
+        if (kioskCompanyId != null && kioskCompanyId.isNotEmpty) {
+          kioskCompId.value = kioskCompanyId;
+          // Persist kiosk session so splash can restore it on refresh
+          box.write('kiosk_company_id', kioskCompanyId);
+          box.remove('current_user'); // ensure normal session is cleared
+
+          await authRepo.signInKioskSession();
+          isLoading.value = false;
+          Get.offAllNamed(
+            AppRoutes.routeKioskAttendance,
+            arguments: {'company_id': kioskCompanyId},
+          );
+          return;
+        }
+      }
+
       final userRow = await authRepo.login(emailOrUsername, password);
       final user = UserModel.fromJson(userRow);
       currentUser.value = user;
@@ -84,8 +114,8 @@ class AuthController extends GetxController {
         Get.snackbar(
           'Login Failed',
           (employee?.mobileLogin == false || employee?.mobileLogin == null)
-              ? "Mobile login not allowed for this user. Contact Admin..."
-              : "Logged User is inactive. Contact Admin...",
+              ? "Mobile login is disabled for your account. Please contact your administrator."
+              : "Your account has been deactivated. Please contact your administrator.",
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: Colors.amber.shade600,
           colorText: Colors.white,
@@ -93,20 +123,10 @@ class AuthController extends GetxController {
         );
         logout();
       }
-    } on AuthException catch (e) {
+    } catch (e) {
       Get.snackbar(
         'Login Failed',
-        e.message,
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.shade600,
-        colorText: Colors.white,
-        icon: const Icon(Icons.error_outline, color: Colors.white),
-      );
-    } on Exception catch (e) {
-      final msg = e.toString().replaceAll('Exception: ', '');
-      Get.snackbar(
-        'Login Failed',
-        msg,
+        handleException(e),
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red.shade600,
         colorText: Colors.white,
@@ -156,20 +176,10 @@ class AuthController extends GetxController {
         duration: const Duration(seconds: 4),
       );
       Get.offAllNamed(AppRoutes.routeLogin);
-    } on AuthException catch (e) {
+    } catch (e) {
       Get.snackbar(
         'Registration Failed',
-        e.message,
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.shade600,
-        colorText: Colors.white,
-        icon: const Icon(Icons.error_outline, color: Colors.white),
-      );
-    } on Exception catch (e) {
-      final msg = e.toString().replaceAll('Exception: ', '');
-      Get.snackbar(
-        'Registration Failed',
-        msg,
+        handleException(e),
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red.shade600,
         colorText: Colors.white,
@@ -187,7 +197,9 @@ class AuthController extends GetxController {
     currentRole.value = null;
     permissions.clear();
     subscription.value = null;
+    kioskCompId.value = '';
     box.remove('current_user');
+    box.remove('kiosk_company_id');
     Get.offAllNamed(AppRoutes.routeLogin);
   }
 
@@ -218,6 +230,34 @@ class AuthController extends GetxController {
           canEdit: true,
           canDelete: true,
         );
+      }
+    }
+
+    final orgId = await subRepo.getOrgId(user.companyId);
+    if (orgId != null && orgId.isNotEmpty) {
+      activeOrgId.value = orgId;
+      // 2. Find the active subscription for the whole org
+      final sub = await subRepo.getActiveSubscriptionByOrg(orgId);
+      if (sub != null) {
+        subscription.value = sub;
+        isSubscriptionActive.value = sub.isActive;
+        if (sub.isExpiringSoon) {
+          Future.delayed(const Duration(seconds: 2), () {
+            Get.snackbar(
+              '⚠ Subscription Expiring',
+              'Your plan expires in ${sub.daysRemaining} day(s). Renew now!',
+              snackPosition: SnackPosition.TOP,
+              backgroundColor: Colors.orange.shade700,
+              colorText: Colors.white,
+              duration: const Duration(seconds: 5),
+              mainButton: TextButton(
+                onPressed: () => Get.toNamed(AppRoutes.routeSubscription),
+                child: const Text('Renew', style: TextStyle(color: Colors.white)),
+              ),
+            );
+          });
+        }
+        return;
       }
     }
 

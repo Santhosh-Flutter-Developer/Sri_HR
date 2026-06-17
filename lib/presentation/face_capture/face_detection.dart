@@ -1,7 +1,6 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-
+import 'dart:async';
 import 'package:facesdk_plugin/facedetection_interface.dart';
 import 'package:facesdk_plugin/facesdk_plugin.dart';
 import 'package:flutter/foundation.dart';
@@ -21,16 +20,17 @@ import 'package:sri_hr/presentation/attendance/controller/attendance_controller.
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/company/controller/company_controller.dart';
 import 'package:sri_hr/presentation/employee/controller/employee_controller.dart';
+import 'package:sri_hr/presentation/employee/repository/employee_repository.dart';
 import 'package:sri_hr/routes/app_routes.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
-class FaceRecognitionView extends StatefulWidget {
+class FaceDetection extends StatefulWidget {
   FaceDetectionViewController? faceDetectionViewController;
-  FaceRecognitionView({super.key});
+  FaceDetection({super.key});
 
   @override
-  State<FaceRecognitionView> createState() => FaceRecognitionViewState();
+  State<FaceDetection> createState() => FaceRecognitionViewState();
 }
 
 final employeeController = Get.isRegistered<EmployeeController>()
@@ -47,9 +47,9 @@ final attendanceController = Get.isRegistered<AttendanceController>()
 
 final _uuid = const Uuid();
 
-RxList<EmployeeModel> employees = <EmployeeModel>[].obs;
+RxList<EmployeeModel> allEmployees = <EmployeeModel>[].obs;
 
-class FaceRecognitionViewState extends State<FaceRecognitionView> {
+class FaceRecognitionViewState extends State<FaceDetection> {
   final location = Get.isRegistered<LocationService>()
       ? Get.find<LocationService>()
       : Get.put(LocationService());
@@ -86,7 +86,7 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
     super.initState();
     init();
     loadSettings();
-    getEmployee();
+    getAllEmployee();
     _loadNotifLang();
   }
 
@@ -95,11 +95,8 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
     try {
       // Give employee a moment to load
       await Future.delayed(const Duration(milliseconds: 400));
-      final compId = employee?.companyId.isNotEmpty == true
-          ? employee!.companyId
-          : auth.companyId;
-      if (compId.isEmpty) return;
-      final comp = await companyController.getCompany(compId);
+      if (auth.kioskCompId.value.isEmpty) return;
+      final comp = await companyController.getCompany(auth.kioskCompId.value);
       if (comp != null && mounted) {
         setState(() => _notifLang = comp.notificationLanguage);
       }
@@ -118,6 +115,8 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
   // ── Load ALL today's logs for this employee ──────────────
   Future<void> _loadTodayLogs() async {
     if (employee == null) return;
+    if (employee!.id.isEmpty) return;
+    if (employee!.companyId.isEmpty) return;
     final today = NetworkTime.now().toIso8601String().substring(0, 10);
     try {
       final rows = await attendanceController.repo.getAttendanceLogs(
@@ -205,246 +204,231 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
     });
   }
 
-  Future<void> getEmployee() async {
-    employee = await employeeController.getEmployee(auth.userId);
+  Future<void> getAllEmployee() async {
+    if (auth.kioskCompId.value.isEmpty) {
+      debugPrint('[FaceDetection] kioskCompId is empty — skipping getAllEmployee');
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          Get.back();
+          Get.snackbar(
+            'Session Error',
+            'No session found. Please log in again.',
+            backgroundColor: AppColors.warning,
+            colorText: Colors.white,
+            duration: const Duration(seconds: 4),
+          );
+        });
+      }
+      return;
+    }
+    final employees = await EmployeeRepository().getAllEmployees(
+      auth.kioskCompId.value,
+    );
+    allEmployees.value = employees.isNotEmpty ? employees : [];
   }
 
   Future<bool> onFaceDetected(faces) async {
-    if (_recognized == true) return false;
-    if (!mounted) return false;
+  if (_recognized == true) return false;
+  if (!mounted) return false;
+  if (allEmployees.isEmpty) return false; // ✅ wait until employees loaded
 
-    if(employee == null) return false;
+  setState(() => _faces = faces);
 
-    setState(() => _faces = faces);
+  bool recognized = false;
+  double maxSimilarity = -1;
+  String maxSimilarityName = '';
+  double maxLiveness = -1;
+  var enrolledFace, identifiedFace;
+  EmployeeModel? matchedEmployee;
 
-    bool recognized = false;
-    double maxSimilarity = -1;
-    String maxSimilarityName = '';
-    double maxLiveness = -1;
-    var enrolledFace, identifiedFace;
+  if (faces.length > 0) {
+    if (faces.length > 1) {
+      _audio.play(AttendanceAudioEvent.multipleFaceDetected, _notifLang);
+      Get.back();
+      Get.snackbar('Warning', 'Multiple Face Detected',
+          backgroundColor: AppColors.warning);
+      return false;
+    }
 
-    if (faces.length > 0) {
-      if (faces.length > 1) {
-        _audio.play(
-          AttendanceAudioEvent.multipleFaceDetected,
-          _notifLang,
-        ); // 🔊
-        Get.back();
-        Get.snackbar(
-          'Warning',
-          'Multiple Face Detected',
-          backgroundColor: AppColors.warning,
-        );
-        return false;
-      }
-      var face = faces[0];
+    var face = faces[0];
 
-      String storedTemplateString = employee?.profileTemplate ?? '';
-      if (storedTemplateString == '') {
-        faceDetectionViewController?.stopCamera();
-        _audio.play(AttendanceAudioEvent.faceNotRegistered, _notifLang); // 🔊
-        Get.back();
-        Get.snackbar(
-          'Warning',
-          'Logged-in user\'s face is not registered in the employee records',
-          backgroundColor: AppColors.warning,
-        );
-        return false;
-      }
-      
+    // ✅ Start timer ONCE, AFTER employees confirmed, flag set BEFORE scheduling
+    if (showToast == true) {
+      setState(() => showToast = false);
+      _noMatchTimer?.cancel();
+      _noMatchTimer = Timer(const Duration(seconds: 15), () {
+        if (!mounted) return;
+        if (faceRecognized == false && !_recognized) {
+          faceDetectionViewController?.stopCamera();
+          setState(() => faceRecognized = true);
+          Get.back();
+          _audio.play(AttendanceAudioEvent.noFaceMatched, _notifLang);
+          Get.snackbar('Warning', 'No Face Matched',
+              backgroundColor: AppColors.warning);
+        }
+      });
+    }
 
-      if (showToast == true) {
-        setState(() => showToast = false);
-        _noMatchTimer?.cancel();
+    // ✅ Guard inside loop after every await
+    for (final emp in allEmployees) {
+      if (!mounted || faceRecognized || _recognized) break;
 
-       _noMatchTimer =  Timer(const Duration(seconds: 10), () {
-          if (!mounted) return;
-          if (faceRecognized == false && !_recognized) {
-            faceDetectionViewController?.stopCamera();
-            setState(() {
-              faceRecognized = true;
-            });
-
-            Get.back();
-            _audio.play(AttendanceAudioEvent.noFaceMatched, _notifLang); // 🔊
-            Get.snackbar(
-              'Warning',
-              'No Face Matched',
-              backgroundColor: AppColors.warning,
-            );
-          }
-        });
-      }
+      String storedTemplateString = emp.profileTemplate ?? '';
+      if (storedTemplateString.isEmpty) continue;
 
       Uint8List storedTemplate = base64Decode(storedTemplateString);
       double similarity =
           await _facesdkPlugin.similarityCalculation(
             face['templates'],
             storedTemplate,
-          ) ??
-          -1;
+          ) ?? -1;
 
-if (!mounted || faceRecognized || _recognized) return false;
+      if (!mounted || faceRecognized || _recognized) break; // ✅ guard after await
 
       if (maxSimilarity < similarity) {
         maxSimilarity = similarity;
-        maxSimilarityName = employee!.fullName;
+        maxSimilarityName = emp.fullName;
         maxLiveness = face['liveness'];
         identifiedFace = face['faceJpg'];
-        enrolledFace = employee!.profilePicture;
-      }
-      
-
-      if (maxSimilarity > _identifyThreshold &&
-          maxLiveness > _livenessThreshold) {
-        recognized = true;
+        enrolledFace = emp.profilePicture;
+        matchedEmployee = emp;
       }
     }
 
-    if (faceRecognized || _recognized) return recognized;
+    if (matchedEmployee != null) {
+      employee = matchedEmployee;
+    }
 
-    Future.delayed(const Duration(milliseconds: 100), () async {
-      if (!mounted) return false;
-      if (faceRecognized || _recognized) return false;
-      // ── Get GPS ──────────────────────────────────────────
-      currentPosition = await location.getCurrentPosition();
-      if (!mounted || faceRecognized) return false;
-      
-      if (currentPosition == null) {
-        setState(() {
-          locationCheck = true;
-          faceRecognized = true;
-        });
-        _noMatchTimer?.cancel();
-        faceDetectionViewController?.stopCamera();
-        _audio.play(AttendanceAudioEvent.gpsUnavailable, _notifLang); // 🔊
-        Get.back();
-        Get.snackbar(
-          'Error',
+    // ✅ Bail if another frame already handled it
+    if (!mounted || faceRecognized || _recognized) return false;
+
+    if (maxSimilarity > _identifyThreshold && maxLiveness > _livenessThreshold) {
+      recognized = true;
+    }
+  }
+
+  if (faceRecognized || _recognized) return recognized;
+
+  Future.delayed(const Duration(milliseconds: 100), () async {
+    if (!mounted) return false;
+    if (faceRecognized || _recognized) return false; // ✅ early exit
+
+    currentPosition = await location.getCurrentPosition();
+    if (!mounted || faceRecognized) return false;
+
+    if (currentPosition == null) {
+      setState(() { faceRecognized = true; locationCheck = true; });
+      _noMatchTimer?.cancel();
+      faceDetectionViewController?.stopCamera();
+      _audio.play(AttendanceAudioEvent.gpsUnavailable, _notifLang);
+      Get.back();
+      Get.snackbar('Error',
           'Unable to get GPS location. Please enable location services.',
-          backgroundColor: AppColors.error,
+          backgroundColor: AppColors.error);
+      return false;
+    }
+
+    final compId = auth.kioskCompId.value;
+    if (compId.isEmpty) {
+      setState(() { faceRecognized = true; locationCheck = true; });
+      _noMatchTimer?.cancel();
+      faceDetectionViewController?.stopCamera();
+      Get.back();
+      Get.snackbar('Session Error', 'No session found. Please log in again.',
+          backgroundColor: AppColors.warning,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 4));
+      return false;
+    }
+
+    final comp = await companyController.getCompany(compId);
+    if (!mounted || faceRecognized) return false; // ✅ re-check after await
+
+    if (comp != null) {
+      if (comp.latitude != null && comp.longitude != null) {
+        isInsideGeofence = location.checkGeofence(
+          officeLat: comp.latitude!,
+          officeLng: comp.longitude!,
+          radiusInMeters: double.parse(comp.radius.toString()),
+          currentPos: currentPosition!,
         );
-        return false;
-      }
-
-      // ── Check geofence ───────────────────────────────────
-      final compId = employee!.companyId;
-      final comp = await companyController.getCompany(compId);
-      if (!mounted || faceRecognized) return false;
-      
-      if (comp != null) {
-        if (comp.latitude != null && comp.longitude != null) {
-          isInsideGeofence = location.checkGeofence(
-            officeLat: comp.latitude!,
-            officeLng: comp.longitude!,
-            radiusInMeters: double.parse(comp.radius.toString()),
-            currentPos: currentPosition!,
-          );
-          if (employee?.outsideOffice != true && isInsideGeofence == false) {
-            if (locationCheck == false) {
-              setState(() {
-                locationCheck = true;
-                faceRecognized = true;
-              });
-              _noMatchTimer?.cancel();
-              if (!mounted) return false;
-
-              faceDetectionViewController?.stopCamera();
-
-              Get.back();
-              _audio.play(AttendanceAudioEvent.outsideOffice, _notifLang); // 🔊
-              Get.snackbar(
-                'Warning',
-                'You are outside the office location',
-                backgroundColor: AppColors.warning,
-              );
-              return false;
-            }
-          }
-        } else {
+        if (employee?.outsideOffice != true && isInsideGeofence == false) {
           if (locationCheck == false) {
-            setState(() {
-              locationCheck = true;
-              faceRecognized = true;
-            });
+            setState(() { locationCheck = true; faceRecognized = true; });
             _noMatchTimer?.cancel();
-            if (!mounted) return false;
-
             faceDetectionViewController?.stopCamera();
-            _audio.play(
-              AttendanceAudioEvent.configureLocation,
-              _notifLang,
-            ); // 🔊
+            _audio.play(AttendanceAudioEvent.outsideOffice, _notifLang);
             Get.back();
-            Get.snackbar(
-              'Warning',
-              'Please configure Company Latitude and Longitude. Contact Admin.',
-              backgroundColor: AppColors.warning,
-            );
+            Get.snackbar('Warning', 'You are outside the office location',
+                backgroundColor: AppColors.warning);
             return false;
           }
         }
-      }
-      if (!mounted || faceRecognized) return false;
-    
-      setState(() {
-        _recognized = recognized;
-        _identifiedName = maxSimilarityName;
-        _identifiedSimilarity = maxSimilarity.toString();
-        _identifiedLiveness = maxLiveness.toString();
-        _enrolledFace = enrolledFace;
-        _identifiedFace = identifiedFace;
-      });
-
-      if (recognized) {
-        _noMatchTimer?.cancel();
-        faceDetectionViewController?.stopCamera();
-        if (!mounted) return false;
-        setState(() {
-          _faces = null;
-          faceRecognized = true;
-        });
-
-        // 🔊 Play success audio immediately
-        // _audio.play(AttendanceAudioEvent.verificationSuccess, _notifLang);
-
-        // Upload face image
-        String? faceUrl;
-        File imageFile = await uint8ListToFile(identifiedFace, 'image.png');
-        if (!mounted) return false;
-        if (employee != null) {
-          faceUrl = await uploadAttendanceImage(imageFile, const Uuid().v4());
-        }
-        if (!mounted) return false;
-
-        if (employee == null || comp == null) {
-          _audio.play(AttendanceAudioEvent.employeeNotFound, _notifLang); // 🔊
-          Get.snackbar(
-            'Error',
-            'Employee or organization not found',
-            backgroundColor: AppColors.error,
-          );
+      } else {
+        if (locationCheck == false) {
+          setState(() { locationCheck = true; faceRecognized = true; });
+          _noMatchTimer?.cancel();
+          faceDetectionViewController?.stopCamera();
+          _audio.play(AttendanceAudioEvent.configureLocation, _notifLang);
+          Get.back();
+          Get.snackbar('Warning',
+              'Please configure Company Latitude and Longitude. Contact Admin.',
+              backgroundColor: AppColors.warning);
           return false;
         }
-
-        if (callApi == true) {
-          setState(() => callApi = false);
-          await NetworkTime.syncTime();
-          if (!mounted) return false;
-
-          // ── Load today's punch history ────────────────────
-          await _loadTodayLogs();
-          if (!mounted) return false;
-
-          // ── Show punch selector sheet ─────────────────────
-
-          await _showPunchSelectorSheet();
-        }
       }
+    }
+
+    if (!mounted || faceRecognized) return false;
+
+    setState(() {
+      _recognized = recognized;
+      _identifiedName = maxSimilarityName;
+      _identifiedSimilarity = maxSimilarity.toString();
+      _identifiedLiveness = maxLiveness.toString();
+      _enrolledFace = enrolledFace;
+      _identifiedFace = identifiedFace;
     });
 
-    return recognized;
-  }
+    if (recognized) {
+      _noMatchTimer?.cancel(); // ✅ success — cancel timeout
+      faceDetectionViewController?.stopCamera();
+      if (!mounted) return false;
+      setState(() { _faces = null; faceRecognized = true; });
+
+      String? faceUrl;
+      File imageFile = await uint8ListToFile(identifiedFace, 'image.png');
+      if (!mounted) return false;
+      if (employee != null) {
+        faceUrl = await uploadAttendanceImage(imageFile, const Uuid().v4());
+      }
+      if (!mounted) return false;
+
+      if (employee == null || comp == null) {
+        _audio.play(AttendanceAudioEvent.employeeNotFound, _notifLang);
+        Get.snackbar('Error', 'Employee or organization not found',
+            backgroundColor: AppColors.error);
+        return false;
+      }
+
+      if (callApi == true) {
+        setState(() => callApi = false);
+        await NetworkTime.syncTime();
+        if (!mounted) return false;
+        if (employee != null &&
+            employee!.id.isNotEmpty &&
+            employee!.companyId.isNotEmpty) {
+          await _loadTodayLogs();
+        }
+        if (!mounted) return false;
+        await _showPunchSelectorSheet();
+      }
+    }
+  });
+
+  return recognized;
+}
 
   // ─────────────────────────────────────────────────────────
   // PUNCH SELECTOR BOTTOM SHEET
@@ -466,11 +450,11 @@ if (!mounted || faceRecognized || _recognized) return false;
 
     // Pre-select the required type
     String selectedType = mustBeOut ? 'out' : 'in';
+
     Future.delayed(Duration(seconds: 3), () async {
       Navigator.of(context).pop();
       await _savePunch(selectedType);
     });
-
     /*await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -495,11 +479,10 @@ if (!mounted || faceRecognized || _recognized) return false;
           setState(() {
             _recognized = false;
             faceRecognized = false;
-            locationCheck = false;
             callApi = true;
             showToast = true;
           });
-          Get.offAllNamed(AppRoutes.routeDashboard);
+          Get.offAllNamed(AppRoutes.routeKioskAttendance);
         },
       ),
     );*/
@@ -510,6 +493,7 @@ if (!mounted || faceRecognized || _recognized) return false;
       await attendanceController.adjustPunch(
         {
           'employee_id': employee!.id,
+          'company_id': employee!.companyId,
           'date': NetworkTime.now().toIso8601String().substring(0, 10),
           'punch_time': NetworkTime.now().toIso8601String(),
           'punch_type': punchType,
@@ -519,7 +503,6 @@ if (!mounted || faceRecognized || _recognized) return false;
         showToast: false,
         isManual: false,
       );
-
       final label = punchType == 'in' ? 'Punch IN' : 'Punch OUT';
       if (attendanceController.showErr.value) {
         // 🔊 Play punch success audio
@@ -551,7 +534,7 @@ if (!mounted || faceRecognized || _recognized) return false;
     }
 
     await Future.delayed(const Duration(seconds: 4));
-    Get.offAllNamed(AppRoutes.routeDashboard);
+    Get.offAllNamed(AppRoutes.routeKioskAttendance);
   }
 
   Future<String?> uploadAttendanceImage(
@@ -643,7 +626,7 @@ if (!mounted || faceRecognized || _recognized) return false;
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                       const SizedBox(height: 8),
                       Text(
                         "Punch Date: ${NetworkTime.now().toIso8601String().substring(0, 10)}",
                         style: const TextStyle(
@@ -652,7 +635,7 @@ if (!mounted || faceRecognized || _recognized) return false;
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                       const SizedBox(height: 8),
                       Text(
                         "Punch Time: ${NetworkTime.now().hour.toString().padLeft(2, '0')}:${NetworkTime.now().minute.toString().padLeft(2, '0')}",
                         style: const TextStyle(

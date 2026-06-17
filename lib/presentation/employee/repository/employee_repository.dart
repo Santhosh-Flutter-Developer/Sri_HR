@@ -20,6 +20,15 @@ class EmployeeRepository {
     return rows.map<EmployeeModel>((r) => EmployeeModel.fromJson(r)).toList();
   }
 
+  Future<List<EmployeeModel>> getAllEmployees(String companyId) async {
+    final res = await SupabaseService.client
+        .from('employees')
+        .select()
+        .eq('company_id', companyId)
+        .eq('is_active', true);
+    return (res as List).map((e) => EmployeeModel.fromJson(e)).toList();
+  }
+
   Future<EmployeeModel?> getEmployee(String id) async {
     final row = await SupabaseService.client
         .from('employees')
@@ -37,6 +46,7 @@ class EmployeeRepository {
       'check_mobile_exists',
       params: {
         'p_mobile': mobile.trim(),
+        'p_exclude_company_id': null,
         'p_exclude_employee_id': excludeEmployeeId,
       },
     );
@@ -45,9 +55,10 @@ class EmployeeRepository {
 
   Future<bool> isEmailExists(String email, {String? excludeEmployeeId}) async {
     final result = await SupabaseService.client.rpc(
-      'check_email_exists',
+      'check_email_globally_exists',
       params: {
         'p_email': email.trim().toLowerCase(),
+        'p_exclude_company_id': null,
         'p_exclude_employee_id': ?excludeEmployeeId,
       },
     );
@@ -70,7 +81,7 @@ class EmployeeRepository {
       'preview_emp_code',
       params: {'p_company_id': companyId},
     );
-    if (result == null) throw Exception('Failed to preview employee code');
+    if (result == null) throw Exception('Could not preview the employee code. Please try again.');
     return result as String;
   }
 
@@ -81,7 +92,7 @@ class EmployeeRepository {
       'generate_emp_code',
       params: {'p_company_id': companyId},
     );
-    if (result == null) throw Exception('Failed to generate employee code');
+    if (result == null) throw Exception('Could not generate an employee code. Please try again or enter one manually.');
     return result as String;
   }
 
@@ -117,6 +128,29 @@ class EmployeeRepository {
         .eq('company_id', companyId)
         .eq('is_active', true)
         .count();
+    return res.count;
+  }
+
+  Future<int> countEmployeesByOrg(String orgId) async {
+    // Get all company IDs that belong to this org
+    final companies = await SupabaseService.client
+        .from('companies')
+        .select('id')
+        .eq('org_id', orgId)
+        .eq('is_active', true);
+
+    if ((companies as List).isEmpty) return 0;
+
+    final companyIds = companies.map((c) => c['id'] as String).toList();
+
+    // Count active employees across all those branches
+    final res = await SupabaseService.client
+        .from('employees')
+        .select()
+        .inFilter('company_id', companyIds)
+        .eq('is_active', true)
+        .count();
+
     return res.count;
   }
 }

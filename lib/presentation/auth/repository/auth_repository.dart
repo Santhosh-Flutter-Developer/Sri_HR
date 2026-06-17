@@ -1,9 +1,40 @@
 // lib/data/repositories/auth_repository.dart
+import 'dart:developer';
+
 import 'package:flutter/foundation.dart';
 import 'package:sri_hr/data/services/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthRepository {
+
+  Future<String?> checkKioskLogin(String username, String password) async {
+    try {
+      final result = await SupabaseService.client.rpc(
+        'check_kiosk_login',
+        params: {'p_username': username, 'p_password': password},
+      );
+      if (result != null && result.toString().isNotEmpty) {
+        return result.toString();
+      }
+    } catch (e) {
+      debugPrint('[AuthRepo] checkKioskLogin error: $e');
+    }
+    return null;
+  }
+
+  Future<void> signInKioskSession() async {
+    try {
+      final session = SupabaseService.client.auth.currentSession;
+      if (session != null) return; // already signed in
+      await SupabaseService.client.auth.signInWithPassword(
+        email: 'kiosk@srisoftwarez.com', // 👈 your dedicated kiosk email
+        password: 'Admin123@', // 👈 your dedicated kiosk password
+      );
+    } catch (e) {
+      log('signInKioskSession error: $e');
+    }
+  }
+
   // ── LOGIN ─────────────────────────────────────────────────
   Future<Map<String, dynamic>> login(
     String emailOrUsername,
@@ -60,7 +91,7 @@ class AuthRepository {
       email: emailToUse,
       password: password,
     );
-    if (res.user == null) throw Exception('Invalid credentials');
+    if (res.user == null) throw Exception('Incorrect email or password. Please try again.');
 
     // ── Fetch full user profile with role ────────────────
     final userRow = await SupabaseService.client
@@ -71,7 +102,7 @@ class AuthRepository {
 
     if (userRow == null) {
       throw Exception(
-        'User profile not found. Please contact your administrator.',
+        'Your user profile could not be loaded. Please contact your administrator.',
       );
     }
     return userRow;
@@ -114,16 +145,16 @@ class AuthRepository {
         'register_company',
         params: {
           'p_auth_user_id': authUserId,
-          'p_company_name': companyName,
-          'p_person_name': personName,
+          'p_company_name': companyName.trim().isEmpty?null: companyName.trim(),
+          'p_person_name': personName.trim().isEmpty ? null :personName.trim(),
           'p_gstin': gstin.trim().isEmpty ? null : gstin.trim(),
-          'p_mobile': mobile,
-          'p_email': email,
-          'p_address': address,
-          'p_country': country,
-          'p_state': state,
-          'p_city': city,
-          'p_pincode': pincode,
+          'p_mobile': mobile.trim().isEmpty ? null :mobile.trim(),
+          'p_email': email.trim().isEmpty ? null :email.trim(),
+          'p_address': address.trim().isEmpty ? null :address.trim(),
+          'p_country': country.trim().isEmpty ? null :country.trim(),
+          'p_state': state.trim().isEmpty ? null :state.trim(),
+          'p_city': city.trim().isEmpty ? null :city.trim(),
+          'p_pincode': pincode.trim().isEmpty ? null :pincode.trim(),
         },
       );
 
@@ -152,6 +183,7 @@ class AuthRepository {
         .select()
         .eq('company_id', companyId)
         .order('created_at', ascending: false)
+        .limit(1)
         .maybeSingle();
   }
 }

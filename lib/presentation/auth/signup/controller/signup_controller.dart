@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pinput/pinput.dart';
+import 'package:sri_hr/core/handler/exception_handler.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/services/sms_service.dart';
 import 'package:sri_hr/data/services/supabase_service.dart';
@@ -34,15 +35,30 @@ class SignupController extends GetxController {
   final password = TextEditingController();
   final confirmPassword = TextEditingController();
   final otp = TextEditingController();
+
   String otpCode = '';
   late String _activeOtp;
-  // RxInt _resendSeconds = 60.obs;
-  // RxInt _resendCount = 0.obs;
-  // RxBool _canResend = false.obs;
   Timer? _timer;
-  RxBool isChecking = false.obs;
-  RxString emailError = "".obs;
-  Timer? debounce;
+
+  // ── Debounce timers ─────────────────────────────────────
+  Timer? _compNameDebounce;
+  Timer? _gstinDebounce;
+  Timer? _mobileDebounce;
+  Timer? _emailDebounce;
+
+  // ── Checking spinners ────────────────────────────────────
+  RxBool isCheckingCompName = false.obs;
+  RxBool isCheckingGstin = false.obs;
+  RxBool isCheckingMobile = false.obs;
+  RxBool isChecking = false.obs; // email spinner (kept for compat)
+
+  // ── Field-level error messages ───────────────────────────
+  RxString compNameError = ''.obs;
+  RxString gstinError = ''.obs;
+  RxString mobileError = ''.obs;
+  RxString emailError = ''.obs;
+
+  // ── UI state ─────────────────────────────────────────────
   RxBool showPass = false.obs;
   RxBool showConfirmPass = false.obs;
   RxBool otpSent = false.obs;
@@ -50,38 +66,43 @@ class SignupController extends GetxController {
   RxBool sendingOtp = false.obs;
   RxInt step = 0.obs; // 0=company, 1=personal, 2=account
 
-  final steps = ["Company", "Personal", "Account"];
+  final steps = ['Company', 'Personal', 'Account'];
+
+  // ── Regex helpers ─────────────────────────────────────────
+  static final _emailRegex = RegExp(r'^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}$');
+  static final _gstinRegex = RegExp(
+    r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$',
+  );
+
+  bool isValidEmail(String v) => _emailRegex.hasMatch(v.trim());
+
+  // ────────────────────────────────────────────────────────
+  //  LIFECYCLE
+  // ────────────────────────────────────────────────────────
 
   @override
   void onClose() {
+    _cancelTimers();
+    _disposeControllers();
     super.onClose();
-    _timer?.cancel();
-    debounce?.cancel();
-    signupformKey.currentState?.dispose();
-    for (final c in [
-      compName,
-      personName,
-      gstIn,
-      mobile,
-      email,
-      address,
-      country,
-      state,
-      city,
-      pincode,
-      password,
-      confirmPassword,
-      otp,
-    ]) {
-      c.dispose();
-    }
   }
 
   @override
   void dispose() {
+    _cancelTimers();
+    _disposeControllers();
     super.dispose();
+  }
+
+  void _cancelTimers() {
     _timer?.cancel();
-    debounce?.cancel();
+    _compNameDebounce?.cancel();
+    _gstinDebounce?.cancel();
+    _mobileDebounce?.cancel();
+    _emailDebounce?.cancel();
+  }
+
+  void _disposeControllers() {
     signupformKey.currentState?.dispose();
     for (final c in [
       compName,
@@ -102,41 +123,184 @@ class SignupController extends GetxController {
     }
   }
 
-  bool isValidEmail(String email) {
-    final RegExp emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-    return emailRegex.hasMatch(email);
-  }
+  // ────────────────────────────────────────────────────────
+  //  GLOBAL UNIQUENESS CHECKS  (hit Supabase directly)
+  // ────────────────────────────────────────────────────────
 
-  Future<bool> isLoginEmailExists(
-    String email, {
-    String? excludeEmployeeId,
-  }) async {
+  /// Returns true when [name] already exists in the `organizations` table
+  /// (global check — signup creates a new org, so no excludeId needed).
+  Future<bool> isCompanyNameExists(String name) async {
     try {
-      return await isEmailExists(email, excludeEmployeeId: excludeEmployeeId);
+      final rows = await SupabaseService.client
+          .from('organizations')
+          .select('id')
+          .ilike('name', name.trim())
+          .limit(1);
+      return (rows as List).isNotEmpty;
     } catch (e) {
-      debugPrint('[EmpCtrl] isEmailExists ERROR: $e');
+      debugPrint('[SignupCtrl] isCompanyNameExists ERROR: $e');
       return false;
     }
   }
 
-  Future<bool> isEmailExists(String email, {String? excludeEmployeeId}) async {
-    final result = await SupabaseService.client.rpc(
-      'check_email_exists',
-      params: {
-        'p_email': email.trim().toLowerCase(),
-        'p_exclude_employee_id': ?excludeEmployeeId,
-      },
-    );
-    return result as bool;
+  /// Returns true when [gstin] already exists in ANY company globally.
+  Future<bool> isGstinExists(String gstin) async {
+    try {
+      final result = await SupabaseService.client.rpc(
+        'check_gstin_globally_exists',
+        params: {
+          'p_gstin': gstin.trim().toUpperCase(),
+          'p_exclude_company_id': null,
+        },
+      );
+      return result as bool;
+    } catch (e) {
+      debugPrint('[SignupCtrl] isGstinExists ERROR: $e');
+      return false;
+    }
   }
 
+  /// Returns true when [mobileNo] exists in ANY company OR any employee globally.
+  Future<bool> isMobileExists(String mobileNo) async {
+    try {
+      final result = await SupabaseService.client.rpc(
+        'check_phone_globally_exists',
+        params: {
+          'p_phone': mobileNo.trim(),
+          'p_exclude_company_id': null,
+          'p_exclude_employee_id': null,
+        },
+      );
+      return result as bool;
+    } catch (e) {
+      debugPrint('[SignupCtrl] isMobileExists ERROR: $e');
+      return false;
+    }
+  }
+
+  /// Returns true when [emailAddr] exists in ANY company OR any employee globally.
+  Future<bool> isEmailExists(
+    String emailAddr, {
+    String? excludeEmployeeId,
+  }) async {
+    try {
+      final result = await SupabaseService.client.rpc(
+        'check_email_globally_exists',
+        params: {
+          'p_email': emailAddr.trim().toLowerCase(),
+          'p_exclude_company_id': null,
+          'p_exclude_employee_id': excludeEmployeeId,
+        },
+      );
+      return result as bool;
+    } catch (e) {
+      debugPrint('[SignupCtrl] isEmailExists ERROR: $e');
+      return false;
+    }
+  }
+
+  // Kept for AuthController compat
+  Future<bool> isLoginEmailExists(
+    String emailAddr, {
+    String? excludeEmployeeId,
+  }) async => isEmailExists(emailAddr, excludeEmployeeId: excludeEmployeeId);
+
+  // ────────────────────────────────────────────────────────
+  //  DEBOUNCE HANDLERS — Step 0 (Company)
+  // ────────────────────────────────────────────────────────
+
+  void onCompNameChanged(String value) {
+    _compNameDebounce?.cancel();
+    if (value.trim().isEmpty) {
+      compNameError.value = '';
+      isCheckingCompName.value = false;
+      return;
+    }
+    isCheckingCompName.value = true;
+    compNameError.value = '';
+    _compNameDebounce = Timer(const Duration(milliseconds: 600), () async {
+      final exists = await isCompanyNameExists(value.trim());
+      isCheckingCompName.value = false;
+      compNameError.value = exists
+          ? 'This company name is already registered'
+          : '';
+    });
+  }
+
+  void onGstinChanged(String value) {
+    _gstinDebounce?.cancel();
+    if (value.trim().isEmpty) {
+      gstinError.value = '';
+      isCheckingGstin.value = false;
+      return;
+    }
+
+    isCheckingGstin.value = true;
+    gstinError.value = '';
+    _gstinDebounce = Timer(const Duration(milliseconds: 600), () async {
+      final exists = await isGstinExists(value.trim());
+      isCheckingGstin.value = false;
+      gstinError.value = exists ? 'This GSTIN is already registered' : '';
+    });
+  }
+
+  // ────────────────────────────────────────────────────────
+  //  DEBOUNCE HANDLERS — Step 1 (Personal)
+  // ────────────────────────────────────────────────────────
+
+  void onMobileChanged(String value) {
+    sendingOtp.value = false;
+    otpSent.value = false;
+    _mobileDebounce?.cancel();
+    if (value.trim().isEmpty) {
+      mobileError.value = '';
+      isCheckingMobile.value = false;
+      return;
+    }
+    if (value.length != 10 || !RegExp(r'^[0-9]{10}$').hasMatch(value)) {
+      mobileError.value = 'Enter a valid 10-digit mobile number';
+      isCheckingMobile.value = false;
+      return;
+    }
+    isCheckingMobile.value = true;
+    mobileError.value = '';
+    _mobileDebounce = Timer(const Duration(milliseconds: 600), () async {
+      final exists = await isMobileExists(value.trim());
+      isCheckingMobile.value = false;
+      mobileError.value = exists
+          ? 'This mobile number is already registered'
+          : '';
+    });
+  }
+
+  void onEmailChanged(String value) {
+    _emailDebounce?.cancel();
+    if (value.trim().isEmpty) {
+      emailError.value = '';
+      isChecking.value = false;
+      return;
+    }
+    if (!isValidEmail(value)) {
+      emailError.value = 'Enter a valid email address';
+      isChecking.value = false;
+      return;
+    }
+    isChecking.value = true;
+    emailError.value = '';
+    _emailDebounce = Timer(const Duration(milliseconds: 600), () async {
+      final exists = await isEmailExists(value.trim());
+      isChecking.value = false;
+      emailError.value = exists ? 'This email is already registered' : '';
+    });
+  }
+
+  // ────────────────────────────────────────────────────────
+  //  PASSWORD
+  // ────────────────────────────────────────────────────────
+
   String? validatePassword(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Password cannot be empty';
-    }
-    if (value.length < 8) {
-      return 'Must be at least 8 characters';
-    }
+    if (value == null || value.isEmpty) return 'Password cannot be empty';
+    if (value.length < 8) return 'Must be at least 8 characters';
     if (!value.contains(RegExp(r'[A-Z]'))) {
       return 'Must contain at least one uppercase letter';
     }
@@ -152,12 +316,15 @@ class SignupController extends GetxController {
     if (value.contains(RegExp(r'\s'))) {
       return 'Password must not contain spaces';
     }
-    return null; // all good
+    return null;
   }
+
+  // ────────────────────────────────────────────────────────
+  //  OTP
+  // ────────────────────────────────────────────────────────
 
   Future<void> sendOtp() async {
     final phone = mobile.text.trim();
-
     if (phone.length != 10) {
       Get.snackbar(
         'Error',
@@ -168,41 +335,30 @@ class SignupController extends GetxController {
       );
       return;
     }
-
     try {
       sendingOtp.value = true;
-
-      // await Supabase.instance.client.auth.signInWithOtp(
-      //   phone: '+91$phone', // India country code
-      // );
-
       otpCode = OtpGenerator.generate();
       final mobileWithCode = '91$phone';
-
-      final sent = await SmsService.sendOtp(
+      await SmsService.sendOtp(
         mobileNumber: mobileWithCode,
         otp: otpCode,
         appName: 'Srisoft',
       );
-
       sendingOtp.value = false;
       otpSent.value = true;
-
       Get.snackbar(
         'OTP Sent',
-        'OTP sent to +91$phone',
+        'A verification code has been sent to +91\$phone. Please check your messages.',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: AppColors.success,
         colorText: Colors.white,
       );
       _activeOtp = otpCode;
-      // _startCountdown();
     } catch (e) {
       sendingOtp.value = false;
-
       Get.snackbar(
         'Error',
-        e.toString(),
+        handleException(e),
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: AppColors.error,
         colorText: Colors.white,
@@ -210,88 +366,8 @@ class SignupController extends GetxController {
     }
   }
 
-  // void _startCountdown() {
-  //   _resendSeconds.value = 60;
-  //   _canResend.value = false;
-  //   _timer?.cancel();
-  //   _timer = Timer.periodic(const Duration(seconds: 1), (t) {
-  //     if (_resendSeconds.value <= 1) {
-  //       t.cancel();
-  //       _canResend.value = true;
-  //     } else {
-  //       _resendSeconds.value--;
-  //     }
-  //   });
-  // }
-
-  // Future<void> _resendOtp() async {
-  //   if (_resendCount.value >= 3) {
-  //     Get.snackbar(
-  //       'Warning',
-  //       "Maximum resend limit reached. Please try again later.",
-  //       snackPosition: SnackPosition.BOTTOM,
-  //       backgroundColor: AppColors.warning,
-  //       colorText: Colors.white,
-  //     );
-  //   }
-  //   final newOtp = OtpGenerator.generate();
-  //   final sent = await SmsService.sendOtp(
-  //     mobileNumber: '91${mobile.text.toString()}',
-  //     otp: newOtp,
-  //     appName: 'Srisoft',
-  //   );
-  //   if (sent) {
-  //     _activeOtp = newOtp;
-  //     _resendCount.value++;
-  //     pincode.clear();
-  //     _startCountdown();
-  //     Get.snackbar(
-  //       'Success',
-  //       "OTP resent successfully",
-  //       snackPosition: SnackPosition.BOTTOM,
-  //       backgroundColor: AppColors.success,
-  //       colorText: Colors.white,
-  //     );
-  //   } else {
-  //     Get.snackbar(
-  //       'Error',
-  //       "Failed to resend OTP",
-  //       snackPosition: SnackPosition.BOTTOM,
-  //       backgroundColor: AppColors.error,
-  //       colorText: Colors.white,
-  //     );
-  //   }
-  // }
-
-  /*Future<void> sendOtp() async {
-    if (mobile.text.length != 10) {
-      Get.snackbar(
-        'Error',
-        'Enter a valid 10-digit mobile number',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
-      return;
-    }
-    sendingOtp.value = true;
-    await Future.delayed(const Duration(seconds: 1));
-    sendingOtp.value = false;
-    otpSent.value = true;
-
-    Get.snackbar(
-      'OTP Sent',
-      'OTP sent to ${mobile.text} (use 123456 for demo)',
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: AppColors.success,
-      colorText: Colors.white,
-    );
-  }*/
-
   Future<void> verifyOtp() async {
-    final phone = mobile.text.trim();
     final otpcode = otp.text.trim();
-
     if (otpcode.length != 6) {
       Get.snackbar(
         'Error',
@@ -302,21 +378,13 @@ class SignupController extends GetxController {
       );
       return;
     }
-
     try {
-      // final response = await Supabase.instance.client.auth.verifyOTP(
-      //   phone: '+91$phone',
-      //   token: otpcode,
-      //   type: OtpType.sms,
-      // );
-
       if (otpcode == _activeOtp) {
         _timer?.cancel();
         otpVerified.value = true;
-
         Get.snackbar(
           'Success',
-          'Mobile number verified!',
+          'Mobile number verified successfully!',
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: AppColors.success,
           colorText: Colors.white,
@@ -333,7 +401,7 @@ class SignupController extends GetxController {
       }
     } catch (e) {
       Get.snackbar(
-        'Invalid OTP',
+        'Incorrect Verification Code',
         'Verification failed',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: AppColors.error,
@@ -342,35 +410,32 @@ class SignupController extends GetxController {
     }
   }
 
-  /*void verifyOtp() {
-    if (otp.text == "123456") {
-      otpVerified.value = true;
-      Get.snackbar(
-        'Verified',
-        'Mobile number verified!',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: AppColors.success,
-        colorText: Colors.white,
-      );
-    } else {
-      Get.snackbar(
-        'Invalid OTP',
-        'Please enter the correct OTP',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
-    }
-  }*/
+  // ────────────────────────────────────────────────────────
+  //  SUBMIT — re-validates all unique fields before sending
+  // ────────────────────────────────────────────────────────
 
   void submit() {
     if (!signupformKey.currentState!.validate()) return;
     if (!otpVerified.value) {
       Get.snackbar(
-        'OTP Required',
-        'Please verify your mobile number',
+        'Mobile Verification Required',
+        'Please verify your mobile number before continuing.',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: AppColors.warning,
+        colorText: Colors.white,
+      );
+      return;
+    }
+    // Block if any inline duplicate error is still showing
+    if (compNameError.value.isNotEmpty ||
+        gstinError.value.isNotEmpty ||
+        mobileError.value.isNotEmpty ||
+        emailError.value.isNotEmpty) {
+      Get.snackbar(
+        'Validation Error',
+        'Please fix the highlighted errors before continuing.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: AppColors.error,
         colorText: Colors.white,
       );
       return;
@@ -389,6 +454,10 @@ class SignupController extends GetxController {
       password: password.text.trim(),
     );
   }
+
+  // ────────────────────────────────────────────────────────
+  //  LAYOUT
+  // ────────────────────────────────────────────────────────
 
   Widget wideLayout() {
     return Row(
@@ -419,9 +488,7 @@ class SignupController extends GetxController {
     );
   }
 
-  Widget narrowLayout() {
-    return signupForm();
-  }
+  Widget narrowLayout() => signupForm();
 
   Widget signupForm() {
     return Obx(
@@ -430,10 +497,9 @@ class SignupController extends GetxController {
           padding: const EdgeInsets.all(8.0),
           child: Column(
             children: [
-              if (Get.mediaQuery.size.width <= 800)
-                const SizedBox(height: 20.0),
+              if (Get.mediaQuery.size.width <= 800) const SizedBox(height: 20),
               StepIndicator(currentStep: step.value, steps: steps),
-              const SizedBox(height: 32.0),
+              const SizedBox(height: 32),
               SriCard(
                 child: Form(
                   key: signupformKey,
@@ -446,7 +512,7 @@ class SignupController extends GetxController {
                           child: buildStep(step.value),
                         ),
                       ),
-                      const SizedBox(height: 24.0),
+                      const SizedBox(height: 24),
                       Row(
                         children: [
                           if (step.value > 0)
@@ -463,32 +529,7 @@ class SignupController extends GetxController {
                               () => ElevatedButton(
                                 onPressed: auth.isLoading.value
                                     ? null
-                                    : () {
-                                        if (step.value < steps.length - 1) {
-                                          if (!signupformKey.currentState!
-                                              .validate()) {
-                                            return;
-                                          }
-                                          if (step.value == 1 &&
-                                              !otpVerified.value) {
-                                            Get.snackbar(
-                                              'OTP Required',
-                                              'Please verify your mobile number',
-                                              snackPosition:
-                                                  SnackPosition.BOTTOM,
-                                              margin: EdgeInsets.all(10.0),
-                                              backgroundColor:
-                                                  AppColors.warning,
-                                              colorText: Colors.white,
-                                            );
-                                            return;
-                                          }
-
-                                          step.value++;
-                                        } else {
-                                          submit();
-                                        }
-                                      },
+                                    : () => _onNextOrSubmit(),
                                 style: ElevatedButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 16,
@@ -506,11 +547,11 @@ class SignupController extends GetxController {
                                     : Padding(
                                         padding:
                                             Get.mediaQuery.size.width >= 800
-                                            ? EdgeInsets.symmetric(
-                                                vertical: 8.0,
+                                            ? const EdgeInsets.symmetric(
+                                                vertical: 8,
                                               )
-                                            : EdgeInsets.symmetric(
-                                                vertical: 4.0,
+                                            : const EdgeInsets.symmetric(
+                                                vertical: 4,
                                               ),
                                         child: Text(
                                           step.value < steps.length - 1
@@ -537,242 +578,352 @@ class SignupController extends GetxController {
     );
   }
 
-  Widget buildStep(int step) {
-    return switch (step) {
-      0 => stepCompany(),
-      1 => stepPersonal(),
-      2 => stepAccount(),
-      _ => const SizedBox(),
-    };
+  void _onNextOrSubmit() {
+    if (step.value < steps.length - 1) {
+      if (!signupformKey.currentState!.validate()) return;
+
+      // Step 0 → block if company/gstin check is pending or has error
+      if (step.value == 0) {
+        if (isCheckingCompName.value || isCheckingGstin.value) {
+          Get.snackbar(
+            'Please wait',
+            'Checking field availability…',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: AppColors.warning,
+            colorText: Colors.white,
+          );
+          return;
+        }
+        if (compNameError.value.isNotEmpty || gstinError.value.isNotEmpty) {
+          return; // validator already shows inline error
+        }
+      }
+
+      // Step 1 → block if mobile/email check is pending or has error
+      if (step.value == 1) {
+        if (!otpVerified.value) {
+          Get.snackbar(
+            'OTP Required',
+            'Please verify your mobile number',
+            snackPosition: SnackPosition.BOTTOM,
+            margin: const EdgeInsets.all(10),
+            backgroundColor: AppColors.warning,
+            colorText: Colors.white,
+          );
+          return;
+        }
+        if (isCheckingMobile.value || isChecking.value) {
+          Get.snackbar(
+            'Please wait',
+            'Checking field availability…',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: AppColors.warning,
+            colorText: Colors.white,
+          );
+          return;
+        }
+        if (mobileError.value.isNotEmpty || emailError.value.isNotEmpty) {
+          return;
+        }
+      }
+
+      step.value++;
+    } else {
+      submit();
+    }
   }
+
+  Widget buildStep(int s) => switch (s) {
+    0 => stepCompany(),
+    1 => stepPersonal(),
+    2 => stepAccount(),
+    _ => const SizedBox(),
+  };
+
+  // ────────────────────────────────────────────────────────
+  //  STEP 0 — Company
+  // ────────────────────────────────────────────────────────
 
   Widget stepCompany() => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       StepTitle(title: 'Company Information', icon: Icons.business_rounded),
       const SizedBox(height: 20),
-      SriTextField(
-        controller: compName,
-        label: 'Company Name *',
-        prefixIcon: Icons.business_rounded,
-        validator: (v) => v?.toString().trim().isEmpty == true
-            ? 'Company Name Required'
-            : null,
+
+      // Company Name with global duplicate check
+      Obx(
+        () => SriTextField(
+          controller: compName,
+          label: 'Company Name *',
+          prefixIcon: Icons.business_rounded,
+          errorText: compNameError.value.isNotEmpty
+              ? compNameError.value
+              : null,
+          onChanged: onCompNameChanged,
+          suffixIconWidget: isCheckingCompName.value
+              ? const _SpinnerIcon()
+              : (compNameError.value.isEmpty && compName.text.isNotEmpty)
+              ? const _CheckIcon()
+              : null,
+          validator: (v) {
+            if (v == null || v.trim().isEmpty) {
+              return 'Company Name is required';
+            }
+            if (compNameError.value.isNotEmpty) {
+              return compNameError.value;
+            }
+            return null;
+          },
+        ),
       ),
       const SizedBox(height: 16),
-      SriTextField(
-        controller: gstIn,
-        label: 'GSTIN',
-        prefixIcon: Icons.numbers_rounded,
-        hint: 'GST Identification Number',
+
+      // GSTIN with format + global duplicate check
+      Obx(
+        () => SriTextField(
+          controller: gstIn,
+          label: 'GSTIN',
+          prefixIcon: Icons.numbers_rounded,
+          hint: 'GST Identification Number',
+          errorText: gstinError.value.isNotEmpty ? gstinError.value : null,
+          onChanged: onGstinChanged,
+          suffixIconWidget: isCheckingGstin.value
+              ? const _SpinnerIcon()
+              : (gstinError.value.isEmpty && gstIn.text.isNotEmpty)
+              ? const _CheckIcon()
+              : null,
+          validator: (v) {
+            if (v == null || v.trim().isEmpty) return null; // optional
+            if (gstinError.value.isNotEmpty) return gstinError.value;
+            return null;
+          },
+        ),
       ),
     ],
   );
+
+  // ────────────────────────────────────────────────────────
+  //  STEP 1 — Personal
+  // ────────────────────────────────────────────────────────
 
   Widget stepPersonal() => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       StepTitle(title: 'Person Details', icon: Icons.person_rounded),
       const SizedBox(height: 20),
+
       SriTextField(
         controller: personName,
         label: 'Full Name *',
         prefixIcon: Icons.person_outline,
         validator: (v) => v?.toString().trim().isEmpty == true
-            ? 'Person Name Required'
+            ? 'Person Name is required'
             : null,
       ),
       const SizedBox(height: 16),
-      // Mobile + OTP
-      Row(
-        children: [
-          Expanded(
-            child: SriTextField(
-              controller: mobile,
-              label: 'Mobile Number *',
-              prefixIcon: Icons.phone_rounded,
-              keyboardType: TextInputType.phone,
-              validator: (v) {
-                if (v?.isEmpty == true) return 'Mobile Number is Required';
-                if (v!.length != 10) return 'Enter 10 digits';
-                return null;
-              },
-            ),
-          ),
-          const SizedBox(width: 12),
-          ElevatedButton(
-            onPressed: sendingOtp.value ? null : sendOtp,
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            ),
-            child: sendingOtp.value
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  )
-                : Padding(
-                    padding: Get.mediaQuery.size.width >= 800
-                        ? EdgeInsets.symmetric(vertical: 6.0)
-                        : EdgeInsets.symmetric(vertical: 0.0),
-                    child: Text(otpSent.value ? 'Resend' : 'Send OTP'),
-                  ),
-          ),
-        ],
-      ),
-      if (otpSent.value && !otpVerified.value) ...[
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.primary.withOpacity(0.2)),
-          ),
-          child: Column(
-            children: [
-              const Text(
-                'Enter OTP sent to your mobile',
-                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+
+      // Mobile + OTP row
+      Obx(
+        () => Row(
+          children: [
+            Expanded(
+              child: SriTextField(
+                controller: mobile,
+                label: 'Mobile Number *',
+                prefixIcon: Icons.phone_rounded,
+                keyboardType: TextInputType.phone,
+                errorText: mobileError.value.isNotEmpty
+                    ? mobileError.value
+                    : null,
+                onChanged: onMobileChanged,
+                suffixIconWidget: isCheckingMobile.value
+                    ? const _SpinnerIcon()
+                    : (mobileError.value.isEmpty && mobile.text.isNotEmpty)
+                    ? const _CheckIcon()
+                    : null,
+                validator: (v) {
+                  if (v == null || v.isEmpty) {
+                    return 'Mobile Number is required';
+                  }
+                  if (v.length != 10) return 'Enter 10 digits';
+                  if (mobileError.value.isNotEmpty) {
+                    return mobileError.value;
+                  }
+                  return null;
+                },
               ),
-              const SizedBox(height: 12),
-              Pinput(
-                controller: otp,
-                length: 6,
-                defaultPinTheme: PinTheme(
-                  width: 48,
-                  height: 52,
-                  textStyle: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: AppColors.border),
-                    borderRadius: BorderRadius.circular(10),
-                    color: AppColors.surfaceVariant,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
+            ),
+            const SizedBox(width: 12),
+            if (!otpVerified.value &&
+                mobileError.value.isEmpty &&
+                !isCheckingMobile.value)
               ElevatedButton(
-                onPressed: verifyOtp,
+                onPressed: sendingOtp.value ? null : sendOtp,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 32,
-                    vertical: 12,
+                    horizontal: 16,
+                    vertical: 16,
                   ),
                 ),
-                child: const Text('Verify OTP'),
+                child: sendingOtp.value
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : Padding(
+                        padding: Get.mediaQuery.size.width >= 800
+                            ? const EdgeInsets.symmetric(vertical: 6)
+                            : EdgeInsets.zero,
+                        child: Text(otpSent.value ? 'Resend' : 'Send OTP'),
+                      ),
               ),
-            ],
-          ),
+          ],
         ),
-      ],
-      if (otpVerified.value) ...[
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: AppColors.success.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
+      ),
+
+      // OTP entry block
+      Obx(() {
+        if (otpSent.value &&
+            !otpVerified.value &&
+            mobileError.value.isEmpty &&
+            !isCheckingMobile.value) {
+          return Column(
             children: [
-              Icon(Icons.check_circle, color: AppColors.success, size: 16),
-              SizedBox(width: 6),
-              Text(
-                'Mobile verified',
-                style: TextStyle(
-                  color: AppColors.success,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+                ),
+                child: Column(
+                  children: [
+                    const Text(
+                      'Enter OTP sent to your mobile',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Pinput(
+                      controller: otp,
+                      length: 6,
+                      defaultPinTheme: PinTheme(
+                        width: 48,
+                        height: 52,
+                        textStyle: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: AppColors.border),
+                          borderRadius: BorderRadius.circular(10),
+                          color: AppColors.surfaceVariant,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: verifyOtp,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 32,
+                          vertical: 12,
+                        ),
+                      ),
+                      child: const Text('Verify OTP'),
+                    ),
+                  ],
                 ),
               ),
             ],
-          ),
-        ),
-      ],
+          );
+        }
+        if (otpVerified.value) {
+          return Column(
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.check_circle,
+                      color: AppColors.success,
+                      size: 16,
+                    ),
+                    SizedBox(width: 6),
+                    Text(
+                      'Mobile verified',
+                      style: TextStyle(
+                        color: AppColors.success,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        }
+        return const SizedBox();
+      }),
       const SizedBox(height: 16),
+
+      // Email with global duplicate check
       Obx(
         () => SriTextField(
           controller: email,
           label: 'Email Address *',
           prefixIcon: Icons.email_outlined,
-          errorText: emailError.value != "" ? emailError.value : null,
+          errorText: emailError.value.isNotEmpty ? emailError.value : null,
           keyboardType: TextInputType.emailAddress,
-          onChanged: (val) {
-            // Cancel previous debounce
-            debounce?.cancel();
-
-            if (val.isEmpty) {
-              emailError.value = "";
-              return;
-            }
-
-            if (!isValidEmail(val)) {
-              emailError.value = 'Enter a valid email address';
-              return;
-            }
-
-            // Debounce API call by 600ms so it doesn't fire on every keystroke
-            debounce = Timer(const Duration(milliseconds: 600), () async {
-              isChecking.value = true;
-              emailError.value = "";
-
-              final exists = await isEmailExists(val);
-
-              isChecking.value = false;
-              emailError.value = (exists
-                  ? 'This email is already registered'
-                  : null)!;
-            });
-          },
+          onChanged: onEmailChanged,
           suffixIconWidget: isChecking.value
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: Padding(
-                    padding: EdgeInsets.all(12.0),
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                )
-              : emailError.value == "" && email.text.isNotEmpty
-              ? const Icon(
-                  Icons.check_circle_rounded,
-                  color: AppColors.accentGreen,
-                  size: 18,
-                )
+              ? const _SpinnerIcon()
+              : (emailError.value.isEmpty && email.text.isNotEmpty)
+              ? const _CheckIcon()
               : null,
           validator: (v) {
-            if (v == null || v.isEmpty) {
-              return 'Email is required';
-            } else if (!isValidEmail(v)) {
-              return 'Enter Valid Email';
-            } else if (emailError.value != "") {
-              return emailError.value;
-            }
+            if (v == null || v.isEmpty) return 'Email is required';
+            if (!isValidEmail(v)) return 'Enter a valid email address';
+            if (emailError.value.isNotEmpty) return emailError.value;
             return null;
           },
         ),
       ),
       const SizedBox(height: 20),
+
       StepTitle(title: 'Address Details', icon: Icons.location_on_rounded),
       const SizedBox(height: 20),
+
       SriTextField(
         controller: address,
         label: 'Full Address *',
         maxLines: 3,
         prefixIcon: Icons.home_rounded,
         validator: (v) => v?.toString().trim().isEmpty == true
-            ? 'Full Address is Required'
+            ? 'Full Address is required'
             : null,
       ),
       const SizedBox(height: 16),
+
       Row(
         children: [
           Expanded(
@@ -793,6 +944,7 @@ class SignupController extends GetxController {
         ],
       ),
       const SizedBox(height: 16),
+
       Row(
         children: [
           Expanded(
@@ -816,61 +968,9 @@ class SignupController extends GetxController {
     ],
   );
 
-  // Widget stepAddress() => Column(
-  //   crossAxisAlignment: CrossAxisAlignment.start,
-  //   children: [
-  //     StepTitle(title: 'Address Details', icon: Icons.location_on_rounded),
-  //     const SizedBox(height: 20),
-  //     SriTextField(
-  //       controller: address,
-  //       label: 'Full Address *',
-  //       maxLines: 3,
-  //       prefixIcon: Icons.home_rounded,
-  //       validator: (v) => v?.isEmpty == true ? 'Required' : null,
-  //     ),
-  //     const SizedBox(height: 16),
-  //     Row(
-  //       children: [
-  //         Expanded(
-  //           child: SriTextField(
-  //             controller: country,
-  //             label: 'Country',
-  //             prefixIcon: Icons.flag_rounded,
-  //           ),
-  //         ),
-  //         const SizedBox(width: 12),
-  //         Expanded(
-  //           child: SriTextField(
-  //             controller: state,
-  //             label: 'State',
-  //             prefixIcon: Icons.map_rounded,
-  //           ),
-  //         ),
-  //       ],
-  //     ),
-  //     const SizedBox(height: 16),
-  //     Row(
-  //       children: [
-  //         Expanded(
-  //           child: SriTextField(
-  //             controller: city,
-  //             label: 'City',
-  //             prefixIcon: Icons.location_city_rounded,
-  //           ),
-  //         ),
-  //         const SizedBox(width: 12),
-  //         Expanded(
-  //           child: SriTextField(
-  //             controller: pincode,
-  //             label: 'Pincode',
-  //             keyboardType: TextInputType.number,
-  //             prefixIcon: Icons.pin_drop_rounded,
-  //           ),
-  //         ),
-  //       ],
-  //     ),
-  //   ],
-  // );
+  // ────────────────────────────────────────────────────────
+  //  STEP 2 — Account
+  // ────────────────────────────────────────────────────────
 
   Widget stepAccount() => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -909,32 +1009,62 @@ class SignupController extends GetxController {
         ),
       ),
       const SizedBox(height: 20),
-      SriTextField(
-        controller: password,
-        label: 'Password *',
-        prefixIcon: Icons.lock_outline_rounded,
-        obscureText: !showPass.value,
-        onSuffixTap: () => showPass.value = !showPass.value,
-        suffixIcon: showPass.value ? Icons.visibility_off : Icons.visibility,
-
-        validator: validatePassword,
+      Obx(
+        () => SriTextField(
+          controller: password,
+          label: 'Password *',
+          prefixIcon: Icons.lock_outline_rounded,
+          obscureText: !showPass.value,
+          onSuffixTap: () => showPass.value = !showPass.value,
+          suffixIcon: showPass.value ? Icons.visibility_off : Icons.visibility,
+          validator: validatePassword,
+        ),
       ),
       const SizedBox(height: 16),
-      SriTextField(
-        controller: confirmPassword,
-        label: 'Confirm Password *',
-        prefixIcon: Icons.lock_outline_rounded,
-        obscureText: !showConfirmPass.value,
-        onSuffixTap: () => showConfirmPass.value = !showConfirmPass.value,
-        suffixIcon: showConfirmPass.value
-            ? Icons.visibility_off
-            : Icons.visibility,
-        validator: (v) {
-          if (v?.isEmpty == true) return 'Confirm password is required';
-          if (v != password.text) return 'Passwords do not match';
-          return null;
-        },
+      Obx(
+        () => SriTextField(
+          controller: confirmPassword,
+          label: 'Confirm Password *',
+          prefixIcon: Icons.lock_outline_rounded,
+          obscureText: !showConfirmPass.value,
+          onSuffixTap: () => showConfirmPass.value = !showConfirmPass.value,
+          suffixIcon: showConfirmPass.value
+              ? Icons.visibility_off
+              : Icons.visibility,
+          validator: (v) {
+            if (v == null || v.isEmpty) {
+              return 'Confirm password is required';
+            }
+            if (v != password.text) return 'Passwords do not match';
+            return null;
+          },
+        ),
       ),
     ],
+  );
+}
+
+// ── Small helper widgets ──────────────────────────────────
+
+class _SpinnerIcon extends StatelessWidget {
+  const _SpinnerIcon();
+  @override
+  Widget build(BuildContext context) => const SizedBox(
+    width: 16,
+    height: 16,
+    child: Padding(
+      padding: EdgeInsets.all(12),
+      child: CircularProgressIndicator(strokeWidth: 2),
+    ),
+  );
+}
+
+class _CheckIcon extends StatelessWidget {
+  const _CheckIcon();
+  @override
+  Widget build(BuildContext context) => const Icon(
+    Icons.check_circle_rounded,
+    color: AppColors.accentGreen,
+    size: 18,
   );
 }

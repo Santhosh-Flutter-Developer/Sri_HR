@@ -127,6 +127,24 @@ class FormFields extends StatelessWidget {
               readOnly: readOnly ?? false,
             ),
           );
+          case "forgot_password":
+        return Align(
+          alignment: Alignment.centerRight,
+          child: GestureDetector(
+            onTap: onPressed,
+            child: const Padding(
+              padding: EdgeInsets.only(top: 8, bottom: 4),
+              child: Text(
+                'Forgot password?',
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ),
+        ); 
         case "date":
           return Padding(
             padding: EdgeInsets.only(
