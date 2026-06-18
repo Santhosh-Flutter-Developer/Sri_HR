@@ -8,6 +8,7 @@ import 'package:sri_hr/presentation/dashboard/widgets/greeting_bar.dart';
 import 'package:sri_hr/presentation/dashboard/widgets/quick_actions.dart';
 import 'package:sri_hr/presentation/dashboard/widgets/stats_grid.dart';
 import 'package:sri_hr/presentation/dashboard/widgets/subscription_alert.dart';
+import 'package:sri_hr/presentation/mark_attendance/mark_attendance.dart';
 import 'package:sri_hr/widgets/app_shell.dart';
 import 'package:sri_hr/widgets/loading_overlay.dart';
 
@@ -41,7 +42,7 @@ class Dashboard extends StatelessWidget {
     final isWide = MediaQuery.of(context).size.width >= 800;
     return SafeArea(
       top: false,
-      child: AppShell(
+      child:auth.isAdmin? AppShell(
         currentModule: 'dashboard',
         title: 'Dashboard',
         floatingActionButton: isWide ? SizedBox() : AttendanceFAB(),
@@ -105,7 +106,7 @@ class Dashboard extends StatelessWidget {
                   ),
                 ),
         ),
-      ),
+      ):MarkAttendance(),
     );
   }
 }
