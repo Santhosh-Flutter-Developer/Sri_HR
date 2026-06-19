@@ -10,6 +10,7 @@ import 'package:sri_hr/widgets/empty_state.dart';
 import 'package:sri_hr/widgets/filter_chip.dart';
 import 'package:sri_hr/widgets/loading_overlay.dart';
 import 'package:sri_hr/widgets/sri_button.dart';
+import 'package:sri_hr/widgets/sri_pagination_bar.dart';
 
 class PermissionRequest extends StatelessWidget {
   PermissionRequest({super.key});
@@ -95,58 +96,78 @@ class PermissionRequest extends StatelessWidget {
                     onAction: () => controller.showForm(context, controller),
                   );
                 }
-                return RefreshIndicator(
-                  onRefresh: controller.load,
-                  child: ListView(
-                    children: [
-                      Padding(
-                        padding: EdgeInsets.only(
-                          top: isWide ? 24.0 : 10.0,
-                          left: isWide ? 24.0 : 10.0,
-                          right: isWide ? 24.0 : 10.0,
-                          bottom: 10.0,
-                        ),
-                        child: ResponsiveGridRow(
-                          children: List.generate(
-                            controller.filteredPermission.length,
-                            (i) {
-                              return ResponsiveGridCol(
-                                xl: 4,
-                                lg: 4,
-                                md: 6,
-                                sm: 12,
-                                xs: 12,
-                                child: Padding(
-                                  padding: EdgeInsets.only(
-                                    right: isWide ? 8.0 : 0.0,
-                                  ),
-                                  child: PermissionCard(
-                                    req: controller.filteredPermission[i],
-                                    canApprove: auth.canEdit(
-                                      'permission_request',
-                                    ),
-                                    canDelete: auth.canDelete(
-                                      'permission_request',
-                                    ),
-                                    onApprove: () => controller.approve(
-                                      controller.filteredPermission[i].id,
-                                    ),
-                                    onReject: () => controller.reject(
-                                      controller.filteredPermission[i].id,
-                                    ),
-                                    onDelete: () => controller.confirmDelete(
-                                      context,
-                                      controller.filteredPermission[i].id,
-                                    ),
-                                  ),
+                final paginated = controller.paginatedPermission;
+                return Column(
+                  children: [
+                    Expanded(
+                      child: RefreshIndicator(
+                        onRefresh: controller.load,
+                        child: ListView(
+                          children: [
+                            Padding(
+                              padding: EdgeInsets.only(
+                                top: isWide ? 24.0 : 10.0,
+                                left: isWide ? 24.0 : 10.0,
+                                right: isWide ? 24.0 : 10.0,
+                                bottom: 10.0,
+                              ),
+                              child: ResponsiveGridRow(
+                                children: List.generate(
+                                  paginated.length,
+                                  (i) {
+                                    return ResponsiveGridCol(
+                                      xl: 4,
+                                      lg: 4,
+                                      md: 6,
+                                      sm: 12,
+                                      xs: 12,
+                                      child: Padding(
+                                        padding: EdgeInsets.only(
+                                          right: isWide ? 8.0 : 0.0,
+                                        ),
+                                        child: PermissionCard(
+                                          req: paginated[i],
+                                          canApprove: auth.canEdit(
+                                            'permission_request',
+                                          ),
+                                          canDelete: auth.canDelete(
+                                            'permission_request',
+                                          ),
+                                          onApprove: () => controller.approve(
+                                            paginated[i].id,
+                                          ),
+                                          onReject: () => controller.reject(
+                                            paginated[i].id,
+                                          ),
+                                          onDelete: () =>
+                                              controller.confirmDelete(
+                                            context,
+                                            paginated[i].id,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
-                              );
-                            },
-                          ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                    // ── Pagination bar ────────────────────────────────
+                    Obx(
+                      () => SriPaginationBar(
+                        currentPage: controller.currentPage.value,
+                        totalItems: controller.filteredPermission.length,
+                        rowLimit: controller.rowLimit.value,
+                        rowLimitOptions:
+                            PermissionRequestController.rowLimitOptions,
+                        onPageChanged: controller.goToPage,
+                        onLimitChanged: controller.setRowLimit,
+                      ),
+                    ),
+                  ],
                 );
               }),
             ),

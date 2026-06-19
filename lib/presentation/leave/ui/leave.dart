@@ -10,6 +10,7 @@ import 'package:sri_hr/widgets/app_shell.dart';
 import 'package:sri_hr/widgets/empty_state.dart';
 import 'package:sri_hr/widgets/loading_overlay.dart';
 import 'package:sri_hr/widgets/sri_button.dart';
+import 'package:sri_hr/widgets/sri_pagination_bar.dart';
 
 class Leave extends StatelessWidget {
   Leave({super.key});
@@ -88,8 +89,8 @@ class Leave extends StatelessWidget {
                 if (controller.isLoading.value) {
                   return const LoadingOverlay();
                 }
-                final leaves = controller.filteredLeaves;
-                if (leaves.isEmpty) {
+                final allLeaves = controller.filteredLeaves;
+                if (allLeaves.isEmpty) {
                   return EmptyState(
                     message: 'No Leave requests found',
                     icon: Icons.event_busy_outlined,
@@ -99,65 +100,69 @@ class Leave extends StatelessWidget {
                     onAction: () => controller.openLeaveForm(context, controller),
                   );
                 }
-                return RefreshIndicator(
-                  onRefresh: controller.loadLeaves,
-                  child: ListView(
-                    children: [
-                      Padding(
-                        padding: EdgeInsets.only(
-                          top: isWide ? 24.0 : 10.0,
-                          left: isWide ? 24.0 : 10.0,
-                          right: isWide ? 24.0 : 10.0,
-                          bottom: 10.0,
-                        ),
-                        child: ResponsiveGridRow(
-                          children: List.generate(leaves.length, (i) {
-                            return ResponsiveGridCol(
-                              xl: 4,
-                              lg: 4,
-                              md: 6,
-                              sm: 12,
-                              xs: 12,
-                              child: Padding(
-                                padding: EdgeInsets.only(
-                                  right: isWide ? 8.0 : 0.0,
-                                ),
-                                child: LeaveCard(
-                                  leave: leaves[i],
-                                  canApprove: auth.canEdit('leave_request'),
-                                  canDelete: auth.canDelete('leave_request'),
-                                  onApprove: () =>
-                                      controller.approve(leaves[i].id),
-                                  onReject: () => controller.reject(leaves[i].id),
-                                  onDelete: () => controller.confirmDelete(
-                                    context,
-                                    controller,
-                                    leaves[i].id,
-                                  ),
-                                ),
+                final paginated = controller.paginatedLeaves;
+                return Column(
+                  children: [
+                    Expanded(
+                      child: RefreshIndicator(
+                        onRefresh: controller.loadLeaves,
+                        child: ListView(
+                          children: [
+                            Padding(
+                              padding: EdgeInsets.only(
+                                top: isWide ? 24.0 : 10.0,
+                                left: isWide ? 24.0 : 10.0,
+                                right: isWide ? 24.0 : 10.0,
+                                bottom: 10.0,
                               ),
-                            );
-                          }),
+                              child: ResponsiveGridRow(
+                                children: List.generate(paginated.length, (i) {
+                                  return ResponsiveGridCol(
+                                    xl: 4,
+                                    lg: 4,
+                                    md: 6,
+                                    sm: 12,
+                                    xs: 12,
+                                    child: Padding(
+                                      padding: EdgeInsets.only(
+                                        right: isWide ? 8.0 : 0.0,
+                                      ),
+                                      child: LeaveCard(
+                                        leave: paginated[i],
+                                        canApprove: auth.canEdit('leave_request'),
+                                        canDelete: auth.canDelete('leave_request'),
+                                        onApprove: () =>
+                                            controller.approve(paginated[i].id),
+                                        onReject: () =>
+                                            controller.reject(paginated[i].id),
+                                        onDelete: () =>
+                                            controller.confirmDelete(
+                                          context,
+                                          controller,
+                                          paginated[i].id,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
-                  // ListView.builder(
-                  //   padding: EdgeInsets.all(isWide ? 20.0 : 10.0),
-                  //   itemCount: leaves.length,
-                  //   itemBuilder: (_, i) => LeaveCard(
-                  //     leave: leaves[i],
-                  //     canApprove: auth.canEdit('leave_request'),
-                  //     canDelete: auth.canDelete('leave_request'),
-                  //     onApprove: () => controller.approve(leaves[i].id),
-                  //     onReject: () => controller.reject(leaves[i].id),
-                  //     onDelete: () => controller.confirmDelete(
-                  //       context,
-                  //       controller,
-                  //       leaves[i].id,
-                  //     ),
-                  //   ),
-                  // ),
+                    ),
+                    // ── Pagination bar ────────────────────────────────
+                    Obx(
+                      () => SriPaginationBar(
+                        currentPage: controller.currentPage.value,
+                        totalItems: controller.filteredLeaves.length,
+                        rowLimit: controller.rowLimit.value,
+                        rowLimitOptions: LeaveController.rowLimitOptions,
+                        onPageChanged: controller.goToPage,
+                        onLimitChanged: controller.setRowLimit,
+                      ),
+                    ),
+                  ],
                 );
               }),
             ),

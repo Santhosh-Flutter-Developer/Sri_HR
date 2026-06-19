@@ -16,10 +16,38 @@ class LeaveController extends GetxController {
   final isLoading = false.obs;
   final filterStatus = RxnString();
 
+  // ── Pagination ───────────────────────────────────────────
+  static const rowLimitOptions = [10, 20, 50, 100];
+  final rowLimit = 10.obs;
+  final currentPage = 0.obs;
+
+  List<LeaveRequestModel> get paginatedLeaves {
+    final list = filteredLeaves;
+    final start = currentPage.value * rowLimit.value;
+    if (start >= list.length) return [];
+    final end = (start + rowLimit.value).clamp(0, list.length);
+    return list.sublist(start, end);
+  }
+
+  int get totalPages =>
+      (filteredLeaves.length / rowLimit.value).ceil().clamp(1, 999999);
+
+  void setRowLimit(int limit) {
+    rowLimit.value = limit;
+    currentPage.value = 0;
+  }
+
+  void goToPage(int page) {
+    if (page < 0 || page >= totalPages) return;
+    currentPage.value = page;
+  }
+
   @override
   void onInit() {
     super.onInit();
     loadLeaves();
+    // Reset to first page whenever filter changes
+    ever(filterStatus, (_) => currentPage.value = 0);
   }
 
   List<LeaveRequestModel> get filteredLeaves {
