@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:responsive_grid/responsive_grid.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/models/dashboard_stats_model.dart';
+import 'package:sri_hr/data/utils/network_time.dart';
 import 'package:sri_hr/presentation/dashboard/widgets/stat_card.dart';
+import 'package:sri_hr/routes/app_routes.dart';
 
 class StatsGrid extends StatelessWidget {
   final DashboardStats? stats;
-  const StatsGrid({super.key, this.stats});
+  final DateTime? selectedDate;
+  const StatsGrid({super.key, this.stats, this.selectedDate});
 
   @override
   Widget build(BuildContext context) {
@@ -18,6 +22,15 @@ class StatsGrid extends StatelessWidget {
         icon: Icons.people_rounded,
         color: AppColors.primary,
         subtitle: 'Active employees',
+        onTap: () {
+          Get.toNamed(
+            AppRoutes.routeAttendance,
+            arguments: {
+              'date': selectedDate ?? NetworkTime.now(),
+              'statusFilter': null,
+            },
+          );
+        },
       ),
       StatCard(
         label: 'Present Today',
@@ -25,6 +38,15 @@ class StatsGrid extends StatelessWidget {
         icon: Icons.check_circle_rounded,
         color: AppColors.success,
         subtitle: 'Punched in today',
+        onTap: () {
+          Get.toNamed(
+            AppRoutes.routeAttendance,
+            arguments: {
+              'date': selectedDate ?? NetworkTime.now(),
+              'statusFilter': 'present', // 'present' | 'absent' | null
+            },
+          );
+        },
       ),
       StatCard(
         label: 'Absent Today',
@@ -32,6 +54,15 @@ class StatsGrid extends StatelessWidget {
         icon: Icons.cancel_rounded,
         color: AppColors.error,
         subtitle: 'Not present today',
+        onTap: () {
+          Get.toNamed(
+            AppRoutes.routeAttendance,
+            arguments: {
+              'date': selectedDate ?? NetworkTime.now(),
+              'statusFilter': 'absent', // 'present' | 'absent' | null
+            },
+          );
+        },
       ),
       StatCard(
         label: 'On Leave',
@@ -39,6 +70,15 @@ class StatsGrid extends StatelessWidget {
         icon: Icons.event_busy_rounded,
         color: AppColors.warning,
         subtitle: 'Approved leaves',
+        onTap: () {
+          Get.toNamed(
+            AppRoutes.routeAttendance,
+            arguments: {
+              'date': selectedDate ?? NetworkTime.now(),
+              'statusFilter': null, // 'present' | 'absent' | null
+            },
+          );
+        },
       ),
     ];
 

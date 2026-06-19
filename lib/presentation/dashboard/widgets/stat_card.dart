@@ -8,12 +8,14 @@ class StatCard extends StatelessWidget {
   final IconData icon;
   final Color color;
   final String? subtitle;
+  final VoidCallback? onTap;
   const StatCard({
     super.key,
     required this.label,
     required this.value,
     required this.icon,
     required this.color,
+    this.onTap,
     this.subtitle,
   });
 
@@ -21,6 +23,7 @@ class StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width >= 800;
     return SriCard(
+      onTap: onTap ?? (){},
       child: isWide
           ? Row(
               children: [

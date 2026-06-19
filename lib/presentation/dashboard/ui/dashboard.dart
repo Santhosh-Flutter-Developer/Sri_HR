@@ -92,7 +92,7 @@ class Dashboard extends StatelessWidget {
 
                         const SizedBox(height: 16.0),
                         SubscriptionAlert(),
-                        StatsGrid(stats: controller.stats.value),
+                         StatsGrid(stats: controller.stats.value,selectedDate: controller.selectedDate.value),
                         const SizedBox(height: 24),
                         ChartsRow(ctrl: controller),
                         const SizedBox(height: 24),
