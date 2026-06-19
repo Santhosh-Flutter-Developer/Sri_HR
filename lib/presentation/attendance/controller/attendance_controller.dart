@@ -51,6 +51,18 @@ class AttendanceController extends GetxController {
   final currentPage = 0.obs;
   final pageSizeOptions = [10, 20, 50, 100];
 
+  // ── Punch Adjustment filters (independent from attendance report) ──────────
+  final punchFromDate = Rxn<DateTime>();
+  final punchToDate = Rxn<DateTime>();
+  final punchFilterEmployeeId = RxnString();
+  final punchActivePreset = RxnString();
+  // Punch-specific pagination
+  final punchPageSize = 10.obs;
+  final punchCurrentPage = 0.obs;
+  // Punch logs loaded separately
+  final punchLogs = <AttendanceLogModel>[].obs;
+  final isPunchLoading = false.obs;
+
   @override
 void onInit() {
   super.onInit();
@@ -83,7 +95,13 @@ void onInit() {
   activePreset.value = (!fromDashboard || isToday) ? 'today' : null;
   statusFilter.value = initialStatus;
 
+  // Punch adjustment defaults to today
+  punchFromDate.value = now;
+  punchToDate.value = now;
+  punchActivePreset.value = 'today';
+
   loadLogs();
+  loadPunchLogs();
 }
 
   void _registerReload() {
@@ -139,6 +157,124 @@ void onInit() {
     } finally {
       isLoading.value = false;
     }
+  }
+
+  // ── Punch Adjustment data loading ──────────────────────────────────────────
+
+  Future<void> loadPunchLogs() async {
+    if (auth.companyId.isEmpty) {
+      punchLogs.value = [];
+      return;
+    }
+    isPunchLoading.value = true;
+    punchCurrentPage.value = 0;
+    try {
+      final fetched = await repo.getAttendanceLogs(
+        auth.companyId,
+        fromDate: punchFromDate.value,
+        toDate: punchToDate.value,
+        employeeId:
+            !auth.isAdmin ? auth.employeeId : punchFilterEmployeeId.value,
+      );
+      // Keep only manual logs
+      punchLogs.value = fetched.where((l) => l.isManual).toList();
+    } catch (e) {
+      debugPrint('[PunchCtrl] load error: $e');
+      showError(handleException(e));
+    } finally {
+      isPunchLoading.value = false;
+    }
+  }
+
+  void applyPunchFilters({
+    DateTime? from,
+    DateTime? to,
+    String? employeeId,
+    String? preset,
+  }) {
+    if (from != null) punchFromDate.value = from;
+    if (to != null) punchToDate.value = to;
+    if (employeeId != null) {
+      punchFilterEmployeeId.value = employeeId == '' ? null : employeeId;
+    }
+    punchActivePreset.value = preset;
+    punchCurrentPage.value = 0;
+    loadPunchLogs();
+  }
+
+  void clearPunchFilters() {
+    final now = NetworkTime.now();
+    punchFromDate.value = now;
+    punchToDate.value = now;
+    punchFilterEmployeeId.value = null;
+    punchActivePreset.value = 'today';
+    punchCurrentPage.value = 0;
+    loadPunchLogs();
+  }
+
+  /// Grouped manual-only rows for punch adjustment
+  List<Map<String, dynamic>> get groupedPunchRows {
+    final Map<String, Map<String, dynamic>> grouped = {};
+    for (final log in punchLogs) {
+      final key =
+          '${log.employeeId}_${log.date.toIso8601String().substring(0, 10)}';
+      grouped.putIfAbsent(
+        key,
+        () => {
+          'employeeId': log.employeeId,
+          'employee': log.employee,
+          'date': log.date,
+          'inLogs': <AttendanceLogModel>[],
+          'outLogs': <AttendanceLogModel>[],
+          'totalMins': 0,
+        },
+      );
+      if (log.punchType == PunchType.in_) {
+        (grouped[key]!['inLogs'] as List<AttendanceLogModel>).add(log);
+      } else {
+        (grouped[key]!['outLogs'] as List<AttendanceLogModel>).add(log);
+      }
+    }
+    for (final row in grouped.values) {
+      final ins = (row['inLogs'] as List<AttendanceLogModel>)
+        ..sort((a, b) => a.punchTime.compareTo(b.punchTime));
+      final outs = (row['outLogs'] as List<AttendanceLogModel>)
+        ..sort((a, b) => a.punchTime.compareTo(b.punchTime));
+      int totalMins = 0;
+      final pairs = ins.length < outs.length ? ins.length : outs.length;
+      for (int i = 0; i < pairs; i++) {
+        totalMins += outs[i].punchTime.difference(ins[i].punchTime).inMinutes;
+      }
+      row['totalMins'] = totalMins;
+    }
+    final list = grouped.values.toList();
+    list.sort(
+      (a, b) => (b['date'] as DateTime).compareTo(a['date'] as DateTime),
+    );
+    return list;
+  }
+
+  List<Map<String, dynamic>> get pagedPunchRows {
+    final all = groupedPunchRows;
+    final start = punchCurrentPage.value * punchPageSize.value;
+    if (start >= all.length) return [];
+    final end = (start + punchPageSize.value).clamp(0, all.length);
+    return all.sublist(start, end);
+  }
+
+  int get totalPunchPages {
+    final total = groupedPunchRows.length;
+    if (total == 0) return 1;
+    return (total / punchPageSize.value).ceil();
+  }
+
+  void goToPunchPage(int page) {
+    punchCurrentPage.value = page.clamp(0, totalPunchPages - 1);
+  }
+
+  void setPunchPageSize(int size) {
+    punchPageSize.value = size;
+    punchCurrentPage.value = 0;
   }
 
   void applyFilters({
@@ -468,6 +604,7 @@ void onInit() {
       showErr.value = true;
       final log = await repo.adjustPunch(data, isManual: isManual);
       logs.add(log);
+      if (isManual) punchLogs.add(log);
       if (showToast == true) showSuccess('Punch adjusted successfully');
     } catch (e) {
       debugPrint('[AdjustPunch] error: $e');
@@ -518,6 +655,7 @@ void onInit() {
     try {
       await repo.deleteLog(id);
       logs.removeWhere((l) => l.id == id);
+      punchLogs.removeWhere((l) => l.id == id);
       showSuccess('Log deleted');
     } catch (e) {
       showError(handleException(e));
