@@ -18,6 +18,7 @@ class AttendanceRepository {
         '*, employees(id, company_id, department_id, role_id, '
         'employee_code, full_name, mobile, email, profile_picture, '
         'is_active, casual_leave, mobile_login, outside_office, '
+        'work_start_time, work_end_time, lunch_start_time, lunch_end_time, '
         'departments(id, company_id, code, name), '
         'roles(id, company_id, name, is_admin))';
 
@@ -86,6 +87,7 @@ class AttendanceRepository {
         '*, employees(id, company_id, department_id, role_id, '
         'employee_code, full_name, mobile, email, profile_picture, '
         'is_active, casual_leave, mobile_login, outside_office, '
+        'work_start_time, work_end_time, lunch_start_time, lunch_end_time, '
         'departments(id, company_id, code, name), '
         'roles(id, company_id, name, is_admin))';
     final row = await SupabaseService.client

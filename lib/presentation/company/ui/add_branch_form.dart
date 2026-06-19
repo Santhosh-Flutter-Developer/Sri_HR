@@ -64,7 +64,7 @@ class _AddBranchFormState extends State<AddBranchForm> {
       phoneError != null ||
       emailError != null;
 
-  void _debounce(
+  void debounce(
     Timer? timer,
     void Function(Timer t) setter,
     VoidCallback action,

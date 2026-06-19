@@ -62,6 +62,10 @@ class EmployeeController extends GetxController {
     'casual_leave',
     'mobile_login',
     'outside_office',
+    'work_start_time',
+    'work_end_time',
+    'lunch_start_time',
+    'lunch_end_time',
     'face_template',
     'is_active',
   };

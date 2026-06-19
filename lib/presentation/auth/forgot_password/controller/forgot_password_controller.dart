@@ -324,7 +324,7 @@ class ForgotPasswordController extends GetxController {
   // ─────────────────────────────────────────────────────────
   // Helpers
   // ─────────────────────────────────────────────────────────
-  String _trimError(String e) {
+  String trimError(String e) {
     // Strip long Supabase stack traces for user-facing messages
     final idx = e.indexOf('\n');
     return idx > 0 ? e.substring(0, idx) : e;

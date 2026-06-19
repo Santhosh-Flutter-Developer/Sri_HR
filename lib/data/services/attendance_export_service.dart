@@ -39,7 +39,8 @@ class AttendanceExportService {
     required DateTime toDate,
     required String companyName,
   }) async {
-    final pdf = pw.Document();
+    final pdf = pw.Document(
+    );
 
     // ── colours ───────────────────────────────────────────────────────────────
     const headerBg   = PdfColor(0.231, 0.357, 0.859);
@@ -69,7 +70,7 @@ class AttendanceExportService {
 
     pdf.addPage(
       pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
+        pageFormat: PdfPageFormat.a4.landscape,
         margin: const pw.EdgeInsets.symmetric(horizontal: 30, vertical: 26),
 
         // ── header ─────────────────────────────────────────────────────────
@@ -170,8 +171,16 @@ class AttendanceExportService {
               children: [
                 pw.Expanded(flex: 3, child: _th('Employee', fontBold)),
                 pw.Expanded(flex: 2, child: _th('Date', fontBold)),
-                pw.Expanded(flex: 5, child: _th('Punch History', fontBold)),
-                pw.Expanded(flex: 2, child: _th('Total Hrs', fontBold, center: true)),
+                pw.Expanded(flex: 2, child: _th('First In', fontBold, center: true)),
+                pw.Expanded(flex: 2, child: _th('Last Out', fontBold, center: true)),
+                pw.Expanded(flex: 4, child: _th('In Records', fontBold)),
+                pw.Expanded(flex: 4, child: _th('Out Records', fontBold)),
+                pw.Expanded(flex: 2, child: _th('Expected', fontBold, center: true)),
+                pw.Expanded(flex: 2, child: _th('Actual Hrs', fontBold, center: true)),
+                pw.Expanded(flex: 2, child: _th('Difference', fontBold, center: true)),
+                pw.Expanded(flex: 2, child: _th('Late', fontBold, center: true)),
+                pw.Expanded(flex: 3, child: _th('Permission', fontBold)),
+                pw.Expanded(flex: 2, child: _th('Leave', fontBold, center: true)),
                 pw.Expanded(flex: 2, child: _th('Status', fontBold, center: true)),
               ],
             ),
@@ -179,23 +188,59 @@ class AttendanceExportService {
 
           // ── Data rows ─────────────────────────────────────────────────────
           ...rows.asMap().entries.map((entry) {
-            final idx      = entry.key;
-            final row      = entry.value;
-            final emp      = row['employee']  as dynamic;
-            final date     = row['date']      as DateTime;
-            final inLogs   = row['inLogs']    as List<AttendanceLogModel>;
-            final outLogs  = row['outLogs']   as List<AttendanceLogModel>;
-            final totalMins = row['totalMins'] as int? ?? 0;
-            final isAbsent  = row['isAbsent'] as bool? ?? false;
-            final empName  = emp?.fullName         as String? ?? 'Unknown';
-            final empCode  = emp?.employeeCode     as String? ?? '';
-            final dept     = emp?.department?.name as String? ?? '';
+            final idx          = entry.key;
+            final row          = entry.value;
+            final emp          = row['employee']     as dynamic;
+            final date         = row['date']         as DateTime;
+            final inLogs       = row['inLogs']       as List<AttendanceLogModel>;
+            final outLogs      = row['outLogs']      as List<AttendanceLogModel>;
+            final totalMins    = row['totalMins']    as int? ?? 0;
+            final isAbsent     = row['isAbsent']     as bool? ?? false;
+            final expectedMins = row['expectedMins'] as int?;
+            final lateMinutes  = row['lateMinutes']  as int?;
+            final permStatus   = row['permStatus']   as String?;
+            final permTimings  = row['permTimings']  as String?;
+            final leaveStatus  = row['leaveStatus']  as String?;
+
+            final empName = emp?.fullName         as String? ?? 'Unknown';
+            final empCode = emp?.employeeCode     as String? ?? '';
+            final dept    = emp?.department?.name as String? ?? '';
             final bg = idx.isEven ? PdfColors.white : rowAltBg;
 
-            final inStr  = inLogs.isEmpty  ? '-'
+            final diffMins = (expectedMins != null && expectedMins > 0)
+                ? (totalMins - expectedMins) : null;
+
+            final firstIn  = inLogs.isNotEmpty  ? _fmtTime(inLogs.first.punchTime)  : '-';
+            final lastOut  = outLogs.isNotEmpty ? _fmtTime(outLogs.last.punchTime)  : '-';
+            final inStr    = inLogs.isEmpty  ? '-'
                 : inLogs.map((l)  => '${_fmtTime(l.punchTime)}${l.isManual ? "(M)" : "(F)"}').join('  ');
-            final outStr = outLogs.isEmpty ? '-'
+            final outStr   = outLogs.isEmpty ? '-'
                 : outLogs.map((l) => '${_fmtTime(l.punchTime)}${l.isManual ? "(M)" : "(F)"}').join('  ');
+
+            // Status
+            final String statusLabel;
+            final PdfColor statusClr;
+            final PdfColor statusBg;
+            if (leaveStatus == 'approved' && inLogs.isEmpty) {
+              statusLabel = 'Leave';
+              statusClr = const PdfColor(0.059, 0.412, 0.863);
+              statusBg  = const PdfColor(0.878, 0.937, 0.992);
+            } else if (isAbsent) {
+              statusLabel = 'Absent'; statusClr = errorClr; statusBg = redBadge;
+            } else {
+              statusLabel = 'Present'; statusClr = successClr; statusBg = greenBadge;
+            }
+
+            String fmtDiff(int d) {
+              if (d == 0) return '±0h';
+              final sign = d > 0 ? '+' : '-'; final a = d.abs();
+              return '$sign${a ~/ 60}h ${(a % 60).toString().padLeft(2,'0')}m';
+            }
+            String fmtLate(int m) =>
+                '${m ~/ 60}h ${(m % 60).toString().padLeft(2, '0')}m';
+
+            pw.Widget _cell(pw.Widget child) => pw.Padding(
+                padding: const pw.EdgeInsets.symmetric(vertical: 1), child: child);
 
             return pw.Container(
               decoration: pw.BoxDecoration(
@@ -206,122 +251,153 @@ class AttendanceExportService {
                   right:  pw.BorderSide(color: PdfColors.grey200),
                 ),
               ),
-              padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               child: pw.Row(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   // Employee
-                  pw.Expanded(
-                    flex: 3,
-                    child: pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text(empName,
-                            style: pw.TextStyle(
-                                font: fontBold, fontSize: 9,
-                                color: txtPrimary)),
-                        if (empCode.isNotEmpty)
-                          pw.Text(empCode,
-                              style: pw.TextStyle(
-                                  font: font, fontSize: 7.5,
-                                  color: mutedClr)),
-                        if (dept.isNotEmpty)
-                          pw.Text(dept,
-                              style: pw.TextStyle(
-                                  font: font, fontSize: 7.5,
-                                  color: mutedClr)),
-                      ],
-                    ),
-                  ),
+                  pw.Expanded(flex: 3, child: _cell(pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(empName, style: pw.TextStyle(font: fontBold, fontSize: 8.5, color: txtPrimary)),
+                      if (empCode.isNotEmpty)
+                        pw.Text(empCode, style: pw.TextStyle(font: font, fontSize: 7, color: mutedClr)),
+                      if (dept.isNotEmpty)
+                        pw.Text(dept, style: pw.TextStyle(font: font, fontSize: 7, color: mutedClr)),
+                    ],
+                  ))),
+
                   // Date
-                  pw.Expanded(
-                    flex: 2,
-                    child: pw.Text(_fmtDate(date),
-                        style: pw.TextStyle(
-                            font: fontBold, fontSize: 9,
-                            color: txtSec)),
-                  ),
-                  // Punch history
-                  pw.Expanded(
-                    flex: 5,
-                    child: pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        _punchLine(
-                          label: 'IN',
-                          times: inStr,
-                          labelBg: inLogs.isNotEmpty ? successClr : greyBadge,
-                          font: font,
-                          fontBold: fontBold,
-                        ),
-                        pw.SizedBox(height: 3),
-                        _punchLine(
-                          label: 'OUT',
-                          times: outStr,
-                          labelBg: outLogs.isNotEmpty ? errorClr : greyBadge,
-                          font: font,
-                          fontBold: fontBold,
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Total hours badge — unchanged
-                  pw.Expanded(
-                    flex: 2,
-                    child: pw.Center(
-                      child: pw.Container(
-                        padding: const pw.EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: pw.BoxDecoration(
-                          color: totalMins > 0 ? greenBadge : greyBadge,
-                          borderRadius: pw.BorderRadius.circular(4),
-                        ),
-                        child: pw.Text(
-                          _totalHrs(totalMins),
-                          style: pw.TextStyle(
-                            font: fontBold, fontSize: 9,
-                            color: totalMins > 0 ? successClr : mutedClr,
-                          ),
-                          textAlign: pw.TextAlign.center,
-                        ),
-                      ),
-                    ),
-                  ),
-                  // Status badge — NEW
-                  pw.Expanded(
-                    flex: 2,
-                    child: pw.Center(
-                      child: pw.Container(
-                        padding: const pw.EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 3),
-                        decoration: pw.BoxDecoration(
-                          color: isAbsent ? redBadge : greenBadge,
-                          borderRadius: pw.BorderRadius.circular(10),
-                        ),
-                        child: pw.Row(
-                          mainAxisSize: pw.MainAxisSize.min,
-                          mainAxisAlignment: pw.MainAxisAlignment.center,
-                          children: [
-                            pw.Container(
-                              width: 5, height: 5,
-                              decoration: pw.BoxDecoration(
-                                color: isAbsent ? errorClr : successClr,
-                                shape: pw.BoxShape.circle,
-                              ),
-                            ),
-                            pw.SizedBox(width: 4),
-                            pw.Text(
-                              isAbsent ? 'Absent' : 'Present',
-                              style: pw.TextStyle(
-                                font: fontBold, fontSize: 8,
-                                color: isAbsent ? errorClr : successClr,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+                  pw.Expanded(flex: 2, child: _cell(
+                    pw.Text(_fmtDate(date), style: pw.TextStyle(font: fontBold, fontSize: 8.5, color: txtSec)))),
+
+                  // First In
+                  pw.Expanded(flex: 2, child: _cell(pw.Container(
+                    padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    decoration: pw.BoxDecoration(color: inLogs.isNotEmpty ? greenBadge : greyBadge,
+                        borderRadius: pw.BorderRadius.circular(4)),
+                    child: pw.Text(firstIn, textAlign: pw.TextAlign.center,
+                        style: pw.TextStyle(font: fontBold, fontSize: 8.5,
+                            color: inLogs.isNotEmpty ? successClr : mutedClr)),
+                  ))),
+
+                  // Last Out
+                  pw.Expanded(flex: 2, child: _cell(pw.Container(
+                    padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    decoration: pw.BoxDecoration(color: outLogs.isNotEmpty ? redBadge : greyBadge,
+                        borderRadius: pw.BorderRadius.circular(4)),
+                    child: pw.Text(lastOut, textAlign: pw.TextAlign.center,
+                        style: pw.TextStyle(font: fontBold, fontSize: 8.5,
+                            color: outLogs.isNotEmpty ? errorClr : mutedClr)),
+                  ))),
+
+                  // In Records
+                  pw.Expanded(flex: 4, child: _cell(
+                    pw.Text(inStr, style: pw.TextStyle(font: font, fontSize: 8,
+                        color: inLogs.isNotEmpty ? successClr : mutedClr)))),
+
+                  // Out Records
+                  pw.Expanded(flex: 4, child: _cell(
+                    pw.Text(outStr, style: pw.TextStyle(font: font, fontSize: 8,
+                        color: outLogs.isNotEmpty ? errorClr : mutedClr)))),
+
+                  // Expected
+                  pw.Expanded(flex: 2, child: _cell(
+                    pw.Text(expectedMins != null ? _totalHrs(expectedMins) : '-',
+                        textAlign: pw.TextAlign.center,
+                        style: pw.TextStyle(font: font, fontSize: 8.5, color: txtSec)))),
+
+                  // Actual
+                  pw.Expanded(flex: 2, child: _cell(pw.Container(
+                    padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    decoration: pw.BoxDecoration(
+                        color: () {
+                          if (totalMins <= 0) return greyBadge;
+                          if (expectedMins == null || expectedMins <= 0) return greenBadge;
+                          final pct = totalMins / expectedMins;
+                          if (pct >= 1.0) return greenBadge;
+                          if (pct >= 0.75) return const PdfColor(1.0, 0.95, 0.85);
+                          return redBadge;
+                        }(),
+                        borderRadius: pw.BorderRadius.circular(4)),
+                    child: pw.Text(_totalHrs(totalMins), textAlign: pw.TextAlign.center,
+                        style: pw.TextStyle(font: fontBold, fontSize: 8.5,
+                            color: () {
+                              if (totalMins <= 0) return mutedClr;
+                              if (expectedMins == null || expectedMins <= 0) return successClr;
+                              final pct = totalMins / expectedMins;
+                              if (pct >= 1.0) return successClr;
+                              if (pct >= 0.75) return const PdfColor(0.8, 0.5, 0.1);
+                              return errorClr;
+                            }())),
+                  ))),
+
+                  // Difference
+                  pw.Expanded(flex: 2, child: _cell(diffMins == null
+                      ? pw.Text('-', style: pw.TextStyle(font: font, fontSize: 8.5, color: mutedClr))
+                      : pw.Container(
+                          padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          decoration: pw.BoxDecoration(
+                              color: diffMins >= 0 ? greenBadge : redBadge,
+                              borderRadius: pw.BorderRadius.circular(4)),
+                          child: pw.Text(fmtDiff(diffMins), textAlign: pw.TextAlign.center,
+                              style: pw.TextStyle(font: fontBold, fontSize: 8.5,
+                                  color: diffMins >= 0 ? successClr : errorClr)),
+                        ))),
+
+                  // Late Arrival
+                  pw.Expanded(flex: 2, child: _cell(
+                    (lateMinutes == null || lateMinutes == 0)
+                        ? pw.Text(inLogs.isEmpty ? '-' : 'On Time',
+                            textAlign: pw.TextAlign.center,
+                            style: pw.TextStyle(font: font, fontSize: 8.5,
+                                color: inLogs.isEmpty ? mutedClr : successClr))
+                        : pw.Container(
+                            padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                            decoration: pw.BoxDecoration(
+                                color: const PdfColor(1.0, 0.95, 0.85),
+                                borderRadius: pw.BorderRadius.circular(4)),
+                            child: pw.Text(fmtLate(lateMinutes), textAlign: pw.TextAlign.center,
+                                style: pw.TextStyle(font: fontBold, fontSize: 8.5,
+                                    color: const PdfColor(0.8, 0.5, 0.1)))))),
+
+                  // Permission
+                  pw.Expanded(flex: 3, child: _cell(permStatus == null
+                      ? pw.Text('-', style: pw.TextStyle(font: font, fontSize: 8.5, color: mutedClr))
+                      : pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+                          if (permTimings != null && permTimings.isNotEmpty)
+                            pw.Text(permTimings.replaceAll('–', '-'), style: pw.TextStyle(font: font, fontSize: 7.5, color: txtSec)),
+                          pw.Text(_capitalize(permStatus),
+                              style: pw.TextStyle(font: fontBold, fontSize: 8,
+                                  color: permStatus.toLowerCase() == 'approved'
+                                      ? successClr : permStatus.toLowerCase() == 'rejected'
+                                          ? errorClr : const PdfColor(0.8, 0.55, 0.1))),
+                        ]))),
+
+                  // Leave Status
+                  pw.Expanded(flex: 2, child: _cell(leaveStatus == null
+                      ? pw.Text('-', style: pw.TextStyle(font: font, fontSize: 8.5, color: mutedClr))
+                      : pw.Text(_capitalize(leaveStatus), textAlign: pw.TextAlign.center,
+                          style: pw.TextStyle(font: fontBold, fontSize: 8.5,
+                              color: leaveStatus == 'approved'
+                                  ? const PdfColor(0.059, 0.412, 0.863)
+                                  : leaveStatus == 'rejected' ? errorClr
+                                      : const PdfColor(0.8, 0.55, 0.1))))),
+
+                  // Status
+                  pw.Expanded(flex: 2, child: _cell(pw.Container(
+                    padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+                    decoration: pw.BoxDecoration(color: statusBg, borderRadius: pw.BorderRadius.circular(8)),
+                    child: pw.Row(mainAxisSize: pw.MainAxisSize.min,
+                        mainAxisAlignment: pw.MainAxisAlignment.center,
+                        children: [
+                          pw.Container(width: 5, height: 5,
+                              decoration: pw.BoxDecoration(color: statusClr, shape: pw.BoxShape.circle)),
+                          pw.SizedBox(width: 4),
+                          pw.Text(statusLabel,
+                              style: pw.TextStyle(font: fontBold, fontSize: 8, color: statusClr)),
+                        ]),
+                  ))),
                 ],
               ),
             );
@@ -393,7 +469,7 @@ class AttendanceExportService {
         textAlign: center ? pw.TextAlign.center : pw.TextAlign.left);
   }
 
-  static pw.Widget _punchLine({
+  static pw.Widget punchLine({
     required String label,
     required String times,
     required PdfColor labelBg,
@@ -426,6 +502,9 @@ class AttendanceExportService {
       ],
     );
   }
+
+  static String _capitalize(String s) =>
+      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
   static pw.Widget _dot(PdfColor color) {
     return pw.Container(
@@ -503,7 +582,7 @@ class AttendanceExportService {
     final t = sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0));
     t.value = TextCellValue('Sri HR - ATTENDANCE REPORT  |  $dateRange');
     sheet.merge(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0),
-        CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: 0));
+        CellIndex.indexByColumnRow(columnIndex: 14, rowIndex: 0));
     t.cellStyle = CellStyle(
       bold: true, fontSize: 13,
       fontColorHex: ExcelColor.fromHexString('#FFFFFF'),
@@ -532,7 +611,7 @@ class AttendanceExportService {
       verticalAlign: VerticalAlign.Center,
     );
     sheet.merge(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 1),
-        CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: 1));
+        CellIndex.indexByColumnRow(columnIndex: 14, rowIndex: 1));
     sheet.setRowHeight(1, 22);
 
     // ── Row 2: spacer ─────────────────────────────────────────────────────────
@@ -542,8 +621,11 @@ class AttendanceExportService {
 
     // ── Row 3: column headers ─────────────────────────────────────────────────
     const headers = [
-      'Emp Code', 'Employee Name',
-      'Date', 'IN Punches', 'OUT Punches', 'Total Hours', 'Status',
+      'Emp Code', 'Employee Name', 'Date',
+      'First In', 'Last Out', 'In Records', 'Out Records',
+      'Expected Hrs', 'Actual Hrs', 'Difference',
+      'Late Arrival', 'Permission Timings', 'Permission Status',
+      'Leave Status', 'Status',
     ];
     for (var c = 0; c < headers.length; c++) {
       final cell = sheet.cell(
@@ -613,53 +695,122 @@ class AttendanceExportService {
         );
       }
 
+      final expectedMins = row['expectedMins'] as int?;
+      final lateMinutes  = row['lateMinutes']  as int?;
+      final permStatus   = row['permStatus']   as String?;
+      final permTimings  = row['permTimings']  as String?;
+      final leaveStatus  = row['leaveStatus']  as String?;
+
+      final diffMins = (expectedMins != null && expectedMins > 0)
+          ? (totalMins - expectedMins) : null;
+
+      final firstIn  = inLogs.isNotEmpty  ? _fmtTime(inLogs.first.punchTime)  : '-';
+      final lastOut  = outLogs.isNotEmpty ? _fmtTime(outLogs.last.punchTime)  : '-';
+      
+
+      String fmtDiff(int d) {
+        if (d == 0) return '±0h 00m';
+        final sign = d > 0 ? '+' : '-'; final a = d.abs();
+        return '${sign}${a ~/ 60}h ${(a % 60).toString().padLeft(2, '0')}m';
+      }
+      String fmtLate(int m) =>
+          '${m ~/ 60}h ${(m % 60).toString().padLeft(2, '0')}m';
+
+      // Status
+      final String statusLabel;
+      final String statusFg;
+      final String statusBg2;
+      if (leaveStatus == 'approved' && inLogs.isEmpty) {
+        statusLabel = 'Leave'; statusFg = '#1D4ED8'; statusBg2 = '#DBEAFE';
+      } else if (isAbsent) {
+        statusLabel = 'Absent'; statusFg = '#DC2626'; statusBg2 = '#FEE2E2';
+      } else {
+        statusLabel = 'Present'; statusFg = '#16A34A'; statusBg2 = '#DCFCE7';
+      }
+
       writeCell(0, emp?.employeeCode as String? ?? '', fgHex: '#64748B');
       writeCell(1, emp?.fullName     as String? ?? 'Unknown', bold: true);
-      writeCell(2, _fmtDate(date), fgHex: '#475569');
-      writeCell(3, inStr,
-          fgHex: inLogs.isNotEmpty ? '#16A34A' : '#94A3B8',
-          halign: HorizontalAlign.Center);
-      writeCell(4, outStr,
-          fgHex: outLogs.isNotEmpty ? '#DC2626' : '#94A3B8',
-          halign: HorizontalAlign.Center);
-      writeCell(5, _totalHrs(totalMins),
+      writeCell(2, _fmtDate(date),   fgHex: '#475569');
+      writeCell(3, firstIn,  fgHex: inLogs.isNotEmpty  ? '#16A34A' : '#94A3B8', halign: HorizontalAlign.Center);
+      writeCell(4, lastOut,  fgHex: outLogs.isNotEmpty ? '#DC2626' : '#94A3B8', halign: HorizontalAlign.Center);
+      writeCell(5, inStr,    fgHex: inLogs.isNotEmpty  ? '#16A34A' : '#94A3B8');
+      writeCell(6, outStr,   fgHex: outLogs.isNotEmpty ? '#DC2626' : '#94A3B8');
+      writeCell(7, expectedMins != null ? _totalHrs(expectedMins) : '-',
+          fgHex: '#475569', halign: HorizontalAlign.Center);
+      // Actual Hrs color — mirrors UI: pct>=1.0 green, pct>=0.75 orange/warning, <0.75 red
+      final String actualFg;
+      if (totalMins <= 0) {
+        actualFg = '#94A3B8';
+      } else if (expectedMins == null || expectedMins <= 0) {
+        actualFg = '#16A34A';
+      } else {
+        final pct = totalMins / expectedMins;
+        actualFg = pct >= 1.0 ? '#16A34A' : pct >= 0.75 ? '#B45309' : '#DC2626';
+      }
+
+      writeCell(8, _totalHrs(totalMins),
           bold: totalMins > 0,
-          fgHex: totalMins > 0 ? '#16A34A' : '#94A3B8',
+          fgHex: actualFg,
+          halign: HorizontalAlign.Center);
+      writeCell(9, diffMins == null ? '-' : fmtDiff(diffMins),
+          bold: diffMins != null,
+          fgHex: diffMins == null ? '#94A3B8' : diffMins >= 0 ? '#16A34A' : '#DC2626',
+          halign: HorizontalAlign.Center);
+      writeCell(10,
+          (lateMinutes == null || lateMinutes == 0)
+              ? (inLogs.isEmpty ? '-' : 'On Time')
+              : fmtLate(lateMinutes),
+          fgHex: (lateMinutes == null || lateMinutes == 0)
+              ? (inLogs.isEmpty ? '#94A3B8' : '#16A34A')
+              : '#B45309',
+          halign: HorizontalAlign.Center);
+      writeCell(11, permTimings ?? '-',   fgHex: '#475569', halign: HorizontalAlign.Center);
+      writeCell(12, permStatus != null ? (permStatus[0].toUpperCase() + permStatus.substring(1)) : '-',
+          fgHex: permStatus == null ? '#94A3B8'
+              : permStatus.toLowerCase() == 'approved' ? '#16A34A'
+              : permStatus.toLowerCase() == 'rejected' ? '#DC2626' : '#B45309',
+          halign: HorizontalAlign.Center);
+      writeCell(13, leaveStatus != null ? (leaveStatus[0].toUpperCase() + leaveStatus.substring(1)) : '-',
+          fgHex: leaveStatus == null ? '#94A3B8'
+              : leaveStatus.toLowerCase() == 'approved' ? '#1D4ED8'
+              : leaveStatus.toLowerCase() == 'rejected' ? '#DC2626' : '#B45309',
           halign: HorizontalAlign.Center);
 
-      // Status cell
+      // Status cell (col 14) with colored background
       final statusCell = sheet.cell(
-          CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: r));
-      statusCell.value = TextCellValue(isAbsent ? 'Absent' : 'Present');
+          CellIndex.indexByColumnRow(columnIndex: 14, rowIndex: r));
+      statusCell.value = TextCellValue(statusLabel);
       statusCell.cellStyle = CellStyle(
         bold: true, fontSize: 10,
-        fontColorHex: ExcelColor.fromHexString(
-            isAbsent ? '#DC2626' : '#16A34A'),
-        backgroundColorHex: ExcelColor.fromHexString(
-            isAbsent ? '#FEE2E2' : '#DCFCE7'),
+        fontColorHex: ExcelColor.fromHexString(statusFg),
+        backgroundColorHex: ExcelColor.fromHexString(statusBg2),
         verticalAlign: VerticalAlign.Center,
         horizontalAlign: HorizontalAlign.Center,
-        topBorder: cellBorder,
-        bottomBorder: cellBorder,
-        leftBorder: cellBorder,
-        rightBorder: Border(
-          borderStyle: BorderStyle.Thin,
-          borderColorHex: ExcelColor.fromHexString(
-              isAbsent ? '#FCA5A5' : '#86EFAC'),
-        ),
+        topBorder: cellBorder, bottomBorder: cellBorder,
+        leftBorder: cellBorder, rightBorder: cellBorder,
       );
 
       sheet.setRowHeight(r, 22);
     }
 
-    // ── Column widths — unchanged + Status ────────────────────────────────────
-    sheet.setColumnWidth(0, 22);
-    sheet.setColumnWidth(1, 26);
+    // ── Column widths ─────────────────────────────────────────────────────────
+    // 0:EmpCode 1:Name 2:Date 3:FirstIn 4:LastOut 5:InRec 6:OutRec
+    // 7:Expected 8:Actual 9:Diff 10:Late 11:PermTimings 12:PermStatus 13:Leave 14:Status
+    sheet.setColumnWidth(0, 14);
+    sheet.setColumnWidth(1, 24);
     sheet.setColumnWidth(2, 14);
-    sheet.setColumnWidth(3, 45);
-    sheet.setColumnWidth(4, 45);
-    sheet.setColumnWidth(5, 14);
-    sheet.setColumnWidth(6, 12);
+    sheet.setColumnWidth(3, 12);
+    sheet.setColumnWidth(4, 12);
+    sheet.setColumnWidth(5, 36);
+    sheet.setColumnWidth(6, 36);
+    sheet.setColumnWidth(7, 14);
+    sheet.setColumnWidth(8, 14);
+    sheet.setColumnWidth(9, 14);
+    sheet.setColumnWidth(10, 12);
+    sheet.setColumnWidth(11, 16);
+    sheet.setColumnWidth(12, 14);
+    sheet.setColumnWidth(13, 14);
+    sheet.setColumnWidth(14, 12);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

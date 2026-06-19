@@ -6,7 +6,7 @@ import 'package:sri_hr/presentation/attendance/widgets/date_range_strip.dart';
 import 'package:sri_hr/presentation/attendance/widgets/grid_view.dart';
 import 'package:sri_hr/presentation/attendance/widgets/pagination_bar.dart';
 import 'package:sri_hr/presentation/attendance/widgets/summary_strip.dart';
-import 'package:sri_hr/presentation/attendance/widgets/table_view.dart';
+import 'package:sri_hr/presentation/attendance/widgets/table_view_v2.dart';
 import 'package:sri_hr/presentation/attendance/widgets/view_toggle_btn.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/widgets/app_shell.dart';
@@ -203,7 +203,7 @@ class Attendance extends StatelessWidget {
                   children: [
                     Expanded(
                       child: controller.viewMode.value == 'table'
-                          ? TableView(
+                          ? TableViewV2(
                               rows: rows,
                               controller: controller,
                               auth: auth,

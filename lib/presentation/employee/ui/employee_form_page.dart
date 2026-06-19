@@ -20,6 +20,7 @@ import 'package:sri_hr/presentation/company/controller/company_controller.dart';
 import 'package:sri_hr/presentation/department/controller/department_controller.dart';
 import 'package:sri_hr/presentation/designation/controller/role_controller.dart';
 import 'package:sri_hr/presentation/employee/controller/employee_controller.dart';
+import 'package:sri_hr/presentation/employee/widgets/company_shift_display.dart';
 import 'package:sri_hr/presentation/employee_status/controller/employee_status_controller.dart';
 import 'package:sri_hr/presentation/helper/helper.dart';
 import 'package:sri_hr/presentation/salary_type/controller/salary_type_controller.dart';
@@ -71,6 +72,14 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
   bool mobileLogin = true;
   bool outsideOffice = false;
   bool isActive = true;
+
+  // ── Work shift overrides ──────────────────────
+  // Stored here so they survive step navigation (CompanyShiftDisplay
+  // is unmounted when the user moves away from Step 3).
+  String? workStartTime;
+  String? workEndTime;
+  String? lunchStartTime;
+  String? lunchEndTime;
 
   // ── Files ─────────────────────────────────────
   Uint8List? profileBytes;
@@ -143,6 +152,10 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
     mobileLogin = e?.mobileLogin ?? true;
     outsideOffice = e?.outsideOffice ?? false;
     isActive = e?.isActive ?? true;
+    workStartTime = e?.workStartTime;
+    workEndTime = e?.workEndTime;
+    lunchStartTime = e?.lunchStartTime;
+    lunchEndTime = e?.lunchEndTime;
     widget.controller.selectedProfile.value = null;
 
     // ── Load existing documents for edit mode ─────────────
@@ -317,6 +330,10 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
       'casual_leave': int.tryParse(casualLeave.text) ?? 12,
       'mobile_login': mobileLogin,
       'outside_office': outsideOffice,
+      'work_start_time': workStartTime?.isNotEmpty == true ? workStartTime : null,
+      'work_end_time': workEndTime?.isNotEmpty == true ? workEndTime : null,
+      'lunch_start_time': lunchStartTime?.isNotEmpty == true ? lunchStartTime : null,
+      'lunch_end_time': lunchEndTime?.isNotEmpty == true ? lunchEndTime : null,
       'is_active': isActive,
       'username': username.text.trim(),
       if (password.text.isNotEmpty) 'password': password.text.trim(),
@@ -1532,6 +1549,32 @@ class _StepWork extends StatelessWidget {
                   ),
                 ],
               ),
+
+              Padding(
+                padding: const EdgeInsets.only(top: 20),
+                child: const Divider(height: 1, color: AppColors.border),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 16),
+                child: CompanyShiftDisplay(
+                  companyId: state.companyId,
+                  initialWorkStart: state.workStartTime,
+                  initialWorkEnd: state.workEndTime,
+                  initialLunchStart: state.lunchStartTime,
+                  initialLunchEnd: state.lunchEndTime,
+                  onChanged: ({
+                    required String? workStart,
+                    required String? workEnd,
+                    required String? lunchStart,
+                    required String? lunchEnd,
+                  }) {
+                    state.workStartTime = workStart;
+                    state.workEndTime = workEnd;
+                    state.lunchStartTime = lunchStart;
+                    state.lunchEndTime = lunchEnd;
+                  },
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 24),
@@ -1709,8 +1752,7 @@ class _StepLoginDocs extends StatelessWidget {
                     final i = entry.key;
                     final doc = entry.value;
                     final bool isSaved = doc.containsKey('url');
-                    final String docName =
-                        doc['name'] as String? ?? 'document';
+                    final String docName = doc['name'] as String? ?? 'document';
                     final String subLabel = isSaved
                         ? 'Already uploaded'
                         : state._formatBytes(

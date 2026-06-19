@@ -17,6 +17,7 @@ import 'package:sri_hr/presentation/attendance/widgets/punch_form_dialog.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/data/helper/helper.dart';
 import 'package:sri_hr/data/services/connectivity_service.dart';
+import 'package:sri_hr/presentation/attendance/controller/shift_report_enricher.dart';
 
 AuthController get auth => Get.find<AuthController>();
 
@@ -25,6 +26,8 @@ class AttendanceController extends GetxController {
   final logs = <AttendanceLogModel>[].obs;
   final allEmployees = <EmployeeModel>[].obs;
   final isLoading = false.obs;
+  // Shift-enriched rows (built after groupedByEmployeeDate is ready)
+  final enrichedRows = <Map<String, dynamic>>[].obs;
   // Filters
   final fromDate = Rxn<DateTime>();
   final toDate = Rxn<DateTime>();
@@ -124,6 +127,12 @@ void onInit() {
         allEmployees.value =
             all.where((e) => e.id == auth.employeeId).toList();
       }
+      // ── Enrich rows with shift / leave / permission data ─────────────────
+      final baseRows = List<Map<String, dynamic>>.from(groupedByEmployeeDate);
+      enrichedRows.value = await ShiftReportEnricher.enrich(
+        baseRows,
+        auth.companyId,
+      );
     } catch (e) {
       debugPrint('[AttendCtrl] load error: $e');
       showError(handleException(e));
@@ -307,9 +316,19 @@ void onInit() {
     return rows.where((r) => (r['isAbsent'] as bool) == wantAbsent).toList();
   }
 
-  /// Current page slice
+  /// Enriched rows after applying the present/absent status filter
+  List<Map<String, dynamic>> get filteredEnrichedRows {
+    final rows = enrichedRows;
+    if (!isSingleDay || statusFilter.value == null) return rows;
+    final wantAbsent = statusFilter.value == 'absent';
+    return rows.where((r) => (r['isAbsent'] as bool) == wantAbsent).toList();
+  }
+
+  /// Current page slice (uses enriched rows)
   List<Map<String, dynamic>> get pagedRows {
-    final all = filteredRows;
+    final all = filteredEnrichedRows.isNotEmpty
+        ? filteredEnrichedRows
+        : filteredRows;
     final start = currentPage.value * pageSize.value;
     if (start >= all.length) return [];
     final end = (start + pageSize.value).clamp(0, all.length);
@@ -317,7 +336,9 @@ void onInit() {
   }
 
   int get totalPages {
-    final total = filteredRows.length;
+    final total = filteredEnrichedRows.isNotEmpty
+        ? filteredEnrichedRows.length
+        : filteredRows.length;
     if (total == 0) return 1;
     return (total / pageSize.value).ceil();
   }
@@ -506,7 +527,8 @@ void onInit() {
   String formatDate(DateTime d) => '${d.day}/${d.month}/${d.year}';
 
   Future<void> showExportMenu(BuildContext context) async {
-    final rows = groupedByEmployeeDate;
+// ✅ AFTER — same enriched + filtered rows the table displays
+final rows = filteredEnrichedRows.isNotEmpty ? filteredEnrichedRows : filteredRows;
     if (rows.isEmpty) {
       showWarning('No attendance data to export for the selected period.');
       return;

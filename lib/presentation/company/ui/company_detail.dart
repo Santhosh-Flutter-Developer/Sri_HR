@@ -9,6 +9,7 @@ import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/models/company_model.dart';
 import 'package:sri_hr/presentation/company/controller/company_controller.dart';
 import 'package:sri_hr/presentation/company/widgets/sri_detail_card.dart';
+import 'package:sri_hr/presentation/company/widgets/work_shift_card.dart';
 import 'package:sri_hr/widgets/sri_button.dart';
 import 'package:sri_hr/widgets/sri_textfield.dart';
 
@@ -47,6 +48,9 @@ class _CompanyDetailState extends State<CompanyDetail> {
   bool editing = false;
   Uint8List? logoBytes;
   String? logoPath;
+
+  // Key to trigger shift save from this parent
+  final _workShiftKey = GlobalKey<WorkShiftCardState>();
 
   // ── Kiosk / Without-Login settings ──────────────────────
   late bool kioskEnabled; // Without Login: true/false
@@ -239,8 +243,7 @@ class _CompanyDetailState extends State<CompanyDetail> {
 
   void onPhoneChanged(String value) {
     _phoneDebounce?.cancel();
-    if (value.trim().isEmpty ||
-        value.trim() == (widget.company.phone ?? '')) {
+    if (value.trim().isEmpty || value.trim() == (widget.company.phone ?? '')) {
       setState(() {
         phoneError = null;
         isCheckingPhone = false;
@@ -433,10 +436,15 @@ class _CompanyDetailState extends State<CompanyDetail> {
                               prefixIcon: Icons.business_rounded,
                               onChanged: editing ? onNameChanged : null,
                               suffixIconWidget: editing
-                                  ? _dupStatusIcon(isCheckingName, nameError, name)
+                                  ? _dupStatusIcon(
+                                      isCheckingName,
+                                      nameError,
+                                      name,
+                                    )
                                   : null,
                               validator: (v) {
-                                if (v?.isEmpty == true) return 'Company Name is Required';
+                                if (v?.isEmpty == true)
+                                  return 'Company Name is Required';
                                 if (isCheckingName) return 'Checking...';
                                 return nameError;
                               },
@@ -466,10 +474,15 @@ class _CompanyDetailState extends State<CompanyDetail> {
                               prefixIcon: Icons.tag_rounded,
                               onChanged: editing ? onCodeChanged : null,
                               suffixIconWidget: editing
-                                  ? _dupStatusIcon(isCheckingCode, codeError, branchCode)
+                                  ? _dupStatusIcon(
+                                      isCheckingCode,
+                                      codeError,
+                                      branchCode,
+                                    )
                                   : null,
                               validator: (v) {
-                                if (v?.isEmpty == true) return 'Branch Code is Required';
+                                if (v?.isEmpty == true)
+                                  return 'Branch Code is Required';
                                 if (isCheckingCode) return 'Checking...';
                                 return codeError;
                               },
@@ -500,7 +513,11 @@ class _CompanyDetailState extends State<CompanyDetail> {
                               prefixIcon: Icons.phone_rounded,
                               onChanged: editing ? onPhoneChanged : null,
                               suffixIconWidget: editing
-                                  ? _dupStatusIcon(isCheckingPhone, phoneError, phone)
+                                  ? _dupStatusIcon(
+                                      isCheckingPhone,
+                                      phoneError,
+                                      phone,
+                                    )
                                   : null,
                               validator: (_) =>
                                   isCheckingPhone ? 'Checking...' : phoneError,
@@ -531,10 +548,15 @@ class _CompanyDetailState extends State<CompanyDetail> {
                               prefixIcon: Icons.email_outlined,
                               onChanged: editing ? onEditEmailChanged : null,
                               suffixIconWidget: editing
-                                  ? _dupStatusIcon(isCheckingEmail, editEmailError, email)
+                                  ? _dupStatusIcon(
+                                      isCheckingEmail,
+                                      editEmailError,
+                                      email,
+                                    )
                                   : null,
-                              validator: (_) =>
-                                  isCheckingEmail ? 'Checking...' : editEmailError,
+                              validator: (_) => isCheckingEmail
+                                  ? 'Checking...'
+                                  : editEmailError,
                             ),
                             errorText: editEmailError,
                             checking: isCheckingEmail,
@@ -561,7 +583,11 @@ class _CompanyDetailState extends State<CompanyDetail> {
                               prefixIcon: Icons.numbers_rounded,
                               onChanged: editing ? onGstinChanged : null,
                               suffixIconWidget: editing
-                                  ? _dupStatusIcon(isCheckingGstin, gstinError, gstin)
+                                  ? _dupStatusIcon(
+                                      isCheckingGstin,
+                                      gstinError,
+                                      gstin,
+                                    )
                                   : null,
                               validator: (_) =>
                                   isCheckingGstin ? 'Checking...' : gstinError,
@@ -761,6 +787,12 @@ class _CompanyDetailState extends State<CompanyDetail> {
               const SizedBox(height: 16),
               // ── Configure Attendance Access Without Login ─
               _attendanceAccessCard(isWide),
+              const SizedBox(height: 16),
+              WorkShiftCard(
+                key: _workShiftKey,
+                companyId: widget.company.id,
+                parentEditing: editing,
+              ),
               // ── Save / Cancel ────────────────────────────
               if (editing) ...[
                 const SizedBox(height: 20),
@@ -801,7 +833,8 @@ class _CompanyDetailState extends State<CompanyDetail> {
                     Expanded(
                       child: Obx(
                         () => SriButton(
-                          onPressed: (widget.controller.isLoading.value ||
+                          onPressed:
+                              (widget.controller.isLoading.value ||
                                   isCheckingUsername ||
                                   _anyFieldChecking ||
                                   _hasFieldErrors)
@@ -823,8 +856,8 @@ class _CompanyDetailState extends State<CompanyDetail> {
     );
   }
 
-  // ── Main save (company + kiosk together) ─────────────────
-  void save() {
+  // ── Main save (company + kiosk + shift together) ─────────────────
+  Future<void> save() async {
     if (!formKey.currentState!.validate()) return;
 
     // Guard: duplicate checks still in progress
@@ -933,11 +966,13 @@ class _CompanyDetailState extends State<CompanyDetail> {
     // 1. Save basic company fields
     widget.controller.updateCompany(
       {
-        'name': name.text.trim().isEmpty? null: name.text.trim(),
-        'branch_code':branchCode.text.trim().isEmpty?null: branchCode.text.trim(),
-        'phone':phone.text.trim().isEmpty?null: phone.text.trim(),
-        'email':email.text.trim().isEmpty?null: email.text.trim(),
-        'gstin':  gstin.text.trim().isEmpty ? null : gstin.text.trim(),
+        'name': name.text.trim().isEmpty ? null : name.text.trim(),
+        'branch_code': branchCode.text.trim().isEmpty
+            ? null
+            : branchCode.text.trim(),
+        'phone': phone.text.trim().isEmpty ? null : phone.text.trim(),
+        'email': email.text.trim().isEmpty ? null : email.text.trim(),
+        'gstin': gstin.text.trim().isEmpty ? null : gstin.text.trim(),
         'address': address.text.trim().isEmpty ? null : address.text.trim(),
         'country': country.text.trim().isEmpty ? null : country.text.trim(),
         'state': state.text.trim().isEmpty ? null : state.text.trim(),
@@ -945,7 +980,9 @@ class _CompanyDetailState extends State<CompanyDetail> {
         'pincode': pincode.text.trim().isEmpty ? null : pincode.text.trim(),
         'latitude': lat.text.trim().isEmpty ? null : double.tryParse(lat.text),
         'longitude': lon.text.trim().isEmpty ? null : double.tryParse(lon.text),
-        'radius': radius.text.trim().isEmpty ? null : int.tryParse(radius.text) ?? 100,
+        'radius': radius.text.trim().isEmpty
+            ? null
+            : int.tryParse(radius.text) ?? 100,
       },
       logoBytes: logoBytes,
       logoPath: logoPath,
@@ -962,6 +999,21 @@ class _CompanyDetailState extends State<CompanyDetail> {
       kioskPassword: kioskEnabled && password.isNotEmpty ? password : null,
       isFirstTime: !hasExisting,
     );
+
+    // 3. Save work shift
+    final shiftOk = await WorkShiftCard.saveViaKey(_workShiftKey);
+
+    if (!mounted) return;
+
+    if (shiftOk) {
+      Get.snackbar(
+        'Saved',
+        'Company settings saved successfully',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: AppColors.accentGreen,
+        colorText: Colors.white,
+      );
+    }
 
     setState(() => editing = false);
   }
@@ -1015,7 +1067,10 @@ class _CompanyDetailState extends State<CompanyDetail> {
               style: const TextStyle(color: Colors.red, fontSize: 11),
             ),
           ),
-        ] else if (!checking && errorText == null && ctrl.text.isNotEmpty && editing) ...[
+        ] else if (!checking &&
+            errorText == null &&
+            ctrl.text.isNotEmpty &&
+            editing) ...[
           const SizedBox(height: 4),
           Padding(
             padding: const EdgeInsets.only(left: 12),

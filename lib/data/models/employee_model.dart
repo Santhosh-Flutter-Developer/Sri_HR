@@ -34,6 +34,12 @@ class EmployeeModel {
   final bool outsideOffice;
   final bool isActive;
 
+  // Work shift overrides (employee-level, overrides company shift)
+  final String? workStartTime;
+  final String? workEndTime;
+  final String? lunchStartTime;
+  final String? lunchEndTime;
+
   // Joined
   final DepartmentModel? department;
   final RoleModel? role;
@@ -67,6 +73,10 @@ class EmployeeModel {
     this.mobileLogin = true,
     this.outsideOffice = false,
     this.isActive = true,
+    this.workStartTime,
+    this.workEndTime,
+    this.lunchStartTime,
+    this.lunchEndTime,
     this.profileTemplate,
     this.department,
     this.role,
@@ -107,6 +117,10 @@ class EmployeeModel {
     mobileLogin: (j['mobile_login'] as bool?) ?? true,
     outsideOffice: (j['outside_office'] as bool?) ?? false,
     isActive: (j['is_active'] as bool?) ?? true,
+    workStartTime: j['work_start_time'] as String?,
+    workEndTime: j['work_end_time'] as String?,
+    lunchStartTime: j['lunch_start_time'] as String?,
+    lunchEndTime: j['lunch_end_time'] as String?,
     department: j['departments'] != null
         ? DepartmentModel.fromJson(j['departments'] as Map<String, dynamic>)
         : null,
@@ -144,5 +158,9 @@ class EmployeeModel {
     'mobile_login': mobileLogin,
     'outside_office': outsideOffice,
     'is_active': isActive,
+    'work_start_time': workStartTime,
+    'work_end_time': workEndTime,
+    'lunch_start_time': lunchStartTime,
+    'lunch_end_time': lunchEndTime,
   };
 }
