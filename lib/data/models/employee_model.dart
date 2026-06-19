@@ -33,6 +33,7 @@ class EmployeeModel {
   final bool mobileLogin;
   final bool outsideOffice;
   final bool isActive;
+  final DateTime? createdAt;
 
   // Work shift overrides (employee-level, overrides company shift)
   final String? workStartTime;
@@ -80,6 +81,7 @@ class EmployeeModel {
     this.profileTemplate,
     this.department,
     this.role,
+    this.createdAt,
   });
 
   factory EmployeeModel.fromJson(Map<String, dynamic> j) => EmployeeModel(
@@ -127,6 +129,7 @@ class EmployeeModel {
     role: j['roles'] != null
         ? RoleModel.fromJson(j['roles'] as Map<String, dynamic>)
         : null,
+     createdAt: j['created_at'] != null ? DateTime.tryParse(j['created_at'] as String) : null,    
   );
 
   Map<String, dynamic> toJson() => {
@@ -162,5 +165,6 @@ class EmployeeModel {
     'work_end_time': workEndTime,
     'lunch_start_time': lunchStartTime,
     'lunch_end_time': lunchEndTime,
+    'created_at': createdAt?.toIso8601String(),
   };
 }

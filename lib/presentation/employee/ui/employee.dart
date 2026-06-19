@@ -9,6 +9,7 @@ import 'package:sri_hr/widgets/app_shell.dart';
 import 'package:sri_hr/widgets/empty_state.dart';
 import 'package:sri_hr/widgets/loading_overlay.dart';
 import 'package:sri_hr/widgets/sri_button.dart';
+import 'package:sri_hr/widgets/sri_pagination_bar.dart';
 
 class Employee extends StatelessWidget {
   Employee({super.key});
@@ -30,7 +31,7 @@ class Employee extends StatelessWidget {
           title: 'Employee',
           actions: [
             if (auth.canAdd('employee') &&
-                (controller.employees.length <
+                (controller.orgEmployeeCount.value <
                     auth.subscription.value!.userLimit))
               isWide
                   ? SriButton(
@@ -130,7 +131,7 @@ class Employee extends StatelessWidget {
                                 ),
                                 child: ResponsiveGridRow(
                                   children: List.generate(
-                                    controller.filteredEmployees.length,
+                                    controller.paginatedEmployees.length,
                                     (i) {
                                       return ResponsiveGridCol(
                                         xl: 4,
@@ -144,13 +145,13 @@ class Employee extends StatelessWidget {
                                           ),
                                           child: EmployeeCard(
                                             employee:
-                                                controller.filteredEmployees[i],
+                                                controller.paginatedEmployees[i],
                                             onEdit: auth.canEdit('employee')
                                                 ? () => controller.openForm(
                                                     context,
                                                     controller,
                                                     employee: controller
-                                                        .filteredEmployees[i],
+                                                        .paginatedEmployees[i],
                                                   )
                                                 : null,
                                             onDelete:
@@ -160,10 +161,10 @@ class Employee extends StatelessWidget {
                                                             .value!
                                                             .employeeId !=
                                                         controller
-                                                            .filteredEmployees[i]
+                                                            .paginatedEmployees[i]
                                                             .id) &&
                                                     (controller
-                                                            .filteredEmployees[i]
+                                                            .paginatedEmployees[i]
                                                             .role
                                                             ?.name !=
                                                         "Admin")
@@ -171,7 +172,7 @@ class Employee extends StatelessWidget {
                                                     context,
                                                     controller,
                                                     controller
-                                                        .filteredEmployees[i]
+                                                        .paginatedEmployees[i]
                                                         .id,
                                                   )
                                                 : null,
@@ -184,6 +185,17 @@ class Employee extends StatelessWidget {
                               ),
                             ],
                           ),
+                  ),
+                ),
+                // ── Pagination bar ────────────────────────────────
+                Obx(
+                  () => SriPaginationBar(
+                    currentPage: controller.currentPage.value,
+                    totalItems: controller.filteredEmployees.length,
+                    rowLimit: controller.rowLimit.value,
+                    rowLimitOptions: EmployeeController.rowLimitOptions,
+                    onPageChanged: controller.goToPage,
+                    onLimitChanged: controller.setRowLimit,
                   ),
                 ),
               ],

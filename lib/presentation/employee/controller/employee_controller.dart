@@ -9,8 +9,10 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sri_hr/core/constants/app_constants.dart';
+import 'package:sri_hr/core/handler/exception_handler.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/models/employee_model.dart';
+import 'package:sri_hr/data/services/connectivity_service.dart';
 import 'package:sri_hr/data/services/supabase_service.dart';
 import 'package:sri_hr/data/utils/network_time.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
@@ -25,9 +27,37 @@ class EmployeeController extends GetxController {
   final employees = <EmployeeModel>[].obs;
   final isLoading = false.obs;
   final searchQuery = ''.obs;
+
+  // ── Pagination ───────────────────────────────────────────
+  static const rowLimitOptions = [10, 20, 50, 100];
+  final rowLimit = 10.obs;
+  final currentPage = 0.obs;
+
+  List<EmployeeModel> get paginatedEmployees {
+    final list = filteredEmployees;
+    final start = currentPage.value * rowLimit.value;
+    if (start >= list.length) return [];
+    final end = (start + rowLimit.value).clamp(0, list.length);
+    return list.sublist(start, end);
+  }
+
+  int get totalPages =>
+      (filteredEmployees.length / rowLimit.value).ceil().clamp(1, 999999);
+
+  void setRowLimit(int limit) {
+    rowLimit.value = limit;
+    currentPage.value = 0;
+  }
+
+  void goToPage(int page) {
+    if (page < 0 || page >= totalPages) return;
+    currentPage.value = page;
+  }
+
   dynamic faceTemplate;
   File? faceImage;
   final selectedProfile = Rx<File?>(null);
+    final orgEmployeeCount = 0.obs;
 
   final facesdkPlugin = FacesdkPlugin();
   final RxString warningStates = "".obs;
@@ -73,10 +103,14 @@ class EmployeeController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+     _registerReload();
     if (!kIsWeb) {
       faceInit();
     }
     loadEmployees();
+    loadOrgEmployeeCount();
+    // Reset to first page whenever search query changes
+    ever(searchQuery, (_) => currentPage.value = 0);
   }
 
   Future<File> uint8ListToFile(Uint8List bytes, String fileName) async {
@@ -192,21 +226,44 @@ class EmployeeController extends GetxController {
               ctrl.deleteEmployee(id);
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Delete'),
+            child: const Text('Yes'),
           ),
         ],
       ),
     );
   }
 
+  void _registerReload() {
+    try {
+      Get.find<ConnectivityService>().register(loadEmployees);
+    } catch (_) {}
+  }
+
   Future<void> loadEmployees() async {
     isLoading.value = true;
     try {
-      employees.value = await _repo.getEmployees(auth.companyId);
+    final list = await _repo.getEmployees(auth.companyId);
+       list.sort((a, b) => (a.createdAt ?? DateTime(0))
+        .compareTo(b.createdAt ?? DateTime(0)));
+     employees.value = list; 
     } catch (e) {
-      showError('Failed to load employees: $e');
+      showError(handleException(e));
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  Future<void> loadOrgEmployeeCount() async {
+    try {
+      final orgId = auth.activeOrgId.value;
+      if (orgId.isNotEmpty) {
+        orgEmployeeCount.value = await _repo.countEmployeesByOrg(orgId);
+      } else {
+        // Fallback: count only current branch (single-branch orgs)
+        orgEmployeeCount.value = await _repo.countEmployees(auth.companyId);
+      }
+    } catch (e) {
+      debugPrint('[EmpCtrl] loadOrgEmployeeCount ERROR: $e');
     }
   }
 
@@ -215,7 +272,7 @@ class EmployeeController extends GetxController {
       final emp = await _repo.getEmployeeUserId(id);
       return emp;
     } catch (e) {
-      showError("Failed to load employee: $e");
+      showError(handleException(e));
     }
     return null;
   }
@@ -236,6 +293,20 @@ class EmployeeController extends GetxController {
   }) async {
     isLoading.value = true;
     try {
+      // ── Organisation-wide employee limit check ──────────
+      final sub = auth.subscription.value;
+      if (sub != null) {
+        await loadOrgEmployeeCount(); // refresh before checking
+        if (orgEmployeeCount.value >= sub.userLimit) {
+          showError(
+            'Employee limit reached. Your ${sub.plan.name} plan allows '
+            '${sub.userLimit} employees across all branches. '
+            'Please upgrade your plan to add more.',
+          );
+          isLoading.value = false;
+          return;
+        }
+      }
       // ── Pull out non-column values before sanitising ────
       final String? loginPassword = rawData.remove('password') as String?;
       final String? loginUsername = rawData.remove('username') as String?;
@@ -345,19 +416,19 @@ class EmployeeController extends GetxController {
         } catch (userErr) {
           debugPrint('[EmpCtrl] login user warning: $userErr');
           showError(
-            'Employee saved but login account could not be created: '
-            '$userErr\nYou can set credentials later.',
+            'Employee saved but login account could not be created. You can set credentials later.',
           );
         }
       }
 
       // ── Reload with joins ───────────────────────────────
       final full = await _repo.getEmployee(emp.id) ?? emp;
-      employees.insert(0, full);
+      employees.add(full);
+      await loadOrgEmployeeCount(); // keep org count in sync
       showSuccess('Employee "${emp.fullName}" created successfully');
     } catch (e) {
       debugPrint('[EmpCtrl] createEmployee ERROR: $e');
-      showError('Failed to create employee: $e');
+       showError(handleException(e));
     } finally {
       isLoading.value = false;
     }
@@ -606,7 +677,7 @@ class EmployeeController extends GetxController {
       showSuccess('Employee updated');
     } catch (e) {
       debugPrint('[EmpCtrl] updateEmployee ERROR: $e');
-      showError('Failed to update employee: $e');
+      showError(handleException(e));
     } finally {
       isLoading.value = false;
     }
@@ -633,7 +704,7 @@ class EmployeeController extends GetxController {
     } catch (e) {
       debugPrint('[EmpCtrl] _updateAuthUser ERROR: $e');
       showError(
-        'Employee data saved, but login credentials could not be changed: $e',
+        'Employee data saved, but login credentials could not be updated. Please try again.',
       );
     }
   }
@@ -684,14 +755,15 @@ class EmployeeController extends GetxController {
         } catch (e) {
           debugPrint('[EmpCtrl] Auth user delete warning: $e');
           // Employee is deleted from DB, just auth cleanup failed
-          showError('Employee deleted but login access may still remain: $e');
+           showError(handleException(e));
         }
       }
 
       employees.removeWhere((e) => e.id == id);
+      await loadOrgEmployeeCount(); 
       showSuccess('Employee deleted');
     } catch (e) {
-      showError('Failed to delete: $e');
+      showError(handleException(e));
     }
   }
 
