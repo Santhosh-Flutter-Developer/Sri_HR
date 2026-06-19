@@ -9,6 +9,7 @@ import 'package:flutter_exif_rotation/flutter_exif_rotation.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:responsive_grid/responsive_grid.dart';
+import 'package:sri_hr/core/handler/exception_handler.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/models/department_model.dart';
 import 'package:sri_hr/data/models/employee_model.dart';
@@ -42,6 +43,9 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
   // Stepper
   int currentStep = 0;
   bool emailChanged = false;
+  bool emailCheck = false;
+  bool mobileCheck = false;
+  bool isSameAddress = false;
   final stepKeys = List.generate(4, (_) => GlobalKey<FormState>());
   bool isLoading = false;
   bool get isEdit => widget.employee != null;
@@ -505,7 +509,7 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
           .map<RoleModel>((r) => RoleModel.fromJson(r))
           .toList();
     } catch (e) {
-      debugPrint('[EmpForm] loadBranchData: $e');
+       showError(handleException(e));
     }
   }
 
@@ -769,6 +773,7 @@ class _StepBasicState extends State<_StepBasic> {
   Timer? mobileDebounce;
 
   void onMobileChanged(String value) {
+     setState(() => widget.state.mobileCheck = true);
     mobileDebounce?.cancel();
 
     if (value.isEmpty) {
@@ -797,6 +802,9 @@ class _StepBasicState extends State<_StepBasic> {
           isCheckingMobile = false;
           mobileError = exists ? 'This mobile is already registered' : null;
         });
+        Future.delayed(const Duration(seconds: 1), () {
+          setState(() => widget.state.mobileCheck = false);
+        });
       }
     });
   }
@@ -807,6 +815,7 @@ class _StepBasicState extends State<_StepBasic> {
   }
 
   void onEmailChanged(String value) {
+     setState(() => widget.state.emailCheck = true);
     // Cancel previous debounce
     emailDebounce?.cancel();
 
@@ -841,6 +850,9 @@ class _StepBasicState extends State<_StepBasic> {
             widget.state.emailChanged = false;
           }
           emailError = exists ? 'This email is already registered' : null;
+          Future.delayed(Duration(seconds: 2), () {
+            setState(() => widget.state.emailCheck = false);
+          });
         });
       }
     });
@@ -1043,6 +1055,9 @@ class _StepBasicState extends State<_StepBasic> {
                           }
                           if (v!.length != 10) return 'Enter 10 digits';
                           if (mobileError != null) return mobileError; // ← add
+                           if (widget.state.mobileCheck) {
+                            return 'Checking mobile...';
+                          }
                           return null;
                         },
                       ),
@@ -1086,6 +1101,9 @@ class _StepBasicState extends State<_StepBasic> {
                               )
                             : null,
                         validator: (v) {
+                           if (widget.state.emailCheck) {
+                            return 'Checking email...';
+                          }
                           if (v == null || v.isEmpty) {
                             return 'Email is required';
                           } else if (!isValidEmail(v)) {
@@ -1298,11 +1316,36 @@ class _StepAddress extends StatelessWidget {
                     md: 12,
                     sm: 12,
                     xs: 12,
-                    child: _SriField(
-                      state.aadharAddress,
-                      'Aadhar Registered Address',
-                      Icons.credit_card_outlined,
-                      maxLines: 3,
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Checkbox(
+                              value: state.isSameAddress,
+                              onChanged: (v) => state.setState(
+                                () {
+                                  state.isSameAddress = v ?? false;
+                                  if (state.isSameAddress) {
+                                    state.aadharAddress.text =
+                                        state.address.text;
+                                  } else {
+                                    state.aadharAddress.clear();
+                                  }
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Text('Same as Full Address'),
+                          ],
+                        ),
+                        _SriField(
+                          state.aadharAddress,     
+                          'Aadhar Registered Address',
+                          Icons.credit_card_outlined,
+                          maxLines: 3,
+                          readOnly: state.isSameAddress,
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -1593,6 +1636,7 @@ class _StepLoginDocs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    RxBool passwordVisible = false.obs;
     String? validatePassword(String? value) {
       if (value == null || value.isEmpty) {
         return 'Password cannot be empty';
@@ -1650,16 +1694,21 @@ class _StepLoginDocs extends StatelessWidget {
                     xs: 12,
                     child: Padding(
                       padding: const EdgeInsets.only(top: 16.0),
-                      child: SriTextField(
+                      child: Obx(()=> SriTextField(
                         controller: state.password,
                         label: !state.isEdit ? 'Password *' : 'Password',
                         prefixIcon: Icons.lock_outline_rounded,
-                        obscureText: true,
+                        suffixIcon: passwordVisible.value
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                        onSuffixTap: () =>
+                              passwordVisible.value = !passwordVisible.value,      
+                        obscureText:  !passwordVisible.value,
                         hint: 'Leave blank for no login access',
                         validator: !state.isEdit || state.emailChanged
                             ? validatePassword
                             : null,
-                      ),
+                      ),)
                     ),
                   ),
                 ],
@@ -2334,7 +2383,7 @@ class _ProfilePicPickerState extends State<_ProfilePicPicker> {
         if (faces.length == 0) {
           Get.snackbar(
             "Warning",
-            "No Face Detected!",
+            "No face was detected in the photo. Please use a clear, well-lit photo with the face fully visible.",
             margin: EdgeInsets.all(10.0),
             snackPosition: SnackPosition.BOTTOM,
             backgroundColor: AppColors.warning.withOpacity(0.2),
@@ -2345,7 +2394,7 @@ class _ProfilePicPickerState extends State<_ProfilePicPicker> {
         if (faces.length > 1) {
           Get.snackbar(
             "Warning",
-            "MultiFace Detected!",
+            "More than one face was detected. Please use a photo with only the employee's face visible.",
             margin: EdgeInsets.all(10.0),
             snackPosition: SnackPosition.BOTTOM,
             backgroundColor: AppColors.warning.withOpacity(0.2),
