@@ -122,6 +122,7 @@ class _PunchFormDialogState extends State<PunchFormDialog> {
         'punch_time': dt.toIso8601String(), // ← no timezone offset
         'punch_type': punchType,
       });
+      widget.controller.loadPunchLogs();
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       snack(handleException(e));

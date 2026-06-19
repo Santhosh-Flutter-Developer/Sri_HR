@@ -656,6 +656,8 @@ void onInit() {
       await repo.deleteLog(id);
       logs.removeWhere((l) => l.id == id);
       punchLogs.removeWhere((l) => l.id == id);
+      loadLogs();
+  loadPunchLogs();
       showSuccess('Log deleted');
     } catch (e) {
       showError(handleException(e));
