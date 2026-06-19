@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
+import 'package:sri_hr/presentation/subscription/controller/subscription_controller.dart';
 
 class CurrentPlanCard extends StatelessWidget {
-  CurrentPlanCard({super.key});
+  CurrentPlanCard({super.key, required this.controller});
+  final SubscriptionController controller;
   final auth = Get.find<AuthController>();
   @override
   Widget build(BuildContext context) {
@@ -105,7 +107,63 @@ class CurrentPlanCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
+                  Obx(() {
+                    final used = controller.usedSeats.value;
+                    final limit = sub.userLimit;
+                    final available = controller.availableSeats;
+                    final isFull = available <= 0;
+                    return Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            '$used employees added',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isFull
+                                ? Colors.red.withOpacity(0.25)
+                                : Colors.green.withOpacity(0.25),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            isFull
+                                ? 'No seats left'
+                                : '$available seat${available == 1 ? '' : 's'} left',
+                            style: TextStyle(
+                              color: isFull
+                                  ? Colors.redAccent
+                                  : Colors.greenAccent,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
+                  const SizedBox(height: 6),
                   Row(
                     children: [
                       const Icon(

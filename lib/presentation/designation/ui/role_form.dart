@@ -128,7 +128,7 @@ class _RoleFormState extends State<RoleForm> {
       "validator": (v) => _validateName(v as String?), // ✅
       "bottomPadding": 24.0,
     },
-    {
+    /*{
       "label": "From Time",
       "controller": from,
       "type": "text",
@@ -172,7 +172,7 @@ class _RoleFormState extends State<RoleForm> {
       "md": 12,
       "xs": 12,
       "sm": 12,
-    },
+    },*/
     {
       "label": "Permission (mins)",
       "controller": permMin,
@@ -210,9 +210,9 @@ void initState() {
   super.initState();
   final r = widget.role;
   name = TextEditingController(text: r?.name ?? '');
-  from = TextEditingController(text: _formatTime(r?.workingFrom ?? '09:00'));
-  to = TextEditingController(text: _formatTime(r?.workingTo ?? '18:00'));
-  breakTime = TextEditingController(text: '${r?.breakMinutes ?? 30}');
+  // from = TextEditingController(text: _formatTime(r?.workingFrom ?? '09:00'));
+  // to = TextEditingController(text: _formatTime(r?.workingTo ?? '18:00'));
+  // breakTime = TextEditingController(text: '${r?.breakMinutes ?? 30}');
   permMin = TextEditingController(text: '${r?.permissionMinutes ?? 60}');
   leave = TextEditingController(text: '${r?.casualLeave ?? 12}');
   isAdmin.value = r?.isAdmin ?? false;
@@ -230,9 +230,9 @@ String _formatTime(String time) {
   @override
   void dispose() {
     name.dispose();
-    from.dispose();
-    to.dispose();
-    breakTime.dispose();
+    // from.dispose();
+    // to.dispose();
+    // breakTime.dispose();
     permMin.dispose();
     leave.dispose();
     super.dispose();
@@ -359,10 +359,10 @@ String _formatTime(String time) {
                                     final data = {
                                       'company_id': auth.companyId,
                                       'name': name.text.trim(),
-                                      'working_from': from.text,
-                                      'working_to': to.text,
-                                      'break_minutes':
-                                          int.tryParse(breakTime.text) ?? 30,
+                                      // 'working_from': from.text,
+                                      // 'working_to': to.text,
+                                      // 'break_minutes':
+                                      //     int.tryParse(breakTime.text) ?? 30,
                                       'permission_minutes':
                                           int.tryParse(permMin.text) ?? 60,
                                       'casual_leave':

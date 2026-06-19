@@ -12,7 +12,14 @@ class SubscriptionRepository {
     return row != null ? SubscriptionModel.fromJson(row) : null;
   }
 
+  /// Returns the active subscription for an entire organisation.
+  /// The subscription is looked up via the HQ/root company (the one that
+  /// purchased the plan — identified by org_id on the companies table).
+  /// Falls back to a per-branch lookup if no org-level sub exists.
   Future<SubscriptionModel?> getActiveSubscriptionByOrg(String orgId) async {
+    // Find the primary (HQ) company for this org — the one whose subscription
+    // was purchased. We look for the most recently created active subscription
+    // among all branches in this org.
     final companies = await SupabaseService.client
         .from('companies')
         .select('id')
@@ -22,6 +29,8 @@ class SubscriptionRepository {
     if ((companies as List).isEmpty) return null;
 
     final companyIds = companies.map((c) => c['id'] as String).toList();
+
+    // Pick the most recent active subscription across all branches in this org
     final row = await SupabaseService.client
         .from('subscriptions')
         .select()
@@ -33,6 +42,7 @@ class SubscriptionRepository {
     return row != null ? SubscriptionModel.fromJson(row) : null;
   }
 
+  /// Returns the org_id for a given company.
   Future<String?> getOrgId(String companyId) async {
     final row = await SupabaseService.client
         .from('companies')

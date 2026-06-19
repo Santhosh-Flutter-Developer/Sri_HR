@@ -63,8 +63,8 @@ class _SubscriptionState extends State<Subscription> {
     Get.snackbar(
       'Payment Failed',
       res.code.toString() == "2"
-          ? "Payment processing cancelled by user"
-          : res.message ?? 'Payment could not be processed',
+          ? "Payment was cancelled. No charges were made. You can try again when ready."
+          : res.message != null && res.message!.isNotEmpty ? res.message! : 'Payment could not be completed. Please try again or contact support.',
       snackPosition: SnackPosition.BOTTOM,
       backgroundColor: AppColors.error,
       colorText: Colors.white,
@@ -90,9 +90,9 @@ class _SubscriptionState extends State<Subscription> {
 
     setState(() => selectedPlan = plan);
     final options = {
-      'key': 'rzp_test_SjGIA59xh9bikb', // Replace with actual Razorpay key
+      'key': 'rzp_test_y39e77fs8dP9SV', // Replace with actual Razorpay key
       'amount': amount * 100, // paise
-      'name': 'Sri HR',
+      'name': 'Punch App',
       'description':
           '${plan['name'].toString().toUpperCase()} Plan – ${selectedDuration.capitalizeFirst}',
       'prefill': {
@@ -116,7 +116,7 @@ class _SubscriptionState extends State<Subscription> {
           padding: EdgeInsets.all(isWide ? 24.0 : 10.0),
           child: Column(
             children: [
-              CurrentPlanCard(),
+              CurrentPlanCard(controller: controller),
               const SizedBox(height: 28),
               DurationToggle(
                 selected: selectedDuration,
