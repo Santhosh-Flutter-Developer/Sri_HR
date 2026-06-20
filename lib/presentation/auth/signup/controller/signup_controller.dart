@@ -348,7 +348,7 @@ class SignupController extends GetxController {
       otpSent.value = true;
       Get.snackbar(
         'OTP Sent',
-        'A verification code has been sent to +91\$phone. Please check your messages.',
+        'A verification code has been sent to +91 $phone. Please check your messages.',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: AppColors.success,
         colorText: Colors.white,
