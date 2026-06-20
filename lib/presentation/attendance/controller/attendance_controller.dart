@@ -34,8 +34,8 @@ class AttendanceController extends GetxController {
   final RxBool showErr = true.obs;
   final filterEmployeeId = RxnString();
   final filterDepartmentId = RxnString();
- final activePreset = RxnString();
-  // 'present' | 'absent' | null
+  final activePreset = RxnString();
+  // 'present' | 'absent' | 'leave' | null
   final statusFilter = RxnString();
 
   void toggleStatusFilter(String status) {
@@ -64,45 +64,46 @@ class AttendanceController extends GetxController {
   final isPunchLoading = false.obs;
 
   @override
-void onInit() {
-  super.onInit();
-  _registerReload();
-  NetworkTime.syncTime();
+  void onInit() {
+    super.onInit();
+    _registerReload();
+    NetworkTime.syncTime();
 
-  final args = Get.arguments;
-  DateTime initialDate = NetworkTime.now();
-  String? initialStatus;
-  bool fromDashboard = false;
+    final args = Get.arguments;
+    DateTime initialDate = NetworkTime.now();
+    String? initialStatus;
+    bool fromDashboard = false;
 
-  if (args is Map) {
-    final argDate = args['date'];
-    if (argDate is DateTime) {
-      initialDate = argDate;
-      fromDashboard = true;
+    if (args is Map) {
+      final argDate = args['date'];
+      if (argDate is DateTime) {
+        initialDate = argDate;
+        fromDashboard = true;
+      }
+      final argStatus = args['statusFilter'];
+      if (argStatus is String) {
+        initialStatus = argStatus;
+      }
     }
-    final argStatus = args['statusFilter'];
-    if (argStatus is String) {
-      initialStatus = argStatus;
-    }
+
+    fromDate.value = initialDate;
+    toDate.value = initialDate;
+    final now = NetworkTime.now();
+    final isToday =
+        initialDate.year == now.year &&
+        initialDate.month == now.month &&
+        initialDate.day == now.day;
+    activePreset.value = (!fromDashboard || isToday) ? 'today' : null;
+    statusFilter.value = initialStatus;
+
+    // Punch adjustment defaults to today
+    punchFromDate.value = now;
+    punchToDate.value = now;
+    punchActivePreset.value = 'today';
+
+    loadLogs();
+    loadPunchLogs();
   }
-
-  fromDate.value = initialDate;
-  toDate.value = initialDate;
-  final now = NetworkTime.now();
-  final isToday = initialDate.year == now.year &&
-      initialDate.month == now.month &&
-      initialDate.day == now.day;
-  activePreset.value = (!fromDashboard || isToday) ? 'today' : null;
-  statusFilter.value = initialStatus;
-
-  // Punch adjustment defaults to today
-  punchFromDate.value = now;
-  punchToDate.value = now;
-  punchActivePreset.value = 'today';
-
-  loadLogs();
-  loadPunchLogs();
-}
 
   void _registerReload() {
     try {
@@ -111,7 +112,7 @@ void onInit() {
   }
 
   Future<void> loadLogs() async {
-     if (auth.companyId.isEmpty) {
+    if (auth.companyId.isEmpty) {
       logs.value = [];
       allEmployees.value = [];
       return;
@@ -132,9 +133,7 @@ void onInit() {
             departmentId: filterDepartmentId.value,
           )
         else if (auth.employeeId != null)
-          repo.getActiveEmployees(
-            auth.companyId,
-          ),
+          repo.getActiveEmployees(auth.companyId),
       ]);
       logs.value = results[0] as List<AttendanceLogModel>;
       if (auth.isAdmin) {
@@ -142,8 +141,7 @@ void onInit() {
       } else if (auth.employeeId != null && results.length > 1) {
         // Store just own record so absent-row injection has employee object
         final all = results[1] as List<EmployeeModel>;
-        allEmployees.value =
-            all.where((e) => e.id == auth.employeeId).toList();
+        allEmployees.value = all.where((e) => e.id == auth.employeeId).toList();
       }
       // ── Enrich rows with shift / leave / permission data ─────────────────
       final baseRows = List<Map<String, dynamic>>.from(groupedByEmployeeDate);
@@ -173,8 +171,9 @@ void onInit() {
         auth.companyId,
         fromDate: punchFromDate.value,
         toDate: punchToDate.value,
-        employeeId:
-            !auth.isAdmin ? auth.employeeId : punchFilterEmployeeId.value,
+        employeeId: !auth.isAdmin
+            ? auth.employeeId
+            : punchFilterEmployeeId.value,
       );
       // Keep only manual logs
       punchLogs.value = fetched.where((l) => l.isManual).toList();
@@ -352,7 +351,7 @@ void onInit() {
 
     // Step 3: inject absent rows
     final from = fromDate.value;
-    final to   = toDate.value;
+    final to = toDate.value;
     if (from != null && to != null) {
       final presentKeys = map.keys.toSet();
       DateTime cursor = DateTime(from.year, from.month, from.day);
@@ -361,7 +360,7 @@ void onInit() {
       if (auth.isAdmin && allEmployees.isNotEmpty) {
         // Admin: inject for every active employee on every date
         while (!cursor.isAfter(end)) {
-          final dateStr  = cursor.toIso8601String().substring(0, 10);
+          final dateStr = cursor.toIso8601String().substring(0, 10);
           final dateCopy = cursor;
           for (final emp in allEmployees) {
             if (filterEmployeeId.value != null &&
@@ -373,12 +372,12 @@ void onInit() {
             if (!presentKeys.contains(key)) {
               map[key] = {
                 'employeeId': emp.id,
-                'employee':   emp,
-                'date':       dateCopy,
-                'inLogs':     <AttendanceLogModel>[],
-                'outLogs':    <AttendanceLogModel>[],
-                'totalMins':  0,
-                'isAbsent':   true,
+                'employee': emp,
+                'date': dateCopy,
+                'inLogs': <AttendanceLogModel>[],
+                'outLogs': <AttendanceLogModel>[],
+                'totalMins': 0,
+                'isAbsent': true,
               };
             }
           }
@@ -390,18 +389,18 @@ void onInit() {
             ? allEmployees.first
             : (map.values.isNotEmpty ? map.values.first['employee'] : null);
         while (!cursor.isAfter(end)) {
-          final dateStr  = cursor.toIso8601String().substring(0, 10);
+          final dateStr = cursor.toIso8601String().substring(0, 10);
           final dateCopy = cursor;
           final key = '${auth.employeeId}_$dateStr';
           if (!presentKeys.contains(key)) {
             map[key] = {
               'employeeId': auth.employeeId,
-              'employee':   existingEmp,
-              'date':       dateCopy,
-              'inLogs':     <AttendanceLogModel>[],
-              'outLogs':    <AttendanceLogModel>[],
-              'totalMins':  0,
-              'isAbsent':   true,
+              'employee': existingEmp,
+              'date': dateCopy,
+              'inLogs': <AttendanceLogModel>[],
+              'outLogs': <AttendanceLogModel>[],
+              'totalMins': 0,
+              'isAbsent': true,
             };
           }
           cursor = cursor.add(const Duration(days: 1));
@@ -438,26 +437,56 @@ void onInit() {
         .length;
   }
 
-  /// Active employees minus present (admin only)
+  /// Active employees minus present minus on-leave (admin only)
   int get absentCount {
     if (!auth.isAdmin) return 0;
-    return (allEmployees.length - presentCount).clamp(0, allEmployees.length);
+    return (allEmployees.length - presentCount - leaveCount).clamp(
+      0,
+      allEmployees.length,
+    );
   }
 
-  /// Rows after applying the present/absent status filter
+  /// Employees on approved leave (from enriched rows, single-day view)
+  int get leaveCount {
+    return enrichedRows.where((r) => r['leaveStatus'] == 'approved').length;
+  }
+
+  /// Rows after applying the present/absent/leave status filter
   List<Map<String, dynamic>> get filteredRows {
     final rows = groupedByEmployeeDate;
     if (!isSingleDay || statusFilter.value == null) return rows;
-    final wantAbsent = statusFilter.value == 'absent';
-    return rows.where((r) => (r['isAbsent'] as bool) == wantAbsent).toList();
+    if (statusFilter.value == 'leave') {
+      // Leave filter driven by enrichedRows; return unfiltered here as fallback
+      return rows;
+    }
+    if (statusFilter.value == 'absent') {
+      // Absent = no punch AND not on approved leave
+      return rows.where((r) => (r['isAbsent'] as bool) == true).toList();
+    }
+    // Present = has punches
+    return rows.where((r) => (r['isAbsent'] as bool) == false).toList();
   }
 
-  /// Enriched rows after applying the present/absent status filter
+  /// Enriched rows after applying the present/absent/leave status filter
   List<Map<String, dynamic>> get filteredEnrichedRows {
     final rows = enrichedRows;
     if (!isSingleDay || statusFilter.value == null) return rows;
-    final wantAbsent = statusFilter.value == 'absent';
-    return rows.where((r) => (r['isAbsent'] as bool) == wantAbsent).toList();
+    if (statusFilter.value == 'leave') {
+      // Leave = approved leave (regardless of punch)
+      return rows.where((r) => r['leaveStatus'] == 'approved').toList();
+    }
+    if (statusFilter.value == 'absent') {
+      // Absent = no punch AND not on approved leave
+      return rows
+          .where(
+            (r) =>
+                (r['isAbsent'] as bool) == true &&
+                r['leaveStatus'] != 'approved',
+          )
+          .toList();
+    }
+    // Present = has punches
+    return rows.where((r) => (r['isAbsent'] as bool) == false).toList();
   }
 
   /// Current page slice (uses enriched rows)
@@ -574,7 +603,9 @@ void onInit() {
       if (punchType == 'out') {
         // Can only punch out if last punch was "in"
         if (lastLog == null || lastLog.punchType != PunchType.in_) {
-          showError('Punch IN must be recorded before Punch OUT. Please add an IN record first.');
+          showError(
+            'Punch IN must be recorded before Punch OUT. Please add an IN record first.',
+          );
           showErr.value = false;
           return;
         }
@@ -583,7 +614,9 @@ void onInit() {
       if (punchType == 'in') {
         // Can only punch in if no punch yet, or last punch was "out"
         if (lastLog != null && lastLog.punchType == PunchType.in_) {
-          showError('Please record a Punch OUT before adding another Punch IN.');
+          showError(
+            'Please record a Punch OUT before adding another Punch IN.',
+          );
           showErr.value = false;
           return;
         }
@@ -657,7 +690,7 @@ void onInit() {
       logs.removeWhere((l) => l.id == id);
       punchLogs.removeWhere((l) => l.id == id);
       loadLogs();
-  loadPunchLogs();
+      loadPunchLogs();
       showSuccess('Log deleted');
     } catch (e) {
       showError(handleException(e));
@@ -667,8 +700,10 @@ void onInit() {
   String formatDate(DateTime d) => '${d.day}/${d.month}/${d.year}';
 
   Future<void> showExportMenu(BuildContext context) async {
-// ✅ AFTER — same enriched + filtered rows the table displays
-final rows = filteredEnrichedRows.isNotEmpty ? filteredEnrichedRows : filteredRows;
+    // ✅ AFTER — same enriched + filtered rows the table displays
+    final rows = filteredEnrichedRows.isNotEmpty
+        ? filteredEnrichedRows
+        : filteredRows;
     if (rows.isEmpty) {
       showWarning('No attendance data to export for the selected period.');
       return;

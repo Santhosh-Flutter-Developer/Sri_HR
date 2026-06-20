@@ -75,7 +75,7 @@ class StatsGrid extends StatelessWidget {
             AppRoutes.routeAttendance,
             arguments: {
               'date': selectedDate ?? NetworkTime.now(),
-              'statusFilter': null, // 'present' | 'absent' | null
+              'statusFilter': 'leave', // 'present' | 'absent' | null
             },
           );
         },

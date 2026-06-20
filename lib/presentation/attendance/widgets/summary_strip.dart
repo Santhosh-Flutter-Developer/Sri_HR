@@ -15,6 +15,7 @@ class SummaryStrip extends StatelessWidget {
       final rows = controller.groupedByEmployeeDate;
       final present = controller.presentCount;
       final absent = controller.absentCount;
+      final leave = controller.leaveCount;
       final singleDay = controller.isSingleDay;
       final totalMins = rows.fold<int>(
         0,
@@ -53,6 +54,15 @@ class SummaryStrip extends StatelessWidget {
                     color: AppColors.error,
                     selected: controller.statusFilter.value == 'absent',
                     onTap: () => controller.toggleStatusFilter('absent'),
+                  ),
+                  SizedBox(width: 6.0),
+
+                  Chips(
+                    value: '$leave',
+                    label: 'Leave',
+                    color: AppColors.warning,
+                    selected: controller.statusFilter.value == 'leave',
+                    onTap: () => controller.toggleStatusFilter('leave'),
                   ),
                   SizedBox(width: 6.0),
                 ],
