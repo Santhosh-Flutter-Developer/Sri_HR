@@ -227,13 +227,13 @@ class GridedView extends StatelessWidget {
                                 child: Row(children: [
                                   Expanded(child: inLog != null
                                       ? _punchChip(_fmtTime(inLog.punchTime), AppColors.success,
-                                          inLog.isManual, auth.canDelete('attendance_report'),
+                                          inLog.isManual, auth.canDelete('attendance_report') && (inLogs.last==inLog && (inLogs.length>outLogs.length)),
                                           () => controller.confirmDelete(context, inLog.id))
                                       : const SizedBox.shrink()),
                                   const SizedBox(width: 8),
                                   Expanded(child: outLog != null
                                       ? _punchChip(_fmtTime(outLog.punchTime), AppColors.error,
-                                          outLog.isManual, auth.canDelete('attendance_report'),
+                                          outLog.isManual, auth.canDelete('attendance_report')&&(outLogs.last==outLog && (outLogs.length>=inLogs.length)),
                                           () => controller.confirmDelete(context, outLog.id))
                                       : const SizedBox.shrink()),
                                 ]),
