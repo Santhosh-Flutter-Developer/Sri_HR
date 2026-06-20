@@ -150,7 +150,7 @@ class AttendTableRowV2 extends StatelessWidget {
                 child: TimeTag(
                   time: _fmtTime(l.punchTime), color: AppColors.success,
                   icon: Icons.login_rounded, isManual: l.isManual,
-                  canDelete: canDelete, onDelete: () => onDeleteLog(l.id),
+                  canDelete: canDelete && (inLogs.last==l&& (inLogs.length>outLogs.length))  , onDelete: () => onDeleteLog(l.id),
                 ),
               )).toList(),
             ),
@@ -166,7 +166,7 @@ class AttendTableRowV2 extends StatelessWidget {
                 child: TimeTag(
                   time: _fmtTime(l.punchTime), color: AppColors.error,
                   icon: Icons.logout_rounded, isManual: l.isManual,
-                  canDelete: canDelete, onDelete: () => onDeleteLog(l.id),
+                  canDelete: canDelete &&(outLogs.last==l && (outLogs.length>=inLogs.length)), onDelete: () => onDeleteLog(l.id),
                 ),
               )).toList(),
             ),
