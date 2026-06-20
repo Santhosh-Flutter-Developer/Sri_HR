@@ -203,7 +203,7 @@ class PunchTableView extends StatelessWidget {
                                           isManual: l.isManual,
                                           canDelete: auth.canDelete(
                                             'punch_adjustment',
-                                          ),
+                                          )&& (inLogs.last==l && (inLogs.length>outLogs.length)),
                                           onDelete: () =>
                                               controller.deleteLog(l.id),
                                         ),
@@ -239,7 +239,7 @@ class PunchTableView extends StatelessWidget {
                                           isManual: l.isManual,
                                           canDelete: auth.canDelete(
                                             'punch_adjustment',
-                                          ),
+                                          )&&(outLogs.last==l && (outLogs.length>=inLogs.length)),
                                           onDelete: () =>
                                               controller.deleteLog(l.id),
                                         ),
