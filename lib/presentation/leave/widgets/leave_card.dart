@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/models/leave_request_model.dart';
+import 'package:sri_hr/presentation/attendance/controller/attendance_controller.dart';
 import 'package:sri_hr/presentation/leave/widgets/info_badge.dart';
 import 'package:sri_hr/widgets/status_badge.dart';
 
@@ -293,31 +294,39 @@ class LeaveCard extends StatelessWidget {
             const SizedBox(height: 12),
             // Delete button (bottom right)
             if (canDelete)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(0, 0, 12, 12),
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: GestureDetector(
-                    onTap: onDelete,
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: AppColors.error.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.delete_outline_rounded,
-                        size: 16,
-                        color: AppColors.error,
-                      ),
-                    ),
-                  ),
-                ),
-              )
+              auth.isAdmin
+                  ? deleteWidget()
+                  : (!auth.isAdmin && (leave.status == LeaveStatus.pending))
+                  ? deleteWidget()
+                  : SizedBox()
             else
               const SizedBox(height: 4),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget deleteWidget() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 0, 12, 12),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: GestureDetector(
+          onTap: onDelete,
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: AppColors.error.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.delete_outline_rounded,
+              size: 16,
+              color: AppColors.error,
+            ),
+          ),
+        ),
       ),
     );
   }

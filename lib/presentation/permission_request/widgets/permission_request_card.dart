@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/models/leave_request_model.dart';
 import 'package:sri_hr/data/models/permission_request_model.dart';
+import 'package:sri_hr/presentation/attendance/controller/attendance_controller.dart';
 import 'package:sri_hr/presentation/permission_request/widgets/badge.dart';
 import 'package:sri_hr/widgets/status_badge.dart';
 
@@ -289,7 +290,21 @@ class PermissionCard extends StatelessWidget {
             ),
           ] else ...[
             if (canDelete)
-              Padding(
+             auth.isAdmin
+                  ? deleteWidget()
+                  : (!auth.isAdmin && (req.status == LeaveStatus.pending))
+                  ? deleteWidget()
+                  : SizedBox()
+            else
+              const SizedBox(height: 6),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget deleteWidget(){
+    return Padding(
                 padding: const EdgeInsets.fromLTRB(0, 6, 12, 10),
                 child: Align(
                   alignment: Alignment.centerRight,
@@ -309,13 +324,7 @@ class PermissionCard extends StatelessWidget {
                     ),
                   ),
                 ),
-              )
-            else
-              const SizedBox(height: 6),
-          ],
-        ],
-      ),
-    );
+              );
   }
 
   String _monthShort(int m) => [
