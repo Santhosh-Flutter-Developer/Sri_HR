@@ -167,6 +167,15 @@ class AuthRepository {
     }
   }
 
+  // ── FRESH USER ROW ───────────────────────────────────────────
+  Future<Map<String, dynamic>?> getFreshUserRow(String userId) async {
+    return await SupabaseService.client
+        .from('users')
+        .select()
+        .eq('id', userId)
+        .maybeSingle();
+  }
+
   // ── PERMISSIONS ───────────────────────────────────────────
   Future<List<Map<String, dynamic>>> getRolePermissions(String roleId) async {
     final rows = await SupabaseService.client

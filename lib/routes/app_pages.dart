@@ -7,6 +7,7 @@ import 'package:sri_hr/presentation/auth/forgot_password/ui/forgot_password.dart
 import 'package:sri_hr/presentation/auth/login/controller/login_controller.dart';
 import 'package:sri_hr/presentation/auth/login/ui/login.dart';
 import 'package:sri_hr/presentation/auth/middleware/auth_middleware.dart';
+import 'package:sri_hr/presentation/auth/middleware/role_access_middleware.dart';
 import 'package:sri_hr/presentation/auth/signup/ui/signup.dart';
 import 'package:sri_hr/presentation/auth/splash/ui/splash.dart';
 import 'package:sri_hr/presentation/company/binding/company_binding.dart';
@@ -53,79 +54,79 @@ class AppPages {
       name: AppRoutes.routeDashboard,
       page: () => Dashboard(),
       binding: DashboardBinding(),
-      middlewares: [AuthMiddleware(), SubscriptionMiddleware()],
+      middlewares: [AuthMiddleware(), RoleAccessMiddleware(), SubscriptionMiddleware()],
     ),
     GetPage(
       name: AppRoutes.routeDesignation,
       page: () => Designation(),
       binding: DesignationBinding(),
-      middlewares: [AuthMiddleware(), SubscriptionMiddleware()],
+      middlewares: [AuthMiddleware(), RoleAccessMiddleware(), SubscriptionMiddleware()],
     ),
     GetPage(
       name: AppRoutes.routeCompany,
       page: () => Company(),
       binding: CompanyBinding(),
-      middlewares: [AuthMiddleware()],
+      middlewares: [AuthMiddleware(), RoleAccessMiddleware()],
     ),
     GetPage(
       name: AppRoutes.routeDepartment,
       page: () => Department(),
       binding: DepartmentBinding(),
-      middlewares: [AuthMiddleware(), SubscriptionMiddleware()],
+      middlewares: [AuthMiddleware(), RoleAccessMiddleware(), SubscriptionMiddleware()],
     ),
     GetPage(
       name: AppRoutes.routeEmployeeStatus,
       page: () => EmployeeStatus(),
       binding: EmployeeStatusBinding(),
-      middlewares: [AuthMiddleware(), SubscriptionMiddleware()],
+      middlewares: [AuthMiddleware(), RoleAccessMiddleware(), SubscriptionMiddleware()],
     ),
     GetPage(
       name: AppRoutes.routeSalaryType,
       page: () => SalaryType(),
       binding: SalaryTypeBinding(),
-      middlewares: [AuthMiddleware(), SubscriptionMiddleware()],
+      middlewares: [AuthMiddleware(), RoleAccessMiddleware(), SubscriptionMiddleware()],
     ),
     GetPage(
       name: AppRoutes.routeEmployee,
       page: () => Employee(),
       binding: EmployeeBinding(),
-      middlewares: [AuthMiddleware(), SubscriptionMiddleware()],
+      middlewares: [AuthMiddleware(), RoleAccessMiddleware(), SubscriptionMiddleware()],
     ),
     GetPage(
       name: AppRoutes.routeHoliday,
       page: () => Holiday(),
       binding: HolidayBinding(),
-      middlewares: [AuthMiddleware(), SubscriptionMiddleware()],
+      middlewares: [AuthMiddleware(), RoleAccessMiddleware(), SubscriptionMiddleware()],
     ),
     GetPage(
       name: AppRoutes.routeLeave,
       page: () => Leave(),
       binding: LeaveBinding(),
-      middlewares: [AuthMiddleware(), SubscriptionMiddleware()],
+      middlewares: [AuthMiddleware(), RoleAccessMiddleware(), SubscriptionMiddleware()],
     ),
     GetPage(
       name: AppRoutes.routePermission,
       page: () => PermissionRequest(),
       binding: PermissionBinding(),
-      middlewares: [AuthMiddleware(), SubscriptionMiddleware()],
+      middlewares: [AuthMiddleware(), RoleAccessMiddleware(), SubscriptionMiddleware()],
     ),
     GetPage(
       name: AppRoutes.routeAttendance,
       page: () => Attendance(),
       binding: AttendanceBinding(),
-      middlewares: [AuthMiddleware(), SubscriptionMiddleware()],
+      middlewares: [AuthMiddleware(), RoleAccessMiddleware(), SubscriptionMiddleware()],
     ),
     GetPage(
       name: AppRoutes.routePunchAdjustment,
       page: () => PunchTimeAdjustment(),
       binding: AttendanceBinding(),
-      middlewares: [AuthMiddleware(), SubscriptionMiddleware()],
+      middlewares: [AuthMiddleware(), RoleAccessMiddleware(), SubscriptionMiddleware()],
     ),
     GetPage(
       name: AppRoutes.routeSubscription,
       page: () => Subscription(),
       binding: SubscriptionBinding(),
-      middlewares: [AuthMiddleware()],
+      middlewares: [AuthMiddleware(), RoleAccessMiddleware()],
     ),
     GetPage(name: AppRoutes.routeFaceCapture, page: () => FaceCaptureView()),
     GetPage(

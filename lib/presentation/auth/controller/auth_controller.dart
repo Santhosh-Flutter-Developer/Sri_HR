@@ -54,7 +54,10 @@ class AuthController extends GetxController {
   Future<void> _restoreSession() async {
     final savedUser = box.read('current_user');
     if (savedUser != null) {
-      currentUser.value = UserModel.fromJson(savedUser);
+      final user = UserModel.fromJson(savedUser);
+      currentUser.value = user;
+      // Restore active company so companyId getter is correct immediately
+      activeCompanyId.value = user.companyId;
       await _loadPermissionsAndSubscription();
       return;
     }
@@ -205,32 +208,56 @@ class AuthController extends GetxController {
 
   // ── Load permissions + subscription ──────────
   Future<void> _loadPermissionsAndSubscription() async {
-    final user = currentUser.value;
+    var user = currentUser.value;
     if (user == null) return;
 
-    // Load permissions
-    if (user.roleId != null) {
-      // Always load role-based permissions — even for admin users.
-      // The permission matrix in the designation screen controls what's accessible.
-      final perms = await authRepo.getRolePermissions(user.roleId!);
-      permissions.value = {
-        for (final p in perms.map((r) => RolePermissionModel.fromJson(r)))
-          p.module: p,
-      };
-    } else if (user.isAdmin) {
-      // Admin with NO role assigned gets full access to everything
-      for (final module in AppConstants.modules) {
-        permissions[module] = RolePermissionModel(
-          id: '',
-          companyId: user.companyId,
-          roleId: '',
-          module: module,
-          canView: true,
-          canAdd: true,
-          canEdit: true,
-          canDelete: true,
-        );
+    // Always re-fetch the latest user row from DB so role_id is current
+    // (handles cases where designation was changed after last login)
+    try {
+      final freshRow = await authRepo.getFreshUserRow(user.id);
+      if (freshRow != null) {
+        user = UserModel.fromJson(freshRow);
+        currentUser.value = user;
+        // Update stored session with fresh data
+        box.write('current_user', freshRow);
       }
+    } catch (_) {
+      // If fetch fails (offline etc.), continue with cached user
+    }
+
+    // Load permissions
+    // Priority: role permissions always win, regardless of isAdmin flag.
+    // isAdmin with NO role → full access (company owner fallback).
+    // Non-admin with NO role → no access.
+    if (user!.roleId != null && user.roleId!.isNotEmpty) {
+      final perms = await authRepo.getRolePermissions(user.roleId!);
+      if (perms.isNotEmpty) {
+        permissions.value = {
+          for (final p in perms.map((r) => RolePermissionModel.fromJson(r)))
+            p.module: p,
+        };
+      } else {
+        // Role assigned but no permissions configured yet → no access
+        permissions.value = {};
+      }
+    } else if (user.isAdmin) {
+      // Admin with NO role assigned: full access to everything
+      permissions.value = {
+        for (final module in AppConstants.modules)
+          module: RolePermissionModel(
+            id: '',
+            companyId: user.companyId,
+            roleId: '',
+            module: module,
+            canView: true,
+            canAdd: true,
+            canEdit: true,
+            canDelete: true,
+          ),
+      };
+    } else {
+      // Non-admin with no role — no access
+      permissions.value = {};
     }
 
     final orgId = await subRepo.getOrgId(user.companyId);

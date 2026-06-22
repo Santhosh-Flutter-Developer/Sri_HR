@@ -643,7 +643,7 @@ class EmployeeController extends GetxController {
       // ── Update employees table ──────────────────────────
       final emp = await _repo.updateEmployee(id, rawData);
 
-      // ── Update users table (username + email) ───────────
+      // ── Update users table (username + email + role_id) ────
       if (emp.userId != null) {
         final userUpdates = <String, dynamic>{};
         if (username != null && username.isNotEmpty) {
@@ -653,12 +653,13 @@ class EmployeeController extends GetxController {
         if (newEmail != null && newEmail.isNotEmpty) {
           userUpdates['email'] = newEmail;
         }
-        if (userUpdates.isNotEmpty) {
-          await SupabaseService.client
-              .from('users')
-              .update(userUpdates)
-              .eq('id', emp.userId!);
-        }
+        // Always sync role_id so designation changes take effect on next login
+        userUpdates['role_id'] = rawData['role_id'] as String?;
+
+        await SupabaseService.client
+            .from('users')
+            .update(userUpdates)
+            .eq('id', emp.userId!);
 
         // ── Update Supabase Auth (email + password) ─────────
         // This is what actually fixes login credentials
