@@ -186,60 +186,10 @@ class AttendTableRowV2 extends StatelessWidget {
                 : _badge(lastOut, AppColors.error),
           ),
 
-          // In Records
+          // Punch History (interleaved In → Out → In → Out …)
           SizedBox(
-            width: AttendCols.inRec,
-            child: inLogs.isEmpty
-                ? _txt('—')
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: inLogs
-                        .map(
-                          (l) => Padding(
-                            padding: const EdgeInsets.only(bottom: 2),
-                            child: TimeTag(
-                              time: _fmtTime(l.punchTime),
-                              color: AppColors.success,
-                              icon: Icons.login_rounded,
-                              isManual: l.isManual,
-                              canDelete:
-                                  canDelete &&
-                                  (inLogs.last == l &&
-                                      (inLogs.length > outLogs.length)),
-                              onDelete: () => onDeleteLog(l.id),
-                            ),
-                          ),
-                        )
-                        .toList(),
-                  ),
-          ),
-
-          // Out Records
-          SizedBox(
-            width: AttendCols.outRec,
-            child: outLogs.isEmpty
-                ? _txt('—')
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: outLogs
-                        .map(
-                          (l) => Padding(
-                            padding: const EdgeInsets.only(bottom: 2),
-                            child: TimeTag(
-                              time: _fmtTime(l.punchTime),
-                              color: AppColors.error,
-                              icon: Icons.logout_rounded,
-                              isManual: l.isManual,
-                              canDelete:
-                                  canDelete &&
-                                  (outLogs.last == l &&
-                                      (outLogs.length >= inLogs.length)),
-                              onDelete: () => onDeleteLog(l.id),
-                            ),
-                          ),
-                        )
-                        .toList(),
-                  ),
+            width: AttendCols.punchHistory,
+            child: _buildPunchHistory(inLogs, outLogs),
           ),
 
           // Expected
@@ -318,6 +268,42 @@ class AttendTableRowV2 extends StatelessWidget {
     );
   }
 
+  /// Interleaves inLogs and outLogs in chronological order:
+  /// In → Out → In → Out …
+  Widget _buildPunchHistory(
+    List<AttendanceLogModel> inLogs,
+    List<AttendanceLogModel> outLogs,
+  ) {
+    if (inLogs.isEmpty && outLogs.isEmpty) return _txt('—');
+
+    // Build a merged list sorted by punch time, tagging each entry as in/out.
+    final entries = <({AttendanceLogModel log, bool isIn})>[
+      for (final l in inLogs) (log: l, isIn: true),
+      for (final l in outLogs) (log: l, isIn: false),
+    ]..sort((a, b) => a.log.punchTime.compareTo(b.log.punchTime));
+
+    return Wrap(
+      // crossAxisAlignment: CrossAxisAlignment.start,
+      children: entries.map((e) {
+        final isLastIn =
+            e.isIn && inLogs.last == e.log && inLogs.length > outLogs.length;
+        final isLastOut =
+            !e.isIn && outLogs.last == e.log && outLogs.length >= inLogs.length;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 2, right: 4),
+          child: TimeTag(
+            time: _fmtTime(e.log.punchTime),
+            color: e.isIn ? AppColors.success : AppColors.error,
+            icon: e.isIn ? Icons.login_rounded : Icons.logout_rounded,
+            isManual: e.log.isManual,
+            canDelete: canDelete && (isLastIn || isLastOut),
+            onDelete: () => onDeleteLog(e.log.id),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
   Widget _txt(String t, {Color? color, bool bold = false}) => Text(
     t,
     style: TextStyle(
@@ -328,16 +314,23 @@ class AttendTableRowV2 extends StatelessWidget {
     overflow: TextOverflow.ellipsis,
   );
 
-  Widget _badge(String label, Color color) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-    decoration: BoxDecoration(
-      color: color.withOpacity(0.12),
-      borderRadius: BorderRadius.circular(6),
-    ),
-    child: Text(
-      label,
-      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color),
-      overflow: TextOverflow.ellipsis,
+  Widget _badge(String label, Color color) => Padding(
+    padding: const EdgeInsets.only(right: 4.0),
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+        overflow: TextOverflow.ellipsis,
+      ),
     ),
   );
 

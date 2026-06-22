@@ -1,5 +1,5 @@
 // lib/presentation/attendance/widgets/table_view_v2.dart
-// Columns: Employee | Date | First In | Last Out | In Records | Out Records
+// Columns: Employee | Date | First In | Last Out | Punch History
 //          Expected | Actual | Difference | Late Arrival | Permission | Leave | Status
 import 'package:flutter/material.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
@@ -13,8 +13,7 @@ class AttendCols {
   static const date = 100.0;
   static const firstIn = 76.0;
   static const lastOut = 76.0;
-  static const inRec = 110.0;
-  static const outRec = 110.0;
+  static const punchHistory = 200.0; // merged In Records + Out Records
   static const expected = 88.0;
   static const actual = 88.0;
   static const diff = 88.0;
@@ -29,8 +28,7 @@ class AttendCols {
       date +
       firstIn +
       lastOut +
-      inRec +
-      outRec +
+      punchHistory +
       expected +
       actual +
       diff +
@@ -96,10 +94,9 @@ class TableViewV2 extends StatelessWidget {
                     ),
                     SizedBox(width: AttendCols.firstIn, child: _th('First In')),
                     SizedBox(width: AttendCols.lastOut, child: _th('Last Out')),
-                    SizedBox(width: AttendCols.inRec, child: _th('In Records')),
                     SizedBox(
-                      width: AttendCols.outRec,
-                      child: _th('Out Records'),
+                      width: AttendCols.punchHistory,
+                      child: _th('Punch History'),
                     ),
                     SizedBox(
                       width: AttendCols.expected,
