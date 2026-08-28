@@ -81,6 +81,22 @@ class FaceRecognitionViewState extends State<FaceDetection> {
   bool visibleWarnings = false;
   Timer? _noMatchTimer;
 
+  // ── Re-entrancy guard ────────────────────────────────────
+  // Face frames can arrive faster than a single matching pass
+  // (which awaits the native SDK once per enrolled employee)
+  // can complete. Without this lock, two overlapping frames
+  // could each be mid-way through the matching loop at the
+  // same time and race to write the shared `employee` field,
+  // which is how the "right name, wrong employee punched"
+  // bug happened. Only one frame is ever matched at a time.
+  bool _isProcessingFrame = false;
+
+  // A fresh id is generated every time a frame starts being
+  // matched. Any async work belonging to an older generation
+  // is discarded instead of being allowed to mutate state or
+  // trigger an attendance write.
+  int _matchGeneration = 0;
+
   @override
   void initState() {
     super.initState();
@@ -112,25 +128,26 @@ class FaceRecognitionViewState extends State<FaceDetection> {
     super.dispose();
   }
 
-  // ── Load ALL today's logs for this employee ──────────────
-  Future<void> _loadTodayLogs() async {
-    if (employee == null) return;
-    if (employee!.id.isEmpty) return;
-    if (employee!.companyId.isEmpty) return;
+  // ── Load ALL today's logs for the MATCHED employee ────────
+  // Takes the matched employee explicitly (rather than reading
+  // the shared `employee` field) so the logs we fetch can never
+  // belong to a different employee than the one who was just
+  // recognized on camera.
+  Future<List<AttendanceLogModel>> _loadTodayLogs(EmployeeModel emp) async {
+    if (emp.id.isEmpty || emp.companyId.isEmpty) return [];
     final today = NetworkTime.now().toIso8601String().substring(0, 10);
     try {
       final rows = await attendanceController.repo.getAttendanceLogs(
-        employee!.companyId,
+        emp.companyId,
         date: NetworkTime.now(),
-        employeeId: employee!.id,
+        employeeId: emp.id,
       );
-      todayLogs =
-          rows
-              .where((l) => l.date.toIso8601String().substring(0, 10) == today)
-              .toList()
-            ..sort((a, b) => a.punchTime.compareTo(b.punchTime));
+      return rows
+          .where((l) => l.date.toIso8601String().substring(0, 10) == today)
+          .toList()
+        ..sort((a, b) => a.punchTime.compareTo(b.punchTime));
     } catch (_) {
-      todayLogs = [];
+      return [];
     }
   }
 
@@ -231,201 +248,246 @@ class FaceRecognitionViewState extends State<FaceDetection> {
   Future<bool> onFaceDetected(faces) async {
   if (_recognized == true) return false;
   if (!mounted) return false;
-  if (allEmployees.isEmpty) return false; // ✅ wait until employees loaded
+  if (allEmployees.isEmpty) return false; // wait until employees loaded
 
-  setState(() => _faces = faces);
+  // ── Re-entrancy lock ─────────────────────────────────────
+  // The native camera view calls onFaceDetected repeatedly, and the
+  // matching loop below awaits the SDK once per enrolled employee.
+  // If we let a second frame start matching while the first is still
+  // awaiting, both loops interleave and race to write shared state
+  // (this was the root cause of "correct photo/name shown, wrong
+  // employee's attendance recorded"). Taking the lock synchronously,
+  // before any `await`, guarantees only one frame is ever matched
+  // at a time.
+  if (_isProcessingFrame || faceRecognized) return false;
+  _isProcessingFrame = true;
+  final int myGeneration = ++_matchGeneration;
 
   bool recognized = false;
   double maxSimilarity = -1;
-  String maxSimilarityName = '';
   double maxLiveness = -1;
   var enrolledFace, identifiedFace;
   EmployeeModel? matchedEmployee;
 
-  if (faces.length > 0) {
-    if (faces.length > 1) {
-      _audio.play(AttendanceAudioEvent.multipleFaceDetected, _notifLang);
-      Get.back();
-      Get.snackbar('Warning', 'Multiple Face Detected',
-          backgroundColor: AppColors.warning);
-      return false;
-    }
+  try {
+    setState(() => _faces = faces);
 
-    var face = faces[0];
+    if (faces.length > 0) {
+      if (faces.length > 1) {
+        _audio.play(AttendanceAudioEvent.multipleFaceDetected, _notifLang);
+        Get.back();
+        Get.snackbar('Warning', 'Multiple Face Detected',
+            backgroundColor: AppColors.warning);
+        return false;
+      }
 
-    // ✅ Start timer ONCE, AFTER employees confirmed, flag set BEFORE scheduling
-    if (showToast == true) {
-      setState(() => showToast = false);
-      _noMatchTimer?.cancel();
-      _noMatchTimer = Timer(const Duration(seconds: 15), () {
-        if (!mounted) return;
-        if (faceRecognized == false && !_recognized) {
-          faceDetectionViewController?.stopCamera();
-          setState(() => faceRecognized = true);
-          Get.back();
-          _audio.play(AttendanceAudioEvent.noFaceMatched, _notifLang);
-          Get.snackbar('Warning', 'No Face Matched',
-              backgroundColor: AppColors.warning);
+      var face = faces[0];
+
+      // Start timer ONCE, AFTER employees confirmed, flag set BEFORE scheduling
+      if (showToast == true) {
+        setState(() => showToast = false);
+        _noMatchTimer?.cancel();
+        _noMatchTimer = Timer(const Duration(seconds: 15), () {
+          if (!mounted) return;
+          if (faceRecognized == false && !_recognized) {
+            faceDetectionViewController?.stopCamera();
+            setState(() => faceRecognized = true);
+            Get.back();
+            _audio.play(AttendanceAudioEvent.noFaceMatched, _notifLang);
+            Get.snackbar('Warning', 'No Face Matched',
+                backgroundColor: AppColors.warning);
+          }
+        });
+      }
+
+      // Match against every enrolled employee, keeping the best
+      // similarity in purely LOCAL variables. Nothing here touches
+      // shared instance state (e.g. the `employee` field), so a
+      // stale/slow pass can never clobber a newer one.
+      for (final emp in allEmployees) {
+        if (!mounted || faceRecognized || _recognized) break;
+        if (myGeneration != _matchGeneration) break; // superseded
+
+        String storedTemplateString = emp.profileTemplate ?? '';
+        if (storedTemplateString.isEmpty) continue;
+
+        Uint8List storedTemplate = base64Decode(storedTemplateString);
+        double similarity =
+            await _facesdkPlugin.similarityCalculation(
+              face['templates'],
+              storedTemplate,
+            ) ?? -1;
+
+        // Guard after every await: bail out if another frame already
+        // succeeded, or if this pass has been superseded.
+        if (!mounted || faceRecognized || _recognized) break;
+        if (myGeneration != _matchGeneration) break;
+
+        if (maxSimilarity < similarity) {
+          maxSimilarity = similarity;
+          maxLiveness = face['liveness'];
+          identifiedFace = face['faceJpg'];
+          enrolledFace = emp.profilePicture;
+          matchedEmployee = emp;
         }
-      });
-    }
+      }
 
-    // ✅ Guard inside loop after every await
-    for (final emp in allEmployees) {
-      if (!mounted || faceRecognized || _recognized) break;
+      // Bail if another frame already handled it, or a newer frame
+      // has started (this pass's result is now stale).
+      if (!mounted || faceRecognized || _recognized) return false;
+      if (myGeneration != _matchGeneration) return false;
 
-      String storedTemplateString = emp.profileTemplate ?? '';
-      if (storedTemplateString.isEmpty) continue;
-
-      Uint8List storedTemplate = base64Decode(storedTemplateString);
-      double similarity =
-          await _facesdkPlugin.similarityCalculation(
-            face['templates'],
-            storedTemplate,
-          ) ?? -1;
-
-      if (!mounted || faceRecognized || _recognized) break; // ✅ guard after await
-
-      if (maxSimilarity < similarity) {
-        maxSimilarity = similarity;
-        maxSimilarityName = emp.fullName;
-        maxLiveness = face['liveness'];
-        identifiedFace = face['faceJpg'];
-        enrolledFace = emp.profilePicture;
-        matchedEmployee = emp;
+      if (maxSimilarity > _identifyThreshold &&
+          maxLiveness > _livenessThreshold) {
+        recognized = true;
       }
     }
-
-    if (matchedEmployee != null) {
-      employee = matchedEmployee;
-    }
-
-    // ✅ Bail if another frame already handled it
-    if (!mounted || faceRecognized || _recognized) return false;
-
-    if (maxSimilarity > _identifyThreshold && maxLiveness > _livenessThreshold) {
-      recognized = true;
+  } finally {
+    // Only release the lock if this pass did NOT result in a
+    // recognized match — a successful match keeps processing
+    // (and the camera itself is stopped below), so no further
+    // frames should ever be matched again for this session.
+    if (!recognized) {
+      _isProcessingFrame = false;
     }
   }
 
   if (faceRecognized || _recognized) return recognized;
+  if (!recognized || matchedEmployee == null) return recognized;
 
-  Future.delayed(const Duration(milliseconds: 100), () async {
-    if (!mounted) return false;
-    if (faceRecognized || _recognized) return false; // ✅ early exit
+  // From here on, `confirmedEmployee` — a LOCAL, immutable reference
+  // captured at the exact moment this frame won the match — is the
+  // single source of truth for everything the rest of this flow does
+  // (display, logs lookup, image upload, attendance insert). We
+  // deliberately never fall back to reading the mutable `employee`
+  // field again, so no other frame or previous run can substitute a
+  // different employee underneath us.
+  final EmployeeModel confirmedEmployee = matchedEmployee;
+  final String confirmedName = confirmedEmployee.fullName;
+  final double confirmedSimilarity = maxSimilarity;
+  final double confirmedLiveness = maxLiveness;
+  final dynamic confirmedIdentifiedFace = identifiedFace;
+  final dynamic confirmedEnrolledFace = enrolledFace;
 
-    currentPosition = await location.getCurrentPosition();
-    if (!mounted || faceRecognized) return false;
+  if (!mounted || myGeneration != _matchGeneration) return recognized;
 
-    if (currentPosition == null) {
-      setState(() { faceRecognized = true; locationCheck = true; });
-      _noMatchTimer?.cancel();
-      faceDetectionViewController?.stopCamera();
-      _audio.play(AttendanceAudioEvent.gpsUnavailable, _notifLang);
-      Get.back();
-      Get.snackbar('Error',
-          'Unable to get GPS location. Please enable location services.',
-          backgroundColor: AppColors.error);
-      return false;
-    }
+  currentPosition = await location.getCurrentPosition();
+  if (!mounted || faceRecognized || myGeneration != _matchGeneration) {
+    return recognized;
+  }
 
-    final compId = auth.kioskCompId.value;
-    if (compId.isEmpty) {
-      setState(() { faceRecognized = true; locationCheck = true; });
-      _noMatchTimer?.cancel();
-      faceDetectionViewController?.stopCamera();
-      Get.back();
-      Get.snackbar('Session Error', 'No session found. Please log in again.',
-          backgroundColor: AppColors.warning,
-          colorText: Colors.white,
-          duration: const Duration(seconds: 4));
-      return false;
-    }
+  if (currentPosition == null) {
+    setState(() { faceRecognized = true; locationCheck = true; });
+    _noMatchTimer?.cancel();
+    faceDetectionViewController?.stopCamera();
+    _audio.play(AttendanceAudioEvent.gpsUnavailable, _notifLang);
+    Get.back();
+    Get.snackbar('Error',
+        'Unable to get GPS location. Please enable location services.',
+        backgroundColor: AppColors.error);
+    return recognized;
+  }
 
-    final comp = await companyController.getCompany(compId);
-    if (!mounted || faceRecognized) return false; // ✅ re-check after await
+  final compId = auth.kioskCompId.value;
+  if (compId.isEmpty) {
+    setState(() { faceRecognized = true; locationCheck = true; });
+    _noMatchTimer?.cancel();
+    faceDetectionViewController?.stopCamera();
+    Get.back();
+    Get.snackbar('Session Error', 'No session found. Please log in again.',
+        backgroundColor: AppColors.warning,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 4));
+    return recognized;
+  }
 
-    if (comp != null) {
-      if (comp.latitude != null && comp.longitude != null) {
-        isInsideGeofence = location.checkGeofence(
-          officeLat: comp.latitude!,
-          officeLng: comp.longitude!,
-          radiusInMeters: double.parse(comp.radius.toString()),
-          currentPos: currentPosition!,
-        );
-        if (employee?.outsideOffice != true && isInsideGeofence == false) {
-          if (locationCheck == false) {
-            setState(() { locationCheck = true; faceRecognized = true; });
-            _noMatchTimer?.cancel();
-            faceDetectionViewController?.stopCamera();
-            _audio.play(AttendanceAudioEvent.outsideOffice, _notifLang);
-            Get.back();
-            Get.snackbar('Warning', 'You are outside the office location',
-                backgroundColor: AppColors.warning);
-            return false;
-          }
-        }
-      } else {
+  final comp = await companyController.getCompany(compId);
+  if (!mounted || faceRecognized || myGeneration != _matchGeneration) {
+    return recognized;
+  }
+
+  if (comp != null) {
+    if (comp.latitude != null && comp.longitude != null) {
+      isInsideGeofence = location.checkGeofence(
+        officeLat: comp.latitude!,
+        officeLng: comp.longitude!,
+        radiusInMeters: double.parse(comp.radius.toString()),
+        currentPos: currentPosition!,
+      );
+      if (confirmedEmployee.outsideOffice != true && isInsideGeofence == false) {
         if (locationCheck == false) {
           setState(() { locationCheck = true; faceRecognized = true; });
           _noMatchTimer?.cancel();
           faceDetectionViewController?.stopCamera();
-          _audio.play(AttendanceAudioEvent.configureLocation, _notifLang);
+          _audio.play(AttendanceAudioEvent.outsideOffice, _notifLang);
           Get.back();
-          Get.snackbar('Warning',
-              'Please configure Company Latitude and Longitude. Contact Admin.',
+          Get.snackbar('Warning', 'You are outside the office location',
               backgroundColor: AppColors.warning);
-          return false;
+          return recognized;
         }
       }
-    }
-
-    if (!mounted || faceRecognized) return false;
-
-    setState(() {
-      _recognized = recognized;
-      _identifiedName = maxSimilarityName;
-      _identifiedSimilarity = maxSimilarity.toString();
-      _identifiedLiveness = maxLiveness.toString();
-      _enrolledFace = enrolledFace;
-      _identifiedFace = identifiedFace;
-    });
-
-    if (recognized) {
-      _noMatchTimer?.cancel(); // ✅ success — cancel timeout
-      faceDetectionViewController?.stopCamera();
-      if (!mounted) return false;
-      setState(() { _faces = null; faceRecognized = true; });
-
-      String? faceUrl;
-      File imageFile = await uint8ListToFile(identifiedFace, 'image.png');
-      if (!mounted) return false;
-      if (employee != null) {
-        faceUrl = await uploadAttendanceImage(imageFile, const Uuid().v4());
-      }
-      if (!mounted) return false;
-
-      if (employee == null || comp == null) {
-        _audio.play(AttendanceAudioEvent.employeeNotFound, _notifLang);
-        Get.snackbar('Error', 'Employee or organization not found',
-            backgroundColor: AppColors.error);
-        return false;
-      }
-
-      if (callApi == true) {
-        setState(() => callApi = false);
-        await NetworkTime.syncTime();
-        if (!mounted) return false;
-        if (employee != null &&
-            employee!.id.isNotEmpty &&
-            employee!.companyId.isNotEmpty) {
-          await _loadTodayLogs();
-        }
-        if (!mounted) return false;
-        await _showPunchSelectorSheet();
+    } else {
+      if (locationCheck == false) {
+        setState(() { locationCheck = true; faceRecognized = true; });
+        _noMatchTimer?.cancel();
+        faceDetectionViewController?.stopCamera();
+        _audio.play(AttendanceAudioEvent.configureLocation, _notifLang);
+        Get.back();
+        Get.snackbar('Warning',
+            'Please configure Company Latitude and Longitude. Contact Admin.',
+            backgroundColor: AppColors.warning);
+        return recognized;
       }
     }
+  }
+
+  if (!mounted || faceRecognized || myGeneration != _matchGeneration) {
+    return recognized;
+  }
+
+  // Commit: this is the ONLY place `employee` (the shared field kept
+  // around for backward compatibility with the UI tree) is written
+  // for a without-login match, and it happens atomically together
+  // with the rest of the confirmed state — no other frame can run
+  // concurrently because `_isProcessingFrame`/`faceRecognized` are
+  // still locked.
+  setState(() {
+    employee = confirmedEmployee;
+    _recognized = recognized;
+    _identifiedName = confirmedName;
+    _identifiedSimilarity = confirmedSimilarity.toString();
+    _identifiedLiveness = confirmedLiveness.toString();
+    _enrolledFace = confirmedEnrolledFace;
+    _identifiedFace = confirmedIdentifiedFace;
   });
+
+  _noMatchTimer?.cancel(); // success — cancel timeout
+  faceDetectionViewController?.stopCamera();
+  if (!mounted) return recognized;
+  setState(() { _faces = null; faceRecognized = true; });
+
+  String? faceUrl;
+  File imageFile = await uint8ListToFile(confirmedIdentifiedFace, 'image.png');
+  if (!mounted) return recognized;
+  faceUrl = await uploadAttendanceImage(imageFile, const Uuid().v4());
+  if (!mounted) return recognized;
+
+  if (comp == null) {
+    _audio.play(AttendanceAudioEvent.employeeNotFound, _notifLang);
+    Get.snackbar('Error', 'Employee or organization not found',
+        backgroundColor: AppColors.error);
+    return recognized;
+  }
+
+  if (callApi == true) {
+    setState(() => callApi = false);
+    await NetworkTime.syncTime();
+    if (!mounted) return recognized;
+    final logs = await _loadTodayLogs(confirmedEmployee);
+    if (!mounted) return recognized;
+    todayLogs = logs;
+    await _showPunchSelectorSheet(confirmedEmployee);
+  }
 
   return recognized;
 }
@@ -433,7 +495,11 @@ class FaceRecognitionViewState extends State<FaceDetection> {
   // ─────────────────────────────────────────────────────────
   // PUNCH SELECTOR BOTTOM SHEET
   // ─────────────────────────────────────────────────────────
-  Future<void> _showPunchSelectorSheet() async {
+  // `emp` is the exact employee this specific face match resolved to —
+  // threaded explicitly through the call chain rather than re-read from
+  // the shared `employee` field, so a different in-flight match can
+  // never substitute a different employee's id into the punch we save.
+  Future<void> _showPunchSelectorSheet(EmployeeModel emp) async {
     final inLogs = todayLogs
         .where((l) => l.punchType == PunchType.in_)
         .toList();
@@ -453,7 +519,7 @@ class FaceRecognitionViewState extends State<FaceDetection> {
 
     Future.delayed(Duration(seconds: 3), () async {
       Navigator.of(context).pop();
-      await _savePunch(selectedType);
+      await _savePunch(emp, selectedType);
     });
     /*await showModalBottomSheet(
       context: context,
@@ -462,7 +528,7 @@ class FaceRecognitionViewState extends State<FaceDetection> {
       isDismissible: false,
       enableDrag: false,
       builder: (ctx) => _PunchSelectorSheet(
-        employeeName: employee!.fullName,
+        employeeName: emp.fullName,
         todayLogs: todayLogs,
         inLogs: inLogs,
         outLogs: outLogs,
@@ -471,7 +537,7 @@ class FaceRecognitionViewState extends State<FaceDetection> {
         preSelectedType: selectedType,
         onConfirm: (type) async {
           Navigator.of(ctx).pop();
-          await _savePunch(type);
+          await _savePunch(emp, type);
         },
         onCancel: () {
           Navigator.of(ctx).pop();
@@ -488,12 +554,16 @@ class FaceRecognitionViewState extends State<FaceDetection> {
     );*/
   }
 
-  Future<void> _savePunch(String punchType) async {
+  // `emp` — the confirmed matched employee, passed in explicitly — is the
+  // ONLY source used to build the attendance payload and success message.
+  // This guarantees the id written to the database, and the name shown
+  // to the user, always belong to the same employee that was matched.
+  Future<void> _savePunch(EmployeeModel emp, String punchType) async {
     try {
       await attendanceController.adjustPunch(
         {
-          'employee_id': employee!.id,
-          'company_id': employee!.companyId,
+          'employee_id': emp.id,
+          'company_id': emp.companyId,
           'date': NetworkTime.now().toIso8601String().substring(0, 10),
           'punch_time': NetworkTime.now().toIso8601String(),
           'punch_type': punchType,
@@ -514,7 +584,7 @@ class FaceRecognitionViewState extends State<FaceDetection> {
         );
         Get.snackbar(
           'Success ✓',
-          '$label recorded for ${employee!.fullName}',
+          '$label recorded for ${emp.fullName}',
           backgroundColor: AppColors.success,
           colorText: Colors.white,
           snackPosition: SnackPosition.TOP,
