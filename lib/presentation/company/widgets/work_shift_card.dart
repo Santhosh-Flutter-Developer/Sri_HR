@@ -166,7 +166,14 @@ class WorkShiftCardState extends State<WorkShiftCard> {
       setState(() => _shift = updated);
       return true;
     } catch (e) {
-      Get.snackbar('Error', 'Failed to save shift: $e',
+      final raw = e.toString();
+      final isRls = raw.contains('42501') || raw.contains('row-level security');
+      Get.snackbar(
+          'Error',
+          isRls
+              ? 'Permission denied while saving work shift. '
+                  'Run the work_shifts RLS SQL fix in Supabase.'
+              : 'Failed to save shift: $raw',
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: AppColors.accentRed,
           colorText: Colors.white);

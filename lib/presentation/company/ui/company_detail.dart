@@ -1005,15 +1005,18 @@ class _CompanyDetailState extends State<CompanyDetail> {
 
     if (!mounted) return;
 
-    if (shiftOk) {
-      Get.snackbar(
-        'Saved',
-        'Company settings saved successfully',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: AppColors.accentGreen,
-        colorText: Colors.white,
-      );
-    }
+    // If the shift failed to save, stay in edit mode so the entered
+    // times are NOT wiped (leaving edit mode resets the card to the
+    // last saved shift, which is empty) and the user can retry.
+    if (!shiftOk) return;
+
+    Get.snackbar(
+      'Saved',
+      'Company settings saved successfully',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: AppColors.accentGreen,
+      colorText: Colors.white,
+    );
 
     setState(() => editing = false);
   }

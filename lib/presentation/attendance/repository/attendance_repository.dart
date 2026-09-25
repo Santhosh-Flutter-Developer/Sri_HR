@@ -3,6 +3,7 @@ import 'package:sri_hr/data/models/attendance_log_model.dart';
 import 'package:sri_hr/data/models/employee_model.dart';
 import 'package:sri_hr/data/services/supabase_service.dart';
 import 'package:sri_hr/data/utils/network_time.dart';
+import 'package:sri_hr/data/utils/retry.dart';
 
 class AttendanceRepository {
   Future<List<AttendanceLogModel>> getAttendanceLogs(
@@ -40,7 +41,7 @@ class AttendanceRepository {
       query = query.eq('employee_id', employeeId);
     }
 
-    final rows = await query.order('punch_time');
+    final rows = await withSupabaseRetry(() => query.order('punch_time'));
     final result = <AttendanceLogModel>[];
     for (final r in rows) {
       try {
@@ -90,11 +91,13 @@ class AttendanceRepository {
         'work_start_time, work_end_time, lunch_start_time, lunch_end_time, '
         'departments(id, company_id, code, name), '
         'roles(id, company_id, name, is_admin))';
-    final row = await SupabaseService.client
-        .from('attendance_logs')
-        .select(empSelect)
-        .eq('id', id)
-        .single();
+    final row = await withSupabaseRetry(
+      () => SupabaseService.client
+          .from('attendance_logs')
+          .select(empSelect)
+          .eq('id', id)
+          .single(),
+    );
     return AttendanceLogModel.fromJson(row);
   }
 
@@ -102,11 +105,13 @@ class AttendanceRepository {
     await NetworkTime.syncTime();
     final today = NetworkTime.now().toIso8601String().substring(0, 10);
     try {
-      final data = await SupabaseService.client
-          .from('attendance_logs')
-          .select()
-          .eq('employee_id', employeeId)
-          .eq('date', today);
+      final data = await withSupabaseRetry(
+        () => SupabaseService.client
+            .from('attendance_logs')
+            .select()
+            .eq('employee_id', employeeId)
+            .eq('date', today),
+      );
 
       int ind = data.indexWhere((e) => e["punch_type"] == "in");
       if (ind.toString() != "-1") {
@@ -134,7 +139,7 @@ class AttendanceRepository {
     if (departmentId != null && departmentId.isNotEmpty) {
       query = query.eq('department_id', departmentId);
     }
-    final rows = await query.order('full_name');
+    final rows = await withSupabaseRetry(() => query.order('full_name'));
     return rows.map<EmployeeModel>((r) => EmployeeModel.fromJson(r)).toList();
   }
 
@@ -142,12 +147,14 @@ class AttendanceRepository {
     final dateStr = date.toIso8601String().substring(0, 10);
 
     // Get distinct employee_ids who punched IN today
-    final res = await SupabaseService.client
-        .from('attendance_logs')
-        .select('employee_id')
-        .eq('company_id', companyId)
-        .eq('date', dateStr)
-        .eq('punch_type', 'in');
+    final res = await withSupabaseRetry(
+      () => SupabaseService.client
+          .from('attendance_logs')
+          .select('employee_id')
+          .eq('company_id', companyId)
+          .eq('date', dateStr)
+          .eq('punch_type', 'in'),
+    );
 
     // Count unique employees only
     final distinctIds = (res as List)

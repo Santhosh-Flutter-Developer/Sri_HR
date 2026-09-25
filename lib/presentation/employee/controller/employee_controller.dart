@@ -8,10 +8,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:sri_hr/core/constants/app_constants.dart';
 import 'package:sri_hr/core/handler/exception_handler.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/models/employee_model.dart';
+import 'package:sri_hr/main.dart' show supabaseUrl, supabaseAnonKey;
 import 'package:sri_hr/data/services/connectivity_service.dart';
 import 'package:sri_hr/data/services/supabase_service.dart';
 import 'package:sri_hr/data/utils/network_time.dart';
@@ -469,14 +471,36 @@ class EmployeeController extends GetxController {
     final client = SupabaseService.client;
     String? uid;
 
-    // 1. Try to create a new auth user
+    // Client used for the users / user_company_access upserts. It is the
+    // admin client by default; when a brand-new auth user is created it
+    // becomes the isolated client (already authenticated as that employee).
+    SupabaseClient writer = client;
+    SupabaseClient? isolated;
+
+    // 1. Try to create a new auth user.
+    //    IMPORTANT: sign-up must NOT run on the main client. Supabase
+    //    signUp() replaces the current session with the new user's session,
+    //    which silently logged the admin in as the new employee (so only
+    //    that employee's single branch showed in the sidebar). We use a
+    //    throw-away, non-persistent client so the admin session is untouched.
     try {
-      final authRes = await SupabaseService.auth.signUp(
+      isolated = SupabaseClient(
+        supabaseUrl,
+        supabaseAnonKey,
+        authOptions: const AuthClientOptions(
+          autoRefreshToken: false,
+          authFlowType: AuthFlowType.implicit,
+        ),
+      );
+      final authRes = await isolated.auth.signUp(
         email: email,
         password: password,
       );
       uid = authRes.user?.id;
+      if (authRes.session != null) writer = isolated;
     } catch (signUpErr) {
+      await _disposeIsolated(isolated);
+      isolated = null;
       final errStr = signUpErr.toString();
       // If user already exists in Supabase Auth, find their existing ID
       if (errStr.contains('user_already_exists') ||
@@ -502,10 +526,14 @@ class EmployeeController extends GetxController {
       }
     }
 
-    if (uid == null) return;
+    if (uid == null) {
+      await _disposeIsolated(isolated);
+      return;
+    }
 
+    try {
     // 2. Upsert the users row (create or update)
-    await client.from('users').upsert({
+    await writer.from('users').upsert({
       'id': uid,
       'company_id': companyId,
       'role_id': roleId,
@@ -523,7 +551,7 @@ class EmployeeController extends GetxController {
 
     // 4. Grant access to this company branch for the employee
     try {
-      await client.from('user_company_access').upsert({
+      await writer.from('user_company_access').upsert({
         'user_id': uid,
         'company_id': companyId,
         'org_id': await _getOrgId(companyId),
@@ -533,6 +561,16 @@ class EmployeeController extends GetxController {
     } catch (_) {}
 
     debugPrint('[EmpCtrl] Login user linked: $uid → employee $empId');
+    } finally {
+      await _disposeIsolated(isolated);
+    }
+  }
+
+  Future<void> _disposeIsolated(SupabaseClient? c) async {
+    if (c == null) return;
+    try {
+      await c.dispose();
+    } catch (_) {}
   }
 
   Future<String?> _getOrgId(String companyId) async {
@@ -643,7 +681,7 @@ class EmployeeController extends GetxController {
       // ── Update employees table ──────────────────────────
       final emp = await _repo.updateEmployee(id, rawData);
 
-      // ── Update users table (username + email + role_id) ────
+      // ── Update users table (username + email) ───────────
       if (emp.userId != null) {
         final userUpdates = <String, dynamic>{};
         if (username != null && username.isNotEmpty) {
@@ -653,13 +691,12 @@ class EmployeeController extends GetxController {
         if (newEmail != null && newEmail.isNotEmpty) {
           userUpdates['email'] = newEmail;
         }
-        // Always sync role_id so designation changes take effect on next login
-        userUpdates['role_id'] = rawData['role_id'] as String?;
-
-        await SupabaseService.client
-            .from('users')
-            .update(userUpdates)
-            .eq('id', emp.userId!);
+        if (userUpdates.isNotEmpty) {
+          await SupabaseService.client
+              .from('users')
+              .update(userUpdates)
+              .eq('id', emp.userId!);
+        }
 
         // ── Update Supabase Auth (email + password) ─────────
         // This is what actually fixes login credentials
