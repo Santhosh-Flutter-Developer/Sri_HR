@@ -9,28 +9,20 @@ Future<void> writeFileBytes(String path, Uint8List bytes) async {
   await File(path).writeAsBytes(bytes, flush: true);
 }
 
-/// Saves the file to the public Downloads folder (Android) or temp dir (iOS),
-/// then triggers the OS share/save sheet so the user can save it to Files.
-/// Shows a friendly error toast instead of crashing on permission denial.
+/// Writes the file to the app's own temp directory (needs no storage
+/// permission on Android or iOS), then triggers the OS share/save sheet
+/// so the user can save it to Downloads, Files, Drive, etc. themselves.
+/// Shows a friendly error toast instead of crashing on failure.
 Future<void> saveToDownloadsAndShare(Uint8List bytes, String filename) async {
   try {
-    String filePath;
-
-    if (Platform.isAndroid) {
-      // Try the public Downloads folder first; fall back to app-docs dir.
-      const downloadsPath = '/storage/emulated/0/Download';
-      final dir = Directory(downloadsPath);
-      if (dir.existsSync()) {
-        filePath = '$downloadsPath/$filename';
-      } else {
-        final appDir = await getApplicationDocumentsDirectory();
-        filePath = '${appDir.path}/$filename';
-      }
-    } else {
-      // iOS: save to temp then share so user can pick destination (Files, etc.)
-      final tempDir = await getTemporaryDirectory();
-      filePath = '${tempDir.path}/$filename';
-    }
+    // Always write to the app's own temp dir — this needs no storage
+    // permission on any Android version (unlike a raw path such as
+    // /storage/emulated/0/Download, which scoped storage on Android 10+
+    // blocks with EACCES even when WRITE_EXTERNAL_STORAGE is granted).
+    // The share sheet below is what actually lets the user save it to
+    // Downloads, Drive, WhatsApp, etc. — the permission was never needed.
+    final tempDir = await getTemporaryDirectory();
+    final filePath = '${tempDir.path}/$filename';
 
     final file = File(filePath);
     await file.writeAsBytes(bytes, flush: true);

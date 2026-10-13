@@ -41,14 +41,35 @@ class AttendanceRepository {
       query = query.eq('employee_id', employeeId);
     }
 
-    final rows = await withSupabaseRetry(() => query.order('punch_time'));
+    // Sort chronologically (oldest → newest). Supabase's postgrest client
+    // defaults `order()` to descending, so this must be explicit — otherwise
+    // if a page ever gets cut short, it's the OLDEST rows that survive
+    // instead of the newest, which is almost never what you want.
+    final orderedQuery = query
+        .order('date', ascending: true)
+        .order('punch_time', ascending: true);
+
+    // Supabase caps any single request at the project's "Max Rows" setting
+    // (1000 by default) — a wide date range (e.g. "This Month" across many
+    // employees) can easily exceed that in raw punch rows, and the excess
+    // is silently dropped rather than erroring. Page through with .range()
+    // so we always get every matching row regardless of range size.
+    const pageSize = 1000;
     final result = <AttendanceLogModel>[];
-    for (final r in rows) {
-      try {
-        result.add(AttendanceLogModel.fromJson(r));
-      } catch (e) {
-        debugPrint('[AttendRepo] parse error: $e');
+    int from = 0;
+    while (true) {
+      final page = await withSupabaseRetry(
+        () => orderedQuery.range(from, from + pageSize - 1),
+      );
+      for (final r in page) {
+        try {
+          result.add(AttendanceLogModel.fromJson(r));
+        } catch (e) {
+          debugPrint('[AttendRepo] parse error: $e');
+        }
       }
+      if (page.length < pageSize) break;
+      from += pageSize;
     }
     return result;
   }

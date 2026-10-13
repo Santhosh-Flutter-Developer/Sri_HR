@@ -111,12 +111,18 @@ class AttendanceController extends GetxController {
     } catch (_) {}
   }
 
+  // Monotonically increasing token used to detect/ignore stale loadLogs()
+  // calls that resolve after a newer one has already started (e.g. user
+  // changes the filter again before the previous load finishes).
+  int _loadToken = 0;
+
   Future<void> loadLogs() async {
     if (auth.companyId.isEmpty) {
       logs.value = [];
       allEmployees.value = [];
       return;
     }
+    final myToken = ++_loadToken;
     isLoading.value = true;
     currentPage.value = 0;
     try {
@@ -135,6 +141,10 @@ class AttendanceController extends GetxController {
         else if (auth.employeeId != null)
           repo.getActiveEmployees(auth.companyId),
       ]);
+      // A newer loadLogs() call has already started — discard these results
+      // so they can't clobber the more recent (correct) filter's data.
+      if (myToken != _loadToken) return;
+
       logs.value = results[0] as List<AttendanceLogModel>;
       if (auth.isAdmin) {
         allEmployees.value = results[1] as List<EmployeeModel>;
@@ -145,25 +155,34 @@ class AttendanceController extends GetxController {
       }
       // ── Enrich rows with shift / leave / permission data ─────────────────
       final baseRows = List<Map<String, dynamic>>.from(groupedByEmployeeDate);
-      enrichedRows.value = await ShiftReportEnricher.enrich(
+      final enriched = await ShiftReportEnricher.enrich(
         baseRows,
         auth.companyId,
       );
+      // Check again: enrich() itself awaits several more DB calls, so a
+      // newer loadLogs() could have started (and even finished) while we
+      // were enriching. Without this check, the earlier list's enrichedRows
+      // could clobber the newer one after the fact.
+      if (myToken != _loadToken) return;
+      enrichedRows.value = enriched;
     } catch (e) {
       debugPrint('[AttendCtrl] load error: $e');
-      showError(handleException(e));
+      if (myToken == _loadToken) showError(handleException(e));
     } finally {
-      isLoading.value = false;
+      if (myToken == _loadToken) isLoading.value = false;
     }
   }
 
   // ── Punch Adjustment data loading ──────────────────────────────────────────
+
+  int _punchLoadToken = 0;
 
   Future<void> loadPunchLogs() async {
     if (auth.companyId.isEmpty) {
       punchLogs.value = [];
       return;
     }
+    final myToken = ++_punchLoadToken;
     isPunchLoading.value = true;
     punchCurrentPage.value = 0;
     try {
@@ -175,13 +194,14 @@ class AttendanceController extends GetxController {
             ? auth.employeeId
             : punchFilterEmployeeId.value,
       );
+      if (myToken != _punchLoadToken) return;
       // Keep only manual logs
       punchLogs.value = fetched.where((l) => l.isManual).toList();
     } catch (e) {
       debugPrint('[PunchCtrl] load error: $e');
-      showError(handleException(e));
+      if (myToken == _punchLoadToken) showError(handleException(e));
     } finally {
-      isPunchLoading.value = false;
+      if (myToken == _punchLoadToken) isPunchLoading.value = false;
     }
   }
 
