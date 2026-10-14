@@ -370,6 +370,12 @@ class _StepOtp extends StatelessWidget {
                 Pinput(
                   controller: controller.otpCtrl,
                   length: 6,
+                  // Auto-fetch OTP from incoming SMS.
+                  // Android: filled by OtpAutofillService (SMS User Consent API).
+                  // iOS: keyboard one-time-code suggestion.
+                  autofocus: true,
+                  autofillHints: const [AutofillHints.oneTimeCode],
+                  keyboardType: TextInputType.number,
                   defaultPinTheme: PinTheme(
                     width: 48,
                     height: 52,

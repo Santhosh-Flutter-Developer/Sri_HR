@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sri_hr/core/handler/exception_handler.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
+import 'package:sri_hr/data/services/otp_autofill_service.dart';
 import 'package:sri_hr/data/services/sms_service.dart';
 import 'package:sri_hr/data/services/supabase_service.dart';
 import 'package:sri_hr/data/utils/otp_generator.dart';
@@ -44,6 +45,7 @@ class ForgotPasswordController extends GetxController {
   @override
   void onClose() {
     _resendTimer?.cancel();
+    OtpAutofillService.stop();
     identifierCtrl.dispose();
     otpCtrl.dispose();
     newPasswordCtrl.dispose();
@@ -182,6 +184,8 @@ class ForgotPasswordController extends GetxController {
       step.value = 1;
       _startResendTimer();
       _showSuccess('OTP sent to $maskedPhone');
+      // Auto-fetch OTP from SMS (Android)
+      OtpAutofillService.listen(otpCtrl, onFilled: verifyOtp);
     } else {
       _showError(
         'Failed to send OTP to $maskedPhone.\n'
@@ -225,7 +229,8 @@ class ForgotPasswordController extends GetxController {
   // STEP 1 — Verify OTP
   // ─────────────────────────────────────────────────────────
   void verifyOtp() {
-    if (!otpFormKey.currentState!.validate()) return;
+    if (otpVerified.value) return;
+    if (!(otpFormKey.currentState?.validate() ?? false)) return;
 
     final entered = otpCtrl.text.trim();
     if (entered == _activeOtp) {

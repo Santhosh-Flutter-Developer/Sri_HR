@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:pinput/pinput.dart';
 import 'package:sri_hr/core/handler/exception_handler.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
+import 'package:sri_hr/data/services/otp_autofill_service.dart';
 import 'package:sri_hr/data/services/sms_service.dart';
 import 'package:sri_hr/data/services/supabase_service.dart';
 import 'package:sri_hr/data/utils/otp_generator.dart';
@@ -83,6 +84,7 @@ class SignupController extends GetxController {
 
   @override
   void onClose() {
+    OtpAutofillService.stop();
     _cancelTimers();
     _disposeControllers();
     super.onClose();
@@ -355,6 +357,8 @@ class SignupController extends GetxController {
         colorText: Colors.white,
       );
       _activeOtp = otpCode;
+      // Auto-fetch OTP from SMS (Android)
+      OtpAutofillService.listen(otp, onFilled: verifyOtp);
     } catch (e) {
       sendingOtp.value = false;
       Get.snackbar(
@@ -368,6 +372,7 @@ class SignupController extends GetxController {
   }
 
   Future<void> verifyOtp() async {
+    if (otpVerified.value) return;
     final otpcode = otp.text.trim();
     if (otpcode.length != 6) {
       Get.snackbar(
@@ -815,6 +820,12 @@ class SignupController extends GetxController {
                     Pinput(
                       controller: otp,
                       length: 6,
+                      // Auto-fetch OTP from incoming SMS.
+                      // Android: SMS User Consent API; iOS: one-time-code hint.
+                      autofocus: true,
+                      autofillHints: const [AutofillHints.oneTimeCode],
+                      keyboardType: TextInputType.number,
+                      onCompleted: (_) => verifyOtp(),
                       defaultPinTheme: PinTheme(
                         width: 48,
                         height: 52,
