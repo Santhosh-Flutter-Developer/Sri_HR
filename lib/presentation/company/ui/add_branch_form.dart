@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:responsive_grid/responsive_grid.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/presentation/company/controller/company_controller.dart';
+import 'package:sri_hr/widgets/current_location_button.dart';
 import 'package:sri_hr/widgets/sri_button.dart';
 import 'package:sri_hr/widgets/sri_textfield.dart';
 
@@ -424,6 +425,39 @@ class _AddBranchFormState extends State<AddBranchForm> {
                                 errorText: gstinError,
                                 checking: isCheckingGstin,
                                 controller: gstin,
+                              ),
+                            ),
+                          ),
+
+                          // Auto-fill from current location
+                          ResponsiveGridCol(
+                            xl: 12, lg: 12, md: 12, xs: 12, sm: 12,
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 20.0),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      'Address Details',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                  ),
+                                  CurrentLocationButton(
+                                    onFetched: (info) => setState(
+                                      () => info.applyTo(
+                                        addressCtrl: address,
+                                        countryCtrl: country,
+                                        stateCtrl: state,
+                                        cityCtrl: city,
+                                        pincodeCtrl: pincode,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),

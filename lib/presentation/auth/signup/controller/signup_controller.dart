@@ -13,6 +13,7 @@ import 'package:sri_hr/presentation/auth/login/widgets/branding_panel.dart';
 import 'package:sri_hr/presentation/auth/signup/widgets/step_indicator.dart';
 import 'package:sri_hr/presentation/auth/signup/widgets/step_title.dart';
 import 'package:sri_hr/widgets/sri_button.dart';
+import 'package:sri_hr/widgets/current_location_button.dart';
 import 'package:sri_hr/widgets/sri_card.dart';
 import 'package:sri_hr/widgets/sri_textfield.dart';
 
@@ -390,7 +391,7 @@ class SignupController extends GetxController {
           colorText: Colors.white,
         );
       } else {
-        pincode.clear();
+        otp.clear();
         Get.snackbar(
           'ERROR',
           'Incorrect OTP. Please try again',
@@ -910,8 +911,31 @@ class SignupController extends GetxController {
       ),
       const SizedBox(height: 20),
 
-      StepTitle(title: 'Address Details', icon: Icons.location_on_rounded),
-      const SizedBox(height: 20),
+      StepTitle(
+        title: 'Address Details',
+        icon: Icons.location_on_rounded,
+        showLocationButton: true,
+        address: address,
+        country: country,
+        state: state,
+        city: city,
+        pincode: pincode,
+      ),
+      // const SizedBox(height: 12),
+
+      // Align(
+      //   alignment: Alignment.centerLeft,
+      //   child: CurrentLocationButton(
+      //     onFetched: (info) => info.applyTo(
+      //       addressCtrl: address,
+      //       countryCtrl: country,
+      //       stateCtrl: state,
+      //       cityCtrl: city,
+      //       pincodeCtrl: pincode,
+      //     ),
+      //   ),
+      // ),
+      const SizedBox(height: 16),
 
       SriTextField(
         controller: address,

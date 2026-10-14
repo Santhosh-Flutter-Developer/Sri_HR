@@ -10,6 +10,7 @@ import 'package:sri_hr/data/models/company_model.dart';
 import 'package:sri_hr/presentation/company/controller/company_controller.dart';
 import 'package:sri_hr/presentation/company/widgets/sri_detail_card.dart';
 import 'package:sri_hr/presentation/company/widgets/work_shift_card.dart';
+import 'package:sri_hr/widgets/current_location_button.dart';
 import 'package:sri_hr/widgets/sri_button.dart';
 import 'package:sri_hr/widgets/sri_textfield.dart';
 
@@ -607,9 +608,44 @@ class _CompanyDetailState extends State<CompanyDetail> {
               SriDetailCard(
                 title: 'Address',
                 icon: Icons.location_on_rounded,
+                showLocationButton: editing,
+                address: address,
+                country: country,
+                state: state,
+                city: city,
+                pincode: pincode,
+                lat: lat,
+                lon: lon,
                 children: [
                   ResponsiveGridRow(
                     children: [
+                      // if (editing)
+                      //   ResponsiveGridCol(
+                      //     xl: 12,
+                      //     lg: 12,
+                      //     md: 12,
+                      //     xs: 12,
+                      //     sm: 12,
+                      //     child: Padding(
+                      //       padding: const EdgeInsets.only(top: 20.0),
+                      //       child: Align(
+                      //         alignment: Alignment.centerLeft,
+                      //         child: CurrentLocationButton(
+                      //           onFetched: (info) => setState(
+                      //             () => info.applyTo(
+                      //               addressCtrl: address,
+                      //               countryCtrl: country,
+                      //               stateCtrl: state,
+                      //               cityCtrl: city,
+                      //               pincodeCtrl: pincode,
+                      //               latCtrl: lat,
+                      //               lonCtrl: lon,
+                      //             ),
+                      //           ),
+                      //         ),
+                      //       ),
+                      //     ),
+                      //   ),
                       ResponsiveGridCol(
                         xl: 12,
                         lg: 12,

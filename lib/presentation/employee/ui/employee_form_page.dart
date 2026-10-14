@@ -26,6 +26,7 @@ import 'package:sri_hr/presentation/employee_status/controller/employee_status_c
 import 'package:sri_hr/presentation/helper/helper.dart';
 import 'package:sri_hr/presentation/salary_type/controller/salary_type_controller.dart';
 import 'package:sri_hr/routes/app_routes.dart';
+import 'package:sri_hr/widgets/current_location_button.dart';
 import 'package:sri_hr/widgets/app_shell.dart';
 import 'package:sri_hr/widgets/sri_dropdown.dart';
 import 'package:sri_hr/widgets/sri_textfield.dart';
@@ -1226,9 +1227,50 @@ class _StepAddress extends StatelessWidget {
           _SectionCard(
             title: 'Residential Address',
             icon: Icons.home_rounded,
+            trailing: CurrentLocationButton(
+                          onFetched: (info) => state.setState(() {
+                            info.applyTo(
+                              addressCtrl: state.address,
+                              countryCtrl: state.country,
+                              stateCtrl: state.state,
+                              cityCtrl: state.city,
+                              pincodeCtrl: state.pincode,
+                            );
+                            if (state.isSameAddress) {
+                              state.aadharAddress.text = state.address.text;
+                            }
+                          }),
+                        ),
             children: [
               ResponsiveGridRow(
                 children: [
+                  /*ResponsiveGridCol(
+                    xl: 12,
+                    lg: 12,
+                    md: 12,
+                    sm: 12,
+                    xs: 12,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: CurrentLocationButton(
+                          onFetched: (info) => state.setState(() {
+                            info.applyTo(
+                              addressCtrl: state.address,
+                              countryCtrl: state.country,
+                              stateCtrl: state.state,
+                              cityCtrl: state.city,
+                              pincodeCtrl: state.pincode,
+                            );
+                            if (state.isSameAddress) {
+                              state.aadharAddress.text = state.address.text;
+                            }
+                          }),
+                        ),
+                      ),
+                    ),
+                  ),*/
                   ResponsiveGridCol(
                     xl: 12,
                     lg: 12,
