@@ -6,9 +6,11 @@ import 'package:sri_hr/data/models/dashboard_stats_model.dart';
 import 'package:sri_hr/data/services/supabase_service.dart';
 import 'package:sri_hr/data/utils/network_time.dart';
 import 'package:sri_hr/presentation/attendance/repository/attendance_repository.dart';
+import 'package:sri_hr/presentation/attendance/controller/shift_report_enricher.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/employee/repository/employee_repository.dart';
 import 'package:sri_hr/presentation/leave/repository/leave_repository.dart';
+import 'package:sri_hr/presentation/permission_request/repository/permission_request_repository.dart';
 
 AuthController get auth => Get.find<AuthController>();
 
@@ -16,6 +18,7 @@ class DashboardController extends GetxController {
   final empRepo = EmployeeRepository();
   final attRepo = AttendanceRepository();
   final leaveRepo = LeaveRepository();
+  final permRepo = PermissionRepository();
   final stats = Rxn<DashboardStats>();
   final isLoading = false.obs;
 
@@ -77,6 +80,17 @@ class DashboardController extends GetxController {
       final totalEmp = await empRepo.countEmployees(companyId);
       final presentCount = await attRepo.getPresentCount(companyId, date);
       final leaveCount = await leaveRepo.getLeaveCount(companyId, date);
+      final pendingLeave = await leaveRepo.getPendingLeaveCount(companyId);
+      final pendingPerm = await permRepo.getPendingPermissionCount(companyId);
+
+      // Late entries for the selected date (first IN after shift start)
+      int lateCount = 0;
+      try {
+        final dayLogs = await attRepo.getAttendanceLogs(companyId, date: date);
+        lateCount = await ShiftReportEnricher.countLate(dayLogs, companyId);
+      } catch (e) {
+        log('Late count error: $e');
+      }
 
       // Department wise employee count
       final deptRows = await SupabaseService.client
@@ -96,6 +110,9 @@ class DashboardController extends GetxController {
         absentCount: (totalEmp - presentCount - leaveCount).clamp(0, totalEmp),
         leaveCount: leaveCount,
         permissionCount: 0,
+        pendingLeaveCount: pendingLeave,
+        pendingPermissionCount: pendingPerm,
+        lateCount: lateCount,
         attendanceByDate: [],
         departmentWiseCount: deptCounts.entries
             .map((e) => {'name': e.key, 'count': e.value})

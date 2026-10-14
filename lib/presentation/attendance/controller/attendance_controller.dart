@@ -35,7 +35,7 @@ class AttendanceController extends GetxController {
   final filterEmployeeId = RxnString();
   final filterDepartmentId = RxnString();
   final activePreset = RxnString();
-  // 'present' | 'absent' | 'leave' | null
+  // 'present' | 'absent' | 'leave' | 'late' | null
   final statusFilter = RxnString();
 
   void toggleStatusFilter(String status) {
@@ -471,13 +471,23 @@ class AttendanceController extends GetxController {
     return enrichedRows.where((r) => r['leaveStatus'] == 'approved').length;
   }
 
-  /// Rows after applying the present/absent/leave status filter
+  /// Employees whose first IN punch is after shift start (single-day view)
+  int get lateCount {
+    return enrichedRows.where((r) {
+      final m = r['lateMinutes'];
+      return m is int && m > 0;
+    }).length;
+  }
+
+  /// Rows after applying the present/absent/leave/late status filter
   List<Map<String, dynamic>> get filteredRows {
     final rows = groupedByEmployeeDate;
     if (!isSingleDay || statusFilter.value == null) return rows;
-    if (statusFilter.value == 'leave') {
-      // Leave filter driven by enrichedRows; return unfiltered here as fallback
-      return rows;
+    if (statusFilter.value == 'late' || statusFilter.value == 'leave') {
+      // Late / leave are only known after enrichment. Return the enriched
+      // result (even when empty) so pagedRows / totalPages / counts never
+      // fall back to showing every employee when nothing matches.
+      return filteredEnrichedRows;
     }
     if (statusFilter.value == 'absent') {
       // Absent = no punch AND not on approved leave
@@ -491,6 +501,12 @@ class AttendanceController extends GetxController {
   List<Map<String, dynamic>> get filteredEnrichedRows {
     final rows = enrichedRows;
     if (!isSingleDay || statusFilter.value == null) return rows;
+    if (statusFilter.value == 'late') {
+      return rows.where((r) {
+        final m = r['lateMinutes'];
+        return m is int && m > 0;
+      }).toList();
+    }
     if (statusFilter.value == 'leave') {
       // Leave = approved leave (regardless of punch)
       return rows.where((r) => r['leaveStatus'] == 'approved').toList();

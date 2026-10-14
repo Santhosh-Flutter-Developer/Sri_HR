@@ -46,6 +46,11 @@ class PermissionRequestController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    // Opened from dashboard with a preset filter (e.g. {'status': 'pending'})
+    final args = Get.arguments;
+    if (args is Map && args['status'] is String) {
+      filterStatus.value = args['status'] as String;
+    }
     load();
     // Reset to first page whenever filter changes
     ever(filterStatus, (_) => currentPage.value = 0);

@@ -80,6 +80,48 @@ class StatsGrid extends StatelessWidget {
           );
         },
       ),
+      StatCard(
+        label: 'Pending Leave',
+        value: '${stats?.pendingLeaveCount ?? 0}',
+        icon: Icons.pending_actions_rounded,
+        color: AppColors.info,
+        subtitle: 'Awaiting approval',
+        onTap: () {
+          Get.toNamed(
+            AppRoutes.routeLeave,
+            arguments: {'status': 'pending'},
+          );
+        },
+      ),
+      StatCard(
+        label: 'Pending Permission',
+        value: '${stats?.pendingPermissionCount ?? 0}',
+        icon: Icons.hourglass_top_rounded,
+        color: const Color(0xFF7048E8),
+        subtitle: 'Awaiting approval',
+        onTap: () {
+          Get.toNamed(
+            AppRoutes.routePermission,
+            arguments: {'status': 'pending'},
+          );
+        },
+      ),
+      StatCard(
+        label: 'Late Entry',
+        value: '${stats?.lateCount ?? 0}',
+        icon: Icons.alarm_rounded,
+        color: const Color(0xFFF76707),
+        subtitle: 'Came after shift start',
+        onTap: () {
+          Get.toNamed(
+            AppRoutes.routeAttendance,
+            arguments: {
+              'date': selectedDate ?? NetworkTime.now(),
+              'statusFilter': 'late',
+            },
+          );
+        },
+      ),
     ];
 
     return ResponsiveGridRow(

@@ -16,6 +16,7 @@ class SummaryStrip extends StatelessWidget {
       final present = controller.presentCount;
       final absent = controller.absentCount;
       final leave = controller.leaveCount;
+      final late = controller.lateCount;
       final singleDay = controller.isSingleDay;
       final totalMins = rows.fold<int>(
         0,
@@ -63,6 +64,15 @@ class SummaryStrip extends StatelessWidget {
                     color: AppColors.warning,
                     selected: controller.statusFilter.value == 'leave',
                     onTap: () => controller.toggleStatusFilter('leave'),
+                  ),
+                  SizedBox(width: 6.0),
+
+                  Chips(
+                    value: '$late',
+                    label: 'Late',
+                    color: const Color(0xFFF76707),
+                    selected: controller.statusFilter.value == 'late',
+                    onTap: () => controller.toggleStatusFilter('late'),
                   ),
                   SizedBox(width: 6.0),
                 ],

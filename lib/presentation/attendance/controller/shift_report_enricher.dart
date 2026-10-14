@@ -7,6 +7,7 @@
 // Usage:
 //   final enriched = await ShiftReportEnricher.enrich(rows, companyId);
 //
+import 'package:sri_hr/data/models/attendance_log_model.dart';
 import 'package:sri_hr/data/models/employee_model.dart';
 import 'package:sri_hr/data/models/work_shift_model.dart';
 import 'package:sri_hr/data/services/supabase_service.dart';
@@ -157,6 +158,42 @@ class ShiftReportEnricher {
     }
 
     return rows;
+  }
+
+  /// Number of employees whose first IN punch on [date] is after their
+  /// effective shift start (employee override, else company shift).
+  /// Uses the same rule as the `lateMinutes > 0` flag in [enrich].
+  static Future<int> countLate(
+    List<AttendanceLogModel> logsOfTheDay,
+    String companyId,
+  ) async {
+    _shiftCache.remove(companyId);
+    final shift = await _getShift(companyId);
+
+    // Earliest IN punch per employee
+    final Map<String, AttendanceLogModel> firstIn = {};
+    for (final log in logsOfTheDay) {
+      if (log.punchType != PunchType.in_) continue;
+      final existing = firstIn[log.employeeId];
+      if (existing == null || log.punchTime.isBefore(existing.punchTime)) {
+        firstIn[log.employeeId] = log;
+      }
+    }
+
+    int late = 0;
+    for (final log in firstIn.values) {
+      final emp = log.employee;
+      final empStart = _clean(emp?.workStartTime);
+      final empEnd = _clean(emp?.workEndTime);
+      final hasEmpShift = empStart.isNotEmpty && empEnd.isNotEmpty;
+      final start = hasEmpShift
+          ? empStart
+          : (shift != null ? _clean(shift.workStartTime) : '');
+      if (start.isEmpty) continue;
+      final actual = log.punchTime.hour * 60 + log.punchTime.minute;
+      if (actual - _timeToMins(start) > 0) late++;
+    }
+    return late;
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────

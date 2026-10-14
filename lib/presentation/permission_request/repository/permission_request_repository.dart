@@ -75,6 +75,17 @@ class PermissionRepository {
     return _fetchPermOne(id);
   }
 
+  /// All permission requests still waiting for approval (any date).
+  Future<int> getPendingPermissionCount(String companyId) async {
+    final res = await SupabaseService.client
+        .from('permission_requests')
+        .select()
+        .eq('company_id', companyId)
+        .eq('status', 'pending')
+        .count();
+    return res.count;
+  }
+
   Future<void> deletePermission(String id) =>
       SupabaseService.delete('permission_requests', id);
 }

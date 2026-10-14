@@ -104,6 +104,17 @@ class LeaveRepository {
   Future<void> deleteLeave(String id) =>
       SupabaseService.delete('leave_requests', id);
 
+  /// All leave requests still waiting for approval (any date).
+  Future<int> getPendingLeaveCount(String companyId) async {
+    final res = await SupabaseService.client
+        .from('leave_requests')
+        .select()
+        .eq('company_id', companyId)
+        .eq('status', 'pending')
+        .count();
+    return res.count;
+  }
+
   Future<int> getLeaveCount(String companyId, DateTime date) async {
     final dateStr = date.toIso8601String().substring(0, 10);
     final res = await SupabaseService.client
