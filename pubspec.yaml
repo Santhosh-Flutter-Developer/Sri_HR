@@ -49,6 +49,10 @@ dependencies:
   pinput: ^6.0.2
   smart_auth: ^3.2.0
 
+  # Push notifications
+  firebase_core: ^4.0.0
+  firebase_messaging: ^16.0.0
+
   # Date/Time
   table_calendar: ^3.1.0
 

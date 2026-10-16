@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:sri_hr/widgets/notification_bell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -305,6 +306,8 @@ class _MarkAttendanceState extends State<MarkAttendance>
                                 ),
                               ),
                         const Spacer(),
+                        if (!auth.isAdmin && auth.kioskCompId.isEmpty)
+                          const NotificationBell(color: Colors.white),
                         if (auth.kioskCompId.isNotEmpty)
                           // Exit button
                           GestureDetector(

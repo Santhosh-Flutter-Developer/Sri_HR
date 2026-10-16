@@ -8,6 +8,7 @@ import 'package:sri_hr/data/utils/network_time.dart';
 import 'package:sri_hr/presentation/attendance/repository/attendance_repository.dart';
 import 'package:sri_hr/presentation/attendance/controller/shift_report_enricher.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
+import 'package:sri_hr/presentation/notifications/controller/notification_controller.dart';
 import 'package:sri_hr/presentation/employee/repository/employee_repository.dart';
 import 'package:sri_hr/presentation/leave/repository/leave_repository.dart';
 import 'package:sri_hr/presentation/permission_request/repository/permission_request_repository.dart';
@@ -26,6 +27,13 @@ class DashboardController extends GetxController {
   late final Rx<DateTime> selectedDate;
   final isCustomDate =
       false.obs; // true when user picked a date other than today
+
+  @override
+  void onReady() {
+    super.onReady();
+    // App opened by tapping a push notification → redirect now
+    NotificationNavigator.consumePending();
+  }
 
   @override
   void onInit() {

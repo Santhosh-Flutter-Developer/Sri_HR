@@ -5,6 +5,12 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Firebase (push). Applied only when google-services.json is present so the
+// project still builds before Firebase is set up.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 android {
     namespace = "com.example.sri_hr"
     compileSdk = flutter.compileSdkVersion

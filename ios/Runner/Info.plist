@@ -85,5 +85,9 @@
 	<string>GeoPunch uses your location to verify you are within the office geofence when marking attendance.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>GeoPunch uses your location to verify you are within the office geofence.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

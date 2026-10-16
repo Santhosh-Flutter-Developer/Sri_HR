@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
+import 'package:sri_hr/widgets/notification_bell.dart';
 import 'package:sri_hr/widgets/sidebar_widget.dart';
 
 class NarrowLayout extends StatelessWidget {
@@ -29,7 +30,7 @@ class NarrowLayout extends StatelessWidget {
       appBar: AppBar(
         title: Text(title),
         centerTitle: true,
-        actions: actions,
+        actions: [...?actions, const NotificationBell()],
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,

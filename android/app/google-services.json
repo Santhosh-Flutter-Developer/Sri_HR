@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "798621179601",
+    "project_id": "srihr-69c8b",
+    "storage_bucket": "srihr-69c8b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:798621179601:android:bc0f6508ccdd0a33b4eff0",
+        "android_client_info": {
+          "package_name": "com.kbyai.facerecognition_flutter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCVPrW-f-6puPy7J4Yn9oe6vGIzvANWpcM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:sri_hr/core/constants/app_constants.dart';
 import 'package:sri_hr/core/theme/app_theme.dart';
+import 'package:sri_hr/data/services/push_notification_service.dart';
 import 'package:sri_hr/presentation/auth/bindings/initial_binding.dart';
 import 'package:sri_hr/presentation/not_found/ui/not_found.dart';
 import 'package:sri_hr/routes/app_pages.dart';
@@ -11,12 +12,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 const supabaseUrl = String.fromEnvironment(
   'SUPABASE_URL',
-  defaultValue: 'https://whitusrdpprsxgtntvrw.supabase.co',
+  defaultValue: 'https://vdcspcirbfdcsfhluuvn.supabase.co',
 );
 const supabaseAnonKey = String.fromEnvironment(
   'SUPABASE_ANON_KEY',
   defaultValue:
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndoaXR1c3JkcHByc3hndG50dnJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1NjU1MTQsImV4cCI6MjA5MzE0MTUxNH0.RTAuE8ZhH5Uh6RRKA17znXRiCzllTuKDx89KDx0OxkQ',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkY3NwY2lyYmZkY3NmaGx1dXZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwMzM2NjYsImV4cCI6MjEwNzYwOTY2Nn0.yo9vcTrcnr2FwgO8870_HYrNNiJBFsbBCrSNLuQP730',
 );
 
 void main() async {
@@ -34,6 +35,9 @@ void main() async {
       authFlowType: AuthFlowType.pkce,
     ),
   );
+
+  // INIT PUSH (Android/iOS only; silently skipped if Firebase isn't configured)
+  await PushNotificationService.instance.init();
 
   runApp(const SriHRApp());
 }

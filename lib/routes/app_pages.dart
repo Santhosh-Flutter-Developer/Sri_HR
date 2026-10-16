@@ -29,6 +29,7 @@ import 'package:sri_hr/presentation/holiday/ui/holiday.dart';
 import 'package:sri_hr/presentation/leave/binding/leave_binding.dart';
 import 'package:sri_hr/presentation/leave/ui/leave.dart';
 import 'package:sri_hr/presentation/mark_attendance/mark_attendance.dart';
+import 'package:sri_hr/presentation/notifications/ui/notifications.dart';
 import 'package:sri_hr/presentation/permission_request/binding/permission_binding.dart';
 import 'package:sri_hr/presentation/permission_request/ui/permission_request.dart';
 import 'package:sri_hr/presentation/salary_type/binding/salary_type_binding.dart';
@@ -102,6 +103,11 @@ class AppPages {
       page: () => Leave(),
       binding: LeaveBinding(),
       middlewares: [AuthMiddleware(), SubscriptionMiddleware()],
+    ),
+    GetPage(
+      name: AppRoutes.routeNotifications,
+      page: () => Notifications(),
+      middlewares: [AuthMiddleware()],
     ),
     GetPage(
       name: AppRoutes.routePermission,

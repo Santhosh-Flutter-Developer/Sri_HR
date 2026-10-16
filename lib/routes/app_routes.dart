@@ -13,6 +13,7 @@ class AppRoutes {
   static const String routeHoliday = '/holiday';
   static const String routeLeave = '/leave-request';
   static const String routePermission = '/permission-request';
+  static const String routeNotifications = '/notifications';
   static const String routeAttendance = '/attendance-report';
   static const String routePunchAdjustment = '/punch-adjustment';
   static const String routeSubscription = '/subscription';

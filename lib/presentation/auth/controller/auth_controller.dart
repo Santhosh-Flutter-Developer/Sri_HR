@@ -8,6 +8,8 @@ import 'package:sri_hr/data/models/role_model.dart';
 import 'package:sri_hr/data/models/role_permission_model.dart';
 import 'package:sri_hr/data/models/subscription_model.dart';
 import 'package:sri_hr/data/models/user_model.dart';
+import 'package:sri_hr/data/services/push_notification_service.dart';
+import 'package:sri_hr/presentation/notifications/controller/notification_controller.dart';
 import 'package:sri_hr/presentation/auth/repository/auth_repository.dart';
 import 'package:sri_hr/presentation/employee/repository/employee_repository.dart';
 import 'package:sri_hr/presentation/subscription/repository/subscription_repository.dart';
@@ -59,6 +61,7 @@ class AuthController extends GetxController {
       // Restore active company so companyId getter is correct immediately
       activeCompanyId.value = user.companyId;
       await _loadPermissionsAndSubscription();
+      _startNotifications();
       return;
     }
     final kioskId = box.read('kiosk_company_id');
@@ -106,6 +109,7 @@ class AuthController extends GetxController {
 
         // Load permissions + subscription
         await _loadPermissionsAndSubscription();
+        _startNotifications();
 
         // Navigate
         if (isSubscriptionActive.value) {
@@ -193,8 +197,29 @@ class AuthController extends GetxController {
     }
   }
 
+  // ── Notifications (in-app bell + FCM push) ───
+  // Not awaited on purpose: requesting push permission may show a dialog.
+  void _startNotifications() {
+    try {
+      if (Get.isRegistered<NotificationController>()) {
+        Get.find<NotificationController>().start();
+      }
+      PushNotificationService.instance.registerToken();
+    } catch (_) {}
+  }
+
+  Future<void> _stopNotifications() async {
+    try {
+      await PushNotificationService.instance.unregisterToken();
+      if (Get.isRegistered<NotificationController>()) {
+        Get.find<NotificationController>().stop();
+      }
+    } catch (_) {}
+  }
+
   // ── Logout ───────────────────────────────────
   Future<void> logout() async {
+    await _stopNotifications(); // needs the session, so before signOut
     await authRepo.logout();
     currentUser.value = null;
     currentRole.value = null;

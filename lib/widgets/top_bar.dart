@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
+import 'package:sri_hr/widgets/notification_bell.dart';
 
 class TopBar extends StatelessWidget {
   final String title;
@@ -33,7 +34,9 @@ class TopBar extends StatelessWidget {
           ),
           const Spacer(),
           if (actions != null) ...actions!,
-          const SizedBox(width: 16),
+          const SizedBox(width: 8),
+          const NotificationBell(),
+          const SizedBox(width: 8),
           Obx(
             () => Row(
               children: [
