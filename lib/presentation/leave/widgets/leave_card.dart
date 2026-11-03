@@ -172,7 +172,7 @@ class LeaveCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    '${leave.days} day${leave.days != 1 ? 's' : ''}',
+                    leave.durationLabel,
                     style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,

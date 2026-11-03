@@ -19,7 +19,7 @@ class AttendCols {
   static const diff = 88.0;
   static const late = 88.0;
   static const permission = 140.0;
-  static const leave = 88.0;
+  static const leave = 170.0; // fits "Approved (Half Day - 1st Half)"
   static const status = 88.0;
   static const action = 36.0;
 

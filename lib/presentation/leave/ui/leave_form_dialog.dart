@@ -25,6 +25,10 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
   String? employeeId;
   DateTime? fromDate;
   DateTime? toDate;
+  LeaveDayType dayType = LeaveDayType.full;
+  // Half day on the first / last date of a multi-day range (1.5, 2.5, 3.5 ...)
+  bool startHalf = false; // first date: leave after lunch (second half off)
+  bool endHalf = false; //   last date: come after lunch (first half off)
   bool isLoading = false;
 
   final auth = Get.find<AuthController>();
@@ -49,14 +53,41 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
     super.dispose();
   }
 
-  int get days {
+  double get days {
+    if (dayType.isHalf) return fromDate == null ? 0 : 0.5;
     if (fromDate == null || toDate == null) return 0;
-    return toDate!.difference(fromDate!).inDays + 1;
+    final total = toDate!.difference(fromDate!).inDays + 1;
+    if (total < 1) return 0;
+    return total - (startHalf ? 0.5 : 0) - (endHalf ? 0.5 : 0);
+  }
+
+  /// Range of 2+ dates, full-day type → half-day ends can be offered.
+  bool get isRange =>
+      !dayType.isHalf &&
+      fromDate != null &&
+      toDate != null &&
+      toDate!.isAfter(fromDate!);
+
+  /// Half-day ends only exist on a multi-date range; clear them otherwise.
+  void _syncHalfFlags() {
+    if (!isRange) {
+      startHalf = false;
+      endHalf = false;
+    }
+  }
+
+  void setDayType(LeaveDayType t) {
+    setState(() {
+      dayType = t;
+      // A half day is always a single date
+      if (t.isHalf && fromDate != null) toDate = fromDate;
+      _syncHalfFlags();
+    });
   }
 
   Widget _leaveStat({
     required String label,
-    required int value,
+    required String value,
     required Color color,
     required IconData icon,
   }) {
@@ -72,7 +103,7 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
         ),
         const SizedBox(height: 6),
         Text(
-          '$value',
+          value,
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w800,
@@ -130,8 +161,13 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
     if (d == null || !mounted) return;
     setState(() {
       fromDate = d;
-      // Reset toDate if it's before new fromDate
-      if (toDate != null && toDate!.isBefore(d)) toDate = null;
+      if (dayType.isHalf) {
+        toDate = d; // half day = single date
+      } else if (toDate != null && toDate!.isBefore(d)) {
+        // Reset toDate if it's before new fromDate
+        toDate = null;
+      }
+      _syncHalfFlags();
     });
   }
 
@@ -149,16 +185,17 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
     return emp?.casualLeave ?? 0;
   }
 
-  int get casualLeaveTaken {
+  double get casualLeaveTaken {
     // Count approved leaves for selected employee from controller
     final empId = employeeId ?? auth.employeeId;
     return widget.controller.leaves
         .where((l) => l.employeeId == empId && l.status == LeaveStatus.approved)
-        .fold(0, (sum, l) => sum + l.days);
+        .fold<double>(0, (sum, l) => sum + l.days);
   }
 
-  int get casualLeaveRemaining =>
-      (casualLeaveTotal - casualLeaveTaken).clamp(0, casualLeaveTotal);
+  double get casualLeaveRemaining => (casualLeaveTotal - casualLeaveTaken)
+      .clamp(0.0, casualLeaveTotal.toDouble())
+      .toDouble();
 
   Future<void> pickToDate() async {
     // To Date firstDate = fromDate (or today if not set)
@@ -179,7 +216,10 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
       ),
     );
     if (d == null || !mounted) return;
-    setState(() => toDate = d);
+    setState(() {
+      toDate = d;
+      _syncHalfFlags();
+    });
   }
 
   Future<void> submit() async {
@@ -199,14 +239,18 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
 
     setState(() => isLoading = true);
     try {
-      await widget.controller.create({
+      final ok = await widget.controller.create({
         'employee_id': employeeId,
         'from_date': fmtDate(fromDate),
         'to_date': fmtDate(toDate),
         'days': days,
+        'day_type': dayType.value,
+        'start_half': startHalf,
+        'end_half': endHalf,
         'reason': reasonCtrl.text.trim(),
       });
-      if (mounted) Navigator.of(context).pop();
+      // Keep the form open when validation fails so nothing has to be retyped
+      if (ok && mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) showErr('Error: $e');
     } finally {
@@ -337,6 +381,12 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
                         }),
                         const SizedBox(height: 16),
 
+                        // Leave type: Full / First Half / Second Half
+                        const FieldLabel('Leave Type *'),
+                        const SizedBox(height: 6),
+                        _dayTypeSelector(),
+                        const SizedBox(height: 16),
+
                         // Date row
                         const FieldLabel('Leave Duration *'),
                         const SizedBox(height: 6),
@@ -372,12 +422,31 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
                                 displayDate: displayDate(toDate),
                                 onTap: pickToDate,
                                 isSelected: toDate != null,
-                                // Visually hint it's disabled if From not picked
-                                disabled: fromDate == null,
+                                // Disabled if From not picked, or for half day
+                                // (a half day is always a single date)
+                                disabled: fromDate == null || dayType.isHalf,
                               ),
                             ),
                           ],
                         ),
+
+                        // Half-day ends (only when the range has 2+ dates)
+                        if (isRange) ...[
+                          const SizedBox(height: 10),
+                          _halfOption(
+                            title: 'Half day on first date',
+                            subtitle: 'Works morning, leaves after lunch',
+                            value: startHalf,
+                            onChanged: (v) => setState(() => startHalf = v),
+                          ),
+                          const SizedBox(height: 8),
+                          _halfOption(
+                            title: 'Half day on last date',
+                            subtitle: 'Morning off, comes back after lunch',
+                            value: endHalf,
+                            onChanged: (v) => setState(() => endHalf = v),
+                          ),
+                        ],
 
                         // Days summary
                         if (days > 0) ...[
@@ -404,7 +473,10 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  '$days day${days != 1 ? 's' : ''} of leave',
+                                  dayType.isHalf
+                                      ? '${formatLeaveDays(days)} day of leave · ${dayType.label}'
+                                      : '${leaveDaysText(days)} of leave'
+                                          '${(startHalf || endHalf) ? ' · incl. half day' : ''}',
                                   style: const TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w700,
@@ -428,13 +500,14 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
                           if (employeeId == null) return const SizedBox.shrink();
                           final empId = employeeId!;
                           final emp = employees.firstWhereOrNull((e) => e.id == empId);
-                          final total = emp?.casualLeave ?? 0;
+                          final total = (emp?.casualLeave ?? 0).toDouble();
                           final taken = widget.controller.leaves
                               .where((l) =>
                                   l.employeeId == empId &&
                                   l.status == LeaveStatus.approved)
-                              .fold(0, (sum, l) => sum + l.days);
-                          final remaining = (total - taken).clamp(0, total);
+                              .fold<double>(0, (sum, l) => sum + l.days);
+                          final remaining =
+                              (total - taken).clamp(0.0, total).toDouble();
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -453,7 +526,7 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
                                     Expanded(
                                       child: _leaveStat(
                                         label: 'Total',
-                                        value: total,
+                                        value: formatLeaveDays(total),
                                         color: AppColors.primary,
                                         icon: Icons.event_note_rounded,
                                       ),
@@ -463,7 +536,7 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
                                     Expanded(
                                       child: _leaveStat(
                                         label: 'Taken',
-                                        value: taken,
+                                        value: formatLeaveDays(taken),
                                         color: AppColors.warning,
                                         icon: Icons.event_busy_rounded,
                                       ),
@@ -473,7 +546,7 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
                                     Expanded(
                                       child: _leaveStat(
                                         label: 'Remaining',
-                                        value: remaining,
+                                        value: formatLeaveDays(remaining),
                                         color: remaining == 0
                                             ? AppColors.error
                                             : AppColors.success,
@@ -523,7 +596,7 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
                                       const SizedBox(width: 6),
                                       Expanded(
                                         child: Text(
-                                          'Applying $days days but only $remaining remaining.',
+                                          'Applying ${formatLeaveDays(days)} day(s) but only ${formatLeaveDays(remaining)} remaining.',
                                           style: const TextStyle(
                                             fontSize: 12,
                                             color: AppColors.warning,
@@ -622,6 +695,106 @@ class LeaveFormDialogState extends State<LeaveFormDialog> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _halfOption({
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => onChanged(!value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: value
+              ? AppColors.primary.withOpacity(0.1)
+              : AppColors.surfaceVariant,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: value ? AppColors.primary : AppColors.border,
+            width: value ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              value ? Icons.check_box_rounded : Icons.check_box_outline_blank,
+              size: 20,
+              color: value ? AppColors.primary : AppColors.textSecondary,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: value ? AppColors.primary : AppColors.textPrimary,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _dayTypeSelector() {
+    return Row(
+      children: LeaveDayType.values.map((t) {
+        final selected = dayType == t;
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(
+              right: t == LeaveDayType.values.last ? 0 : 8,
+            ),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => setDayType(t),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 11),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: selected
+                      ? AppColors.primary.withOpacity(0.1)
+                      : AppColors.surfaceVariant,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: selected ? AppColors.primary : AppColors.border,
+                    width: selected ? 1.5 : 1,
+                  ),
+                ),
+                child: Text(
+                  t.label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    color: selected
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 

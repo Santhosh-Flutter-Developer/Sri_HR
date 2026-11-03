@@ -76,7 +76,9 @@ class AttendTableRowV2 extends StatelessWidget {
     // Status: Leave > Present > Absent
     final String statusLabel;
     final Color statusColor;
-    if (leaveStatus == 'approved' && inLogs.isEmpty) {
+    if (leaveStatus == 'approved' &&
+        row['leaveIsHalf'] != true &&
+        inLogs.isEmpty) {
       statusLabel = 'Leave';
       statusColor = AppColors.info;
     } else if (isAbsent) {
@@ -254,7 +256,10 @@ class AttendTableRowV2 extends StatelessWidget {
           SizedBox(
             width: AttendCols.leave,
             child: leaveStatus != null
-                ? _badge(_cap(leaveStatus), _leaveColor(leaveStatus))
+                ? _badge(
+                    (row['leaveLabel'] as String?) ?? _cap(leaveStatus),
+                    _leaveColor(leaveStatus),
+                  )
                 : _txt('—'),
           ),
 

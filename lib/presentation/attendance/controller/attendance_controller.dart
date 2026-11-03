@@ -7,6 +7,7 @@ import 'package:sri_hr/core/handler/exception_handler.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/models/attendance_log_model.dart';
 import 'package:sri_hr/data/models/employee_model.dart';
+import 'package:sri_hr/data/models/leave_request_model.dart';
 import 'package:sri_hr/data/services/attendance_export_service.dart';
 import 'package:sri_hr/data/services/supabase_service.dart';
 import 'package:sri_hr/data/utils/network_time.dart';
@@ -15,6 +16,7 @@ import 'package:sri_hr/presentation/attendance/widgets/export_format_dialog.dart
 import 'package:sri_hr/presentation/attendance/widgets/filter_sheet.dart';
 import 'package:sri_hr/presentation/attendance/widgets/punch_form_dialog.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
+import 'package:sri_hr/presentation/leave/helper/leave_attendance_rules.dart';
 import 'package:sri_hr/data/helper/helper.dart';
 import 'package:sri_hr/data/services/connectivity_service.dart';
 import 'package:sri_hr/presentation/attendance/controller/shift_report_enricher.dart';
@@ -466,9 +468,12 @@ class AttendanceController extends GetxController {
     );
   }
 
+  static bool _isFullDayApprovedLeave(Map<String, dynamic> r) =>
+      r['leaveStatus'] == 'approved' && r['leaveIsHalf'] != true;
+
   /// Employees on approved leave (from enriched rows, single-day view)
   int get leaveCount {
-    return enrichedRows.where((r) => r['leaveStatus'] == 'approved').length;
+    return enrichedRows.where(_isFullDayApprovedLeave).length;
   }
 
   /// Employees whose first IN punch is after shift start (single-day view)
@@ -508,16 +513,17 @@ class AttendanceController extends GetxController {
       }).toList();
     }
     if (statusFilter.value == 'leave') {
-      // Leave = approved leave (regardless of punch)
-      return rows.where((r) => r['leaveStatus'] == 'approved').toList();
+      // Leave = approved FULL-day leave (regardless of punch).
+      // Half-day leave is shown in the Leave column but the employee still
+      // works the other half, so they stay in Present/Absent.
+      return rows.where(_isFullDayApprovedLeave).toList();
     }
     if (statusFilter.value == 'absent') {
       // Absent = no punch AND not on approved leave
       return rows
           .where(
             (r) =>
-                (r['isAbsent'] as bool) == true &&
-                r['leaveStatus'] != 'approved',
+                (r['isAbsent'] as bool) == true && !_isFullDayApprovedLeave(r),
           )
           .toList();
     }
@@ -591,23 +597,52 @@ class AttendanceController extends GetxController {
       final punchType = data['punch_type'] as String;
       final newPunchTime = DateTime.parse(data['punch_time'] as String);
 
-      // ── NEW: Check if employee is on approved leave this date ──
-      final leaveCheck = await SupabaseService.client
+      // ── Approved leave on this date? ──
+      //   • Full-day leave      → no punch allowed on that date.
+      //   • Half-day leave      → punches are fine for the OTHER half; only a
+      //                           punch-IN inside the leave half is rejected.
+      // (A date can hold two half-day rows, so fetch a list — not a single row.)
+      final leaveRows = await SupabaseService.client
           .from('leave_requests')
-          .select('id, from_date, to_date')
+          .select('id, from_date, to_date, day_type, start_half, end_half')
           .eq('company_id', companyId)
           .eq('employee_id', empId)
           .eq('status', 'approved')
           .lte('from_date', dateStr)
-          .gte('to_date', dateStr)
-          .maybeSingle();
+          .gte('to_date', dateStr);
 
-      if (leaveCheck != null) {
-        showError(
-          'Cannot add punch on $dateStr — employee has an approved leave on this date',
+      for (final lr in leaveRows) {
+        // What this leave takes on THIS date (a 2.5-day leave's first/last
+        // date can be a half day)
+        final lt = leaveDayTypeOn(
+          fromDate: lr['from_date'] as String,
+          toDate: lr['to_date'] as String,
+          dayType: LeaveDayType.fromValue(lr['day_type'] as String?),
+          startHalf: (lr['start_half'] as bool?) ?? false,
+          endHalf: (lr['end_half'] as bool?) ?? false,
+          date: dateStr,
         );
-        showErr.value = false;
-        return;
+        if (!lt.isHalf) {
+          showError(
+            'Cannot add punch on $dateStr — employee has an approved leave on this date',
+          );
+          showErr.value = false;
+          return;
+        }
+        if (punchType == 'in' &&
+            await LeaveAttendanceRules.punchFallsInHalfDayLeave(
+              companyId: companyId,
+              employeeId: empId,
+              dayType: lt,
+              punchTime: newPunchTime,
+            )) {
+          showError(
+            'Cannot add punch-in on $dateStr — employee has an approved '
+            '${lt.label.toLowerCase()} leave covering this time',
+          );
+          showErr.value = false;
+          return;
+        }
       }
 
       final freshLogs = await repo.getAttendanceLogs(

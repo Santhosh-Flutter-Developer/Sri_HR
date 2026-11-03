@@ -9,6 +9,7 @@
 //
 import 'package:sri_hr/data/models/attendance_log_model.dart';
 import 'package:sri_hr/data/models/employee_model.dart';
+import 'package:sri_hr/data/models/leave_request_model.dart';
 import 'package:sri_hr/data/models/work_shift_model.dart';
 import 'package:sri_hr/data/services/supabase_service.dart';
 import 'package:sri_hr/presentation/company/repository/work_shift_repository.dart';
@@ -61,24 +62,60 @@ class ShiftReportEnricher {
     // leave:      key = "${employeeId}_$dateStr"  → status string
     // permission: key = "${employeeId}_$dateStr"  → status string
     final Map<String, String> leaveMap       = {};
+    final Map<String, String> leaveTypeMap   = {};   // full | first_half | second_half
     final Map<String, String> permMap        = {};
     final Map<String, String> permTimingsMap = {};
 
+    // One employee/date can now carry several leave rows (e.g. First Half
+    // approved + Second Half pending), so collect first, then resolve.
+    final Map<String, List<Map<String, String>>> leaveEntries = {};
     for (final r in leaveRows) {
       final empId = r['employee_id'] as String? ?? '';
       final from  = DateTime.tryParse(r['from_date'] as String? ?? '');
       final to    = DateTime.tryParse(r['to_date']   as String? ?? '');
       final status = r['status'] as String? ?? '';
+      final rowType = LeaveDayType.fromValue(r['day_type'] as String?);
+      final startHalf = (r['start_half'] as bool?) ?? false;
+      final endHalf = (r['end_half'] as bool?) ?? false;
       if (from == null || to == null) continue;
       // Mark every date in range
       DateTime cursor = DateTime(from.year, from.month, from.day);
       final end = DateTime(to.year, to.month, to.day);
       while (!cursor.isAfter(end)) {
         final ds = _ds(cursor);
-        leaveMap['${empId}_$ds'] = status;
+        // What this leave takes on THIS date (first date / last date of a
+        // 2.5-day leave are half days, middle dates are full days)
+        final onDate = leaveDayTypeOn(
+          fromDate: _ds(from),
+          toDate: _ds(to),
+          dayType: rowType,
+          startHalf: startHalf,
+          endHalf: endHalf,
+          date: ds,
+        );
+        leaveEntries
+            .putIfAbsent('${empId}_$ds', () => [])
+            .add({'status': status, 'dayType': onDate.value});
         cursor = cursor.add(const Duration(days: 1));
       }
     }
+    leaveEntries.forEach((key, entries) {
+      // Most meaningful status wins: approved > pending > rejected
+      const order = ['approved', 'pending', 'rejected'];
+      final best = order.firstWhere(
+        (st) => entries.any((e) => e['status'] == st),
+        orElse: () => entries.first['status']!,
+      );
+      final types = entries
+          .where((e) => e['status'] == best)
+          .map((e) => e['dayType']!)
+          .toSet();
+      // A full-day leave, or both halves together, = whole day
+      final bool whole = types.contains('full') ||
+          (types.contains('first_half') && types.contains('second_half'));
+      leaveMap[key] = best;
+      leaveTypeMap[key] = whole ? 'full' : types.first;
+    });
 
     for (final r in permRows) {
       final empId   = r['employee_id']  as String? ?? '';
@@ -146,11 +183,23 @@ class ShiftReportEnricher {
 
       // Leave
       final leaveStatus = leaveMap[key];
+      final leaveDayType = leaveStatus == null ? null : leaveTypeMap[key];
+      final isHalfLeave = leaveDayType != null && leaveDayType != 'full';
       row['leaveStatus']    = leaveStatus;
+      row['leaveDayType']   = leaveDayType;     // full | first_half | second_half
+      row['leaveIsHalf']    = isHalfLeave;
+      // Text for the Leave column / badges, e.g. "Approved (Half Day - 1st Half)"
+      row['leaveLabel'] = leaveStatus == null
+          ? null
+          : isHalfLeave
+              ? '${_capitalize(leaveStatus)} (Half Day - ${LeaveDayType.fromValue(leaveDayType).shortLabel})'
+              : _capitalize(leaveStatus);
 
-      // Present on Leave: employee has an approved leave but still punched
+      // Present on Leave: employee has an approved FULL-day leave but still
+      // punched. (Half-day leave + punches is normal — they work the other half.)
       final inLogs = row['inLogs'] as List;
-      row['presentOnLeave'] = leaveStatus == 'approved' && inLogs.isNotEmpty;
+      row['presentOnLeave'] =
+          leaveStatus == 'approved' && !isHalfLeave && inLogs.isNotEmpty;
 
       // Permission
       row['permStatus']  = permMap[key];
@@ -212,7 +261,7 @@ class ShiftReportEnricher {
     try {
       final rows = await SupabaseService.client
           .from('leave_requests')
-          .select('employee_id, from_date, to_date, status')
+          .select('employee_id, from_date, to_date, status, day_type, start_half, end_half')
           .eq('company_id', companyId)
           .inFilter('employee_id', employeeIds)
           .inFilter('status', ['approved', 'pending', 'rejected']);

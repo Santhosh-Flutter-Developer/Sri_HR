@@ -309,7 +309,9 @@ class AttendanceExportService {
             final String statusLabel;
             final PdfColor statusClr;
             final PdfColor statusBg;
-            if (leaveStatus == 'approved' && inLogs.isEmpty) {
+            if (leaveStatus == 'approved' &&
+                row['leaveIsHalf'] != true &&
+                inLogs.isEmpty) {
               statusLabel = 'Leave';
               statusClr = const PdfColor(0.059, 0.412, 0.863);
               statusBg = const PdfColor(0.878, 0.937, 0.992);
@@ -693,7 +695,8 @@ class AttendanceExportService {
                               ),
                             )
                           : pw.Text(
-                              _capitalize(leaveStatus),
+                              (row['leaveLabel'] as String?) ??
+                                  _capitalize(leaveStatus),
                               textAlign: pw.TextAlign.center,
                               style: pw.TextStyle(
                                 font: fontBold,
@@ -1154,7 +1157,9 @@ class AttendanceExportService {
       final String statusLabel;
       final String statusFg;
       final String statusBg2;
-      if (leaveStatus == 'approved' && inLogs.isEmpty) {
+      if (leaveStatus == 'approved' &&
+                row['leaveIsHalf'] != true &&
+                inLogs.isEmpty) {
         statusLabel = 'Leave';
         statusFg = '#1D4ED8';
         statusBg2 = '#DBEAFE';
@@ -1260,7 +1265,8 @@ class AttendanceExportService {
       writeCell(
         12,
         leaveStatus != null
-            ? (leaveStatus[0].toUpperCase() + leaveStatus.substring(1))
+            ? ((row['leaveLabel'] as String?) ??
+                  (leaveStatus[0].toUpperCase() + leaveStatus.substring(1)))
             : '-',
         fgHex: leaveStatus == null
             ? '#94A3B8'

@@ -54,24 +54,64 @@ class LeaveRepository {
     return _fetchOne(id);
   }
 
+  /// True if the requested leave clashes with an existing pending/approved one.
+  ///
+  /// Checked per date and per session: two leaves clash only if they both
+  /// occupy the same session (first/second half) on at least one date. So
+  /// "First Half 05 Nov" + "Second Half 05 Nov", or a 2.5-day leave ending
+  /// with a first half + a Second Half on its last date, can co-exist.
   Future<bool> hasOverlappingLeave({
     required String companyId,
     required String employeeId,
     required String fromDate,
     required String toDate,
+    LeaveDayType dayType = LeaveDayType.full,
+    bool startHalf = false,
+    bool endHalf = false,
   }) async {
-    // ✅ Check if any approved or pending leave overlaps with the selected range
-    // Overlap condition: existing.from_date <= new.to_date AND existing.to_date >= new.from_date
+    // Candidate rows: existing.from_date <= new.to_date AND existing.to_date >= new.from_date
     final rows = await SupabaseService.client
         .from('leave_requests')
-        .select('id')
+        .select('id, from_date, to_date, day_type, start_half, end_half')
         .eq('company_id', companyId)
         .eq('employee_id', employeeId)
-        .inFilter('status', ['pending', 'approved']) // ✅ ignore rejected leaves
-        .lte('from_date', toDate) // existing from <= new to
-        .gte('to_date', fromDate); // existing to >= new from
+        .inFilter('status', ['pending', 'approved']) // ignore rejected leaves
+        .lte('from_date', toDate)
+        .gte('to_date', fromDate);
 
-    return rows.isNotEmpty;
+    for (final r in rows) {
+      final exFrom = (r['from_date'] as String).substring(0, 10);
+      final exTo = (r['to_date'] as String).substring(0, 10);
+      final exType = LeaveDayType.fromValue(r['day_type'] as String?);
+      final exStart = (r['start_half'] as bool?) ?? false;
+      final exEnd = (r['end_half'] as bool?) ?? false;
+
+      // Walk every date of the new request and compare sessions
+      var cursor = DateTime.parse(fromDate);
+      final end = DateTime.parse(toDate);
+      while (!cursor.isAfter(end)) {
+        final ds = cursor.toIso8601String().substring(0, 10);
+        final mine = leaveSessionsOn(
+          fromDate: fromDate,
+          toDate: toDate,
+          dayType: dayType,
+          startHalf: startHalf,
+          endHalf: endHalf,
+          date: ds,
+        );
+        final theirs = leaveSessionsOn(
+          fromDate: exFrom,
+          toDate: exTo,
+          dayType: exType,
+          startHalf: exStart,
+          endHalf: exEnd,
+          date: ds,
+        );
+        if (mine.intersection(theirs).isNotEmpty) return true;
+        cursor = cursor.add(const Duration(days: 1));
+      }
+    }
+    return false;
   }
 
   Future<LeaveRequestModel> _fetchOne(String id) async {
@@ -115,16 +155,32 @@ class LeaveRepository {
     return res.count;
   }
 
+  /// Employees on approved leave for the WHOLE of [date].
+  /// Half-day leave is excluded — those employees still work the other half.
   Future<int> getLeaveCount(String companyId, DateTime date) async {
     final dateStr = date.toIso8601String().substring(0, 10);
-    final res = await SupabaseService.client
+    final rows = await SupabaseService.client
         .from('leave_requests')
-        .select()
+        .select('employee_id, from_date, to_date, day_type, start_half, end_half')
         .eq('company_id', companyId)
         .eq('status', 'approved')
         .lte('from_date', dateStr)
-        .gte('to_date', dateStr)
-        .count();
-    return res.count;
+        .gte('to_date', dateStr);
+
+    // Union the sessions per employee (First Half + Second Half = whole day)
+    final Map<String, Set<String>> covered = {};
+    for (final r in rows) {
+      covered.putIfAbsent(r['employee_id'] as String, () => {}).addAll(
+        leaveSessionsOn(
+          fromDate: r['from_date'] as String,
+          toDate: r['to_date'] as String,
+          dayType: LeaveDayType.fromValue(r['day_type'] as String?),
+          startHalf: (r['start_half'] as bool?) ?? false,
+          endHalf: (r['end_half'] as bool?) ?? false,
+          date: dateStr,
+        ),
+      );
+    }
+    return covered.values.where((s) => s.length == 2).length;
   }
 }

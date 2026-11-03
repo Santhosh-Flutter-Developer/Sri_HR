@@ -94,7 +94,9 @@ class GridedView extends StatelessWidget {
             // Status
             final String statusLabel;
             final Color statusColor;
-            if (leaveStatus == 'approved' && inLogs.isEmpty) {
+            if (leaveStatus == 'approved' &&
+                row['leaveIsHalf'] != true &&
+                inLogs.isEmpty) {
               statusLabel = 'Leave';
               statusColor = AppColors.info;
             } else if (isAbsent) {
@@ -117,7 +119,7 @@ class GridedView extends StatelessWidget {
 
             final borderColor = isAbsent
                 ? AppColors.error.withOpacity(0.30)
-                : leaveStatus == 'approved'
+                : (leaveStatus == 'approved' && row['leaveIsHalf'] != true)
                 ? AppColors.info.withOpacity(0.30)
                 : totalMins == 0
                 ? AppColors.border
@@ -386,7 +388,7 @@ class GridedView extends StatelessWidget {
                               if (leaveStatus != null)
                                 _footerBadge(
                                   Icons.event_busy_rounded,
-                                  'Leave: ${_cap(leaveStatus)}',
+                                  'Leave: ${(row['leaveLabel'] as String?) ?? _cap(leaveStatus)}',
                                   _leaveColor(leaveStatus),
                                 ),
                             ],

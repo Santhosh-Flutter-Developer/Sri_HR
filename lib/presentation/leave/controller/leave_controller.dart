@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sri_hr/core/theme/app_colors.dart';
 import 'package:sri_hr/data/models/leave_request_model.dart';
-import 'package:sri_hr/data/services/supabase_service.dart';
 import 'package:sri_hr/presentation/auth/controller/auth_controller.dart';
 import 'package:sri_hr/presentation/helper/helper.dart';
 import 'package:sri_hr/presentation/leave/repository/leave_repository.dart';
+import 'package:sri_hr/presentation/leave/helper/leave_attendance_rules.dart';
 import 'package:sri_hr/presentation/leave/ui/leave_form_dialog.dart';
 
 AuthController get auth => Get.find<AuthController>();
@@ -75,7 +75,9 @@ class LeaveController extends GetxController {
     }
   }
 
-  Future<void> create(Map<String, dynamic> data) async {
+  /// Returns true when the request was saved. On any validation / network
+  /// failure it shows the error and returns false so the form stays open.
+  Future<bool> create(Map<String, dynamic> data) async {
     isLoading.value = true;
     try {
       data['company_id'] = auth.companyId;
@@ -91,48 +93,81 @@ class LeaveController extends GetxController {
         throw Exception('Please select To Date');
       }
 
-      // ── NEW: Check if employee has punched on any date in the leave range ──
       final fromDate = data['from_date'] as String;
       final toDate = data['to_date'] as String;
       final empId = data['employee_id'] as String;
+      final dayType = LeaveDayType.fromValue(data['day_type'] as String?);
 
-      final punchCheck = await SupabaseService.client
-          .from('attendance_logs')
-          .select('date')
-          .eq('company_id', auth.companyId)
-          .eq('employee_id', empId)
-          .gte('date', fromDate)
-          .lte('date', toDate)
-          .limit(1)
-          .maybeSingle();
+      final startHalf = (data['start_half'] as bool?) ?? false;
+      final endHalf = (data['end_half'] as bool?) ?? false;
 
-      if (punchCheck != null) {
-        final punchedDate = punchCheck['date'] as String;
-        throw Exception(
-          'Employee has attendance punched on $punchedDate. Cannot apply leave on a day with existing punch records.',
-        );
+      if (toDate.compareTo(fromDate) < 0) {
+        throw Exception('To Date must be on or after From Date');
       }
 
-      // ── Existing overlap check ──
+      // ── Half day rules ──
+      if (dayType.isHalf) {
+        if (fromDate != toDate) {
+          throw Exception('Half day leave can only be applied for a single date.');
+        }
+        if (startHalf || endHalf) {
+          throw Exception('Choose either a half day or a range with half-day ends.');
+        }
+        data['days'] = 0.5;
+      } else {
+        // Total days, e.g. 3 dates with a half day on the last date = 2.5
+        final total = DateTime.parse(toDate)
+                .difference(DateTime.parse(fromDate))
+                .inDays +
+            1;
+        if ((startHalf || endHalf) && total < 2) {
+          throw Exception('A half day on first/last date needs a leave of 2 or more dates.');
+        }
+        data['days'] = total - (startHalf ? 0.5 : 0) - (endHalf ? 0.5 : 0);
+      }
+      data['start_half'] = startHalf;
+      data['end_half'] = endHalf;
+
+      // ── Attendance rules: not while punched in; half-day must not overlap
+      //    the half already worked; full day not after working ──
+      final punchError = await LeaveAttendanceRules.validateLeaveAgainstPunches(
+        companyId: auth.companyId,
+        employeeId: empId,
+        fromDate: fromDate,
+        toDate: toDate,
+        dayType: dayType,
+        startHalf: startHalf,
+        endHalf: endHalf,
+      );
+      if (punchError != null) throw Exception(punchError);
+
+      // ── Overlap with existing leave (First Half + Second Half may co-exist) ──
       final hasOverlap = await _repo.hasOverlappingLeave(
         companyId: auth.companyId,
         employeeId: empId,
         fromDate: fromDate,
         toDate: toDate,
+        dayType: dayType,
+        startHalf: startHalf,
+        endHalf: endHalf,
       );
 
       if (hasOverlap) {
         throw Exception(
-          'Leave already applied for the selected date range. Please choose different dates.',
+          dayType.isHalf
+              ? 'A leave is already applied for this date/session. Please choose a different date or session.'
+              : 'Leave already applied for the selected date range. Please choose different dates.',
         );
       }
 
       final leave = await _repo.createLeave(data);
       leaves.insert(0, leave);
       showSuccess('Leave request submitted successfully');
+      return true;
     } catch (e) {
       debugPrint('[LeaveCtrl] create error: $e');
       showError(e.toString().replaceAll('Exception: ', ''));
+      return false;
     } finally {
       isLoading.value = false;
     }

@@ -62,7 +62,7 @@ class DatePickerTile extends StatelessWidget {
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(
-                    disabled ? 'Pick From Date' : displayDate,
+                    (disabled && date == null) ? 'Pick From Date' : displayDate,
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: isSelected
