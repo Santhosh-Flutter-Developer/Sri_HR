@@ -82,6 +82,22 @@ class NotificationController extends GetxController {
             _showBanner(n);
           },
         )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'notifications',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'user_id',
+            value: uid,
+          ),
+          callback: (payload) {
+            // e.g. punch-in reminder cleared automatically after punching in
+            if (payload.newRecord['is_read'] == true) {
+              items.removeWhere((e) => e.id == payload.newRecord['id']);
+            }
+          },
+        )
         .subscribe();
   }
 
@@ -172,6 +188,14 @@ class NotificationNavigator {
         notificationId.isNotEmpty &&
         Get.isRegistered<NotificationController>()) {
       Get.find<NotificationController>().markRead(notificationId);
+    }
+
+    // Punch-in reminder → employee home / dashboard (where they punch in)
+    if (type == 'punch_reminder') {
+      if (Get.currentRoute != AppRoutes.routeDashboard) {
+        Get.offAllNamed(AppRoutes.routeDashboard);
+      }
+      return;
     }
 
     final isPermission = type == 'permission';

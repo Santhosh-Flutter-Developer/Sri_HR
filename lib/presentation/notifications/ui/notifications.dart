@@ -76,6 +76,7 @@ class _NotificationTile extends StatelessWidget {
   const _NotificationTile({required this.n, required this.onTap});
 
   Color get _color {
+    if (n.type == 'punch_reminder') return AppColors.primary;
     switch (n.status) {
       case 'approved':
         return AppColors.success;
@@ -87,6 +88,7 @@ class _NotificationTile extends StatelessWidget {
   }
 
   IconData get _icon {
+    if (n.type == 'punch_reminder') return Icons.alarm_rounded;
     if (n.status == 'approved') return Icons.check_circle_rounded;
     if (n.status == 'rejected') return Icons.cancel_rounded;
     return n.type == 'permission'
